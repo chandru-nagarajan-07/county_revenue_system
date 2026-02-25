@@ -1,0 +1,266 @@
+import { useState, useMemo } from 'react';
+import { motion, AnimatePresence }  from 'framer-motion';
+import { ArrowLeft, Search }  from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DashboardHeader } from '@/components/banking/DashboardHeader';
+import  ServiceCard   from '@/components/banking/ServiceCard';
+import { ChatPanel } from '@/components/banking/ChatPanel';
+import { TransactionWorkflow } from '@/components/banking/TransactionWorkflow';
+import { CustomerLookup } from '@/components/banking/CustomerLookup';
+import { FxTicker }   from '@/components/banking/FxTicker';
+import { CrossSellCard } from '@/components/banking/CrossSellCard';
+import  { SERVICE_CATEGORIES, SERVICES }  from '@/types/banking';
+
+const Index = () => {
+  const [view, setView] = useState('customer-lookup');
+  const [activeCustomer, setActiveCustomer] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedService, setSelectedService] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const categoryServices = useMemo(() => {
+    if (!selectedCategory) return [];
+    return SERVICES.filter(s => s.category === selectedCategory);
+  }, [selectedCategory]);
+
+  const filteredServices = useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    const q = searchQuery.toLowerCase();
+    return SERVICES.filter(s =>
+      s.title.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)
+    );
+  }, [searchQuery]);
+
+  const handleCustomerAuthenticated = (customer) => {
+    setActiveCustomer(customer);
+    setView('dashboard');
+  };
+
+  const openCategory = (cat) => {
+    setSelectedCategory(cat);
+    setView('category');
+    setSearchQuery('');
+  };
+
+  const openService = (service) => {
+    setSelectedService(service);
+    setView('workflow');
+  };
+
+  const goHome = () => {
+    setView('dashboard');
+    setSelectedCategory(null);
+    setSelectedService(null);
+    setSearchQuery('');
+  };
+
+  const goBack = () => {
+    if (view === 'workflow') {
+      setView('category');
+      setSelectedService(null);
+    } else {
+      goHome();
+    }
+  };
+
+  const handleLogout = () => {
+    setActiveCustomer(null);
+    setView('customer-lookup');
+    setSelectedCategory(null);
+    setSelectedService(null);
+  };
+
+  return (
+    <div className="flex flex-col min-h-screen bg-background">
+      <DashboardHeader
+        customerName={activeCustomer?.fullName}
+        onLogout={activeCustomer ? handleLogout : undefined}
+      />
+
+      <main className="flex-1 overflow-hidden">
+        <AnimatePresence mode="wait">
+          {/* CUSTOMER LOOKUP */}
+          {view === 'customer-lookup' && (
+            <motion.div
+              key="customer-lookup"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <CustomerLookup onAuthenticated={handleCustomerAuthenticated} />
+            </motion.div>
+          )}
+
+          {/* WORKFLOW VIEW */}
+          {view === 'workflow' && selectedService && activeCustomer && (
+            <motion.div
+              key="workflow"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="h-full"
+            >
+              <TransactionWorkflow
+                service={selectedService}
+                customer={activeCustomer}
+                onBack={goBack}
+                onComplete={goHome}
+              />
+            </motion.div>
+          )}
+
+          {/* CATEGORY VIEW */}
+          {view === 'category' && selectedCategory && (
+            <motion.div
+              key="category"
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -30 }}
+              className="p-8"
+            >
+              <div className="flex items-center gap-4 mb-6">
+                <Button variant="ghost" size="icon" onClick={goHome} className="touch-target">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div>
+                  <h2 className="font-display text-2xl font-bold text-foreground">
+                    {SERVICE_CATEGORIES[selectedCategory].label}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {SERVICE_CATEGORIES[selectedCategory].description}
+                  </p>
+                </div>
+              </div>
+              {(['cash-operations', 'customer-account', 'payment-operations', 'fx-operations', 'card-services'].includes(selectedCategory) ? (
+                <div className="flex gap-6">
+                  {activeCustomer && (
+                    <div className="hidden lg:block w-80 shrink-0">
+                      <CrossSellCard customer={activeCustomer} category={selectedCategory} />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0 space-y-5">
+                    <div className="grid gap-3">
+                      {categoryServices.map((service, i) => (
+                        <motion.div
+                          key={service.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                        >
+                          <ServiceCard
+                            icon={service.icon}
+                            title={service.title}
+                            description={service.description}
+                            onClick={() => openService(service)}
+                          />
+                        </motion.div>
+                      ))}
+                    </div>
+                    {(selectedCategory === 'cash-operations' || selectedCategory === 'fx-operations') && <FxTicker />}
+                    {activeCustomer && (
+                      <div className="lg:hidden">
+                        <CrossSellCard customer={activeCustomer} category={selectedCategory} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-3 max-w-2xl">
+                  {categoryServices.map((service, i) => (
+                    <motion.div
+                      key={service.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                    >
+                      <ServiceCard
+                        icon={service.icon}
+                        title={service.title}
+                        description={service.description}
+                        onClick={() => openService(service)}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              ))}
+            </motion.div>
+          )}
+
+          {/* DASHBOARD VIEW */}
+          {view === 'dashboard' && (
+            <motion.div
+              key="dashboard"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="p-8"
+            >
+              {/* Search bar */}
+              <div className="relative max-w-xl mb-8">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search services... e.g. 'deposit', 'transfer', 'card'"
+                  className="w-full rounded-xl border border-input bg-card pl-12 pr-4 py-4 text-base outline-none focus:ring-2 focus:ring-ring shadow-card touch-target"
+                />
+              </div>
+
+              {/* Search results */}
+              {filteredServices && (
+                <div className="mb-8">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">
+                    {filteredServices.length} result{filteredServices.length !== 1 ? 's' : ''} found
+                  </h3>
+                  <div className="grid gap-3 max-w-2xl">
+                    {filteredServices.map((service) => (
+                      <ServiceCard
+                        key={service.id}
+                        icon={service.icon}
+                        title={service.title}
+                        description={service.description}
+                        onClick={() => openService(service)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Category cards */}
+              {!filteredServices && (
+                <>
+                  <h2 className="font-display text-xl font-semibold text-foreground mb-5">
+                    How can we help you today?
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {Object.entries(SERVICE_CATEGORIES).map(([key, cat], i) => (
+                      <motion.div
+                        key={key}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.08 }}
+                      >
+                        <ServiceCard
+                          variant="category"
+                          icon={cat.icon}
+                          title={cat.label}
+                          description={cat.description}
+                          onClick={() => openCategory(key)}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+
+      <ChatPanel isOpen={chatOpen} onToggle={() => setChatOpen(!chatOpen)} />
+    </div>
+  );
+};
+
+export default Index;
