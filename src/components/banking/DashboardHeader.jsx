@@ -1,10 +1,19 @@
-import { Clock, LogOut, User, Settings, FileText } from 'lucide-react';
+import { Clock, LogOut, User, Settings, FileText, ChevronDown, KeyRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { motion, AnimatePresence } from 'framer-motion';
 import aidaLogo from '@/assets/aida-logo.png';
 
-export function DashboardHeader({ customerName, onLogout }) {
+// No TypeScript interface needed for .jsx files
+
+export function DashboardHeader({ 
+  customerName, 
+  isDropdownOpen, 
+  setIsDropdownOpen, 
+  onResetPassword, 
+  onLogout 
+}) {
   const [time, setTime] = useState(new Date());
   const navigate = useNavigate();
 
@@ -26,6 +35,7 @@ export function DashboardHeader({ customerName, onLogout }) {
           <p className="text-sm text-primary-foreground/60">AI Digital Assistant</p>
         </div>
       </div>
+      
       <div className="flex items-center gap-6">
         {customerName && (
           <div className="flex items-center gap-2 text-primary-foreground/80">
@@ -33,6 +43,7 @@ export function DashboardHeader({ customerName, onLogout }) {
             <span className="text-sm font-medium">{customerName}</span>
           </div>
         )}
+        
         <div className="flex items-center gap-3 text-primary-foreground/70">
           <Clock className="h-4 w-4" />
           <span className="text-sm font-medium">
@@ -41,6 +52,8 @@ export function DashboardHeader({ customerName, onLogout }) {
             {time.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
+
+        {/* Existing Navigation Buttons */}
         <Button
           variant="ghost"
           size="sm"
@@ -50,6 +63,7 @@ export function DashboardHeader({ customerName, onLogout }) {
           <FileText className="h-4 w-4 mr-2" />
           Docs
         </Button>
+        
         <Button
           variant="ghost"
           size="sm"
@@ -59,17 +73,51 @@ export function DashboardHeader({ customerName, onLogout }) {
           <Settings className="h-4 w-4 mr-2" />
           Admin
         </Button>
-        {onLogout && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onLogout}
-            className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+
+        {/* New Dropdown Menu */}
+        <div className="relative">
+          <Button 
+            variant="ghost" 
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-2 text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
           >
-            <LogOut className="h-4 w-4 mr-2" />
-            End Session
+            <User className="h-4 w-4" />
+            <span className="hidden sm:inline">Account</span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
           </Button>
-        )}
+
+          <AnimatePresence>
+            {isDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="absolute right-0 mt-2 w-56 bg-card rounded-md shadow-lg border border-border z-50 overflow-hidden"
+              >
+                <div className="p-2">
+                  <button
+                    onClick={() => {
+                      onResetPassword();
+                    }}
+                    className="flex items-center w-full px-4 py-2.5 text-sm text-foreground hover:bg-muted rounded-md transition-colors"
+                  >
+                    <KeyRound className="mr-3 h-4 w-4" />
+                    Reset Password
+                  </button>
+                  <button
+                    onClick={() => {
+                      onLogout();
+                    }}
+                    className="flex items-center w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                  >
+                    <LogOut className="mr-3 h-4 w-4" />
+                    End Session
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </header>
   );
