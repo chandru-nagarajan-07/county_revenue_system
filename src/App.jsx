@@ -4,9 +4,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import Register from "./pages/Register";
 import Admin from "./pages/Admin";
 import Documentation from "./pages/Documentation";
 import NotFound from "./pages/NotFound";
+import OtpVerification from "./pages/OtpVerification";
 
 const queryClient = new QueryClient();
 
@@ -17,6 +19,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          <Route path="/register" element={<Register />} />
+          <Route path="/verify-otp" element={<OtpVerification />} />
           <Route path="/" element={<Index />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/docs" element={<Documentation />} />
