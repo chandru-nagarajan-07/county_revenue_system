@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence }  from 'framer-motion';
-import { ArrowLeft, Search }  from 'lucide-react';
+import { ArrowLeft, Search, User, Lock, CheckCircle, Landmark, Wallet, DollarSign, Clock }  from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader';
-import  ServiceCard   from '@/components/banking/ServiceCard';
+import ServiceCard   from '@/components/banking/ServiceCard';
 import { ChatPanel } from '@/components/banking/ChatPanel';
 import { TransactionWorkflow } from '@/components/banking/TransactionWorkflow';
-import { CustomerLookup } from '@/components/banking/CustomerLookup';
 import { FxTicker }   from '@/components/banking/FxTicker';
 import { CrossSellCard } from '@/components/banking/CrossSellCard';
 import  { SERVICE_CATEGORIES, SERVICES }  from '@/types/banking';
@@ -14,6 +14,11 @@ import  { SERVICE_CATEGORIES, SERVICES }  from '@/types/banking';
 const Index = () => {
   const [view, setView] = useState('customer-lookup');
   const [activeCustomer, setActiveCustomer] = useState(null);
+  
+  // Login State
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedService, setSelectedService] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
@@ -32,9 +37,35 @@ const Index = () => {
     );
   }, [searchQuery]);
 
-  const handleCustomerAuthenticated = (customer) => {
-    setActiveCustomer(customer);
+  // 1. Handle Login -> Go to Verification Screen
+  const handleLogin = () => {
+    const customerData = {
+      id: 'CUSTO01',
+      fullName: 'James Mwangi Kariuki',
+      phone: '+254 712 345 678',
+      username: username || 'demo_user',
+      accounts: [
+        { id: 'acc1', number: '0011 - 2345 - 6789', type: 'Savings Account', currency: 'KES', balance: '245,000', status: 'ACTIVE' },
+        { id: 'acc2', number: '0011 - 2345 - 6790', type: 'Current Account', currency: 'KES', balance: '1,230,000', status: 'ACTIVE' },
+        { id: 'acc3', number: '0011 - 2345 - 6791', type: 'Foreign Currency Account', currency: 'USD', balance: '5,200', status: 'ACTIVE' },
+        { id: 'acc4', number: '0011 - 2345 - 6792', type: 'Fixed Deposit', currency: 'KES', balance: '500,000', status: 'ACTIVE' }
+      ]
+    };
+    setActiveCustomer(customerData);
+    setView('customer-verified'); // Navigate to verification screen first
+  };
+
+  // 2. Handle Proceed -> Go to Dashboard
+  const handleProceedToDashboard = () => {
     setView('dashboard');
+  };
+
+  // 3. Handle Change Customer -> Back to Login
+  const handleChangeCustomer = () => {
+    setActiveCustomer(null);
+    setUsername('');
+    setPassword('');
+    setView('customer-lookup');
   };
 
   const openCategory = (cat) => {
@@ -65,10 +96,7 @@ const Index = () => {
   };
 
   const handleLogout = () => {
-    setActiveCustomer(null);
-    setView('customer-lookup');
-    setSelectedCategory(null);
-    setSelectedService(null);
+    handleChangeCustomer();
   };
 
   return (
@@ -78,17 +106,144 @@ const Index = () => {
         onLogout={activeCustomer ? handleLogout : undefined}
       />
 
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-hidden flex flex-col">
         <AnimatePresence mode="wait">
-          {/* CUSTOMER LOOKUP */}
+          
+          {/* 1. LOGIN SCREEN */}
           {view === 'customer-lookup' && (
             <motion.div
               key="customer-lookup"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              className="flex-1 flex flex-col items-center justify-center p-4 overflow-auto"
             >
-              <CustomerLookup onAuthenticated={handleCustomerAuthenticated} />
+              <div className="w-full max-w-sm space-y-6 bg-card p-8 rounded-xl shadow-lg border border-border">
+                <div className="text-center">
+                  <h1 className="font-display text-3xl font-bold text-foreground">Welcome Back</h1>
+                  <p className="text-muted-foreground mt-2">Sign in to access your account</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="username" className="text-sm font-medium text-foreground">Username</label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <input
+                        id="username"
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="Enter your username"
+                        className="w-full rounded-lg border border-input bg-background pl-10 pr-4 py-2.5 text-base outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="password" className="text-sm font-medium text-foreground">Password</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <input
+                        id="password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter your password"
+                        className="w-full rounded-lg border border-input bg-background pl-10 pr-4 py-2.5 text-base outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                  </div>
+
+                  <Button onClick={handleLogin} className="w-full touch-target">
+                    Sign In
+                  </Button>
+                </div>
+              </div>
+
+              <div className="mt-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Don't have an account?{' '}
+                  <Link to="/register" className="font-medium text-primary hover:underline">
+                    Register here
+                  </Link>
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* 2. CUSTOMER VERIFICATION SCREEN (The image you provided) */}
+          {view === 'customer-verified' && activeCustomer && (
+            <motion.div
+              key="customer-verified"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex-1 flex flex-col items-center justify-center p-4 overflow-auto bg-muted/40"
+            >
+              <div className="w-full max-w-md bg-card rounded-xl shadow-lg border border-border overflow-hidden">
+                {/* Header */}
+                <div className="bg-primary/5 p-6 border-b border-border text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-600 mb-3">
+                    <CheckCircle className="w-6 h-6" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-foreground">Customer Verified</h2>
+                </div>
+
+                {/* Customer Details */}
+                <div className="p-6 border-b border-border space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Name:</span>
+                    <span className="font-medium text-foreground">{activeCustomer.fullName}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Customer ID:</span>
+                    <span className="font-medium text-foreground">{activeCustomer.id}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Phone:</span>
+                    <span className="font-medium text-foreground">{activeCustomer.phone}</span>
+                  </div>
+                </div>
+
+                {/* Accounts List */}
+                <div className="p-4 space-y-3">
+                  {activeCustomer.accounts.map((acc) => (
+                    <div key={acc.id} className="bg-background p-3 rounded-lg border border-border flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                           {acc.type.includes('Savings') ? <Landmark className="w-4 h-4"/> : 
+                            acc.type.includes('Current') ? <Wallet className="w-4 h-4"/> :
+                            acc.type.includes('Foreign') ? <DollarSign className="w-4 h-4"/> : 
+                            <Clock className="w-4 h-4"/>}
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">{acc.number}</p>
+                          <p className="text-sm font-medium text-foreground">{acc.type} · {acc.currency}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-foreground">
+                          {acc.currency === 'KES' ? 'Ksh' : 'US$'} {acc.balance}
+                        </p>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                          {acc.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Footer Actions */}
+                <div className="p-4 border-t border-border flex gap-3">
+                  <Button variant="outline" className="flex-1" onClick={handleChangeCustomer}>
+                    Change Customer
+                  </Button>
+                  <Button className="flex-1 bg-orange-500 hover:bg-orange-600" onClick={handleProceedToDashboard}>
+                    Proceed
+                  </Button>
+                </div>
+              </div>
             </motion.div>
           )}
 
@@ -117,7 +272,7 @@ const Index = () => {
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -30 }}
-              className="p-8"
+              className="p-8 overflow-auto h-full"
             >
               <div className="flex items-center gap-4 mb-6">
                 <Button variant="ghost" size="icon" onClick={goHome} className="touch-target">
@@ -194,7 +349,7 @@ const Index = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="p-8"
+              className="p-8 overflow-auto h-full"
             >
               {/* Search bar */}
               <div className="relative max-w-xl mb-8">
