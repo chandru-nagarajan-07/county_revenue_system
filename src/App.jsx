@@ -9,6 +9,7 @@ import Admin from "./pages/Admin";
 import Documentation from "./pages/Documentation";
 import NotFound from "./pages/NotFound";
 import OtpVerification from "./pages/OtpVerification";
+import AccountCreation from "./pages/AccountCreation";
 
 const queryClient = new QueryClient();
 
@@ -24,8 +25,10 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/docs" element={<Documentation />} />
+          <Route path="/account" element={<AccountCreation />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
+       
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence }  from 'framer-motion';
-import { ArrowLeft, Search, User, Lock, CheckCircle, Landmark, Wallet, DollarSign, Clock }  from 'lucide-react';
+import { ArrowLeft, Search, User, Lock, CheckCircle, Landmark, Wallet, DollarSign, Clock, Settings, ChevronDown, KeyRound, LogOut  }  from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader';
 import ServiceCard   from '@/components/banking/ServiceCard';
@@ -18,6 +18,14 @@ const Index = () => {
   // Login State
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
+  // Nav Dropdown State
+  const [navDropdownOpen, setNavDropdownOpen] = useState(false);
+
+  // Reset Password State
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedService, setSelectedService] = useState(null);
@@ -52,7 +60,7 @@ const Index = () => {
       ]
     };
     setActiveCustomer(customerData);
-    setView('customer-verified'); // Navigate to verification screen first
+    setView('customer-verified');
   };
 
   // 2. Handle Proceed -> Go to Dashboard
@@ -90,20 +98,41 @@ const Index = () => {
     if (view === 'workflow') {
       setView('category');
       setSelectedService(null);
+    } else if (view === 'reset-password') {
+      setView('dashboard');
     } else {
       goHome();
     }
   };
 
   const handleLogout = () => {
+    setNavDropdownOpen(false);
     handleChangeCustomer();
+  };
+
+  const handleResetPassword = () => {
+    setNavDropdownOpen(false);
+    setView('reset-password');
+  };
+
+  const handlePasswordUpdate = () => {
+    // Add validation logic here
+    alert('Password updated successfully!');
+    setOldPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setView('dashboard');
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <DashboardHeader
         customerName={activeCustomer?.fullName}
-        onLogout={activeCustomer ? handleLogout : undefined}
+        // Pass dropdown state and handlers to the header
+        isDropdownOpen={navDropdownOpen}
+        setIsDropdownOpen={setNavDropdownOpen}
+        onResetPassword={handleResetPassword}
+        onLogout={handleLogout}
       />
 
       <main className="flex-1 overflow-hidden flex flex-col">
@@ -172,7 +201,7 @@ const Index = () => {
             </motion.div>
           )}
 
-          {/* 2. CUSTOMER VERIFICATION SCREEN (The image you provided) */}
+          {/* 2. CUSTOMER VERIFICATION SCREEN */}
           {view === 'customer-verified' && activeCustomer && (
             <motion.div
               key="customer-verified"
@@ -182,7 +211,6 @@ const Index = () => {
               className="flex-1 flex flex-col items-center justify-center p-4 overflow-auto bg-muted/40"
             >
               <div className="w-full max-w-md bg-card rounded-xl shadow-lg border border-border overflow-hidden">
-                {/* Header */}
                 <div className="bg-primary/5 p-6 border-b border-border text-center">
                   <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-600 mb-3">
                     <CheckCircle className="w-6 h-6" />
@@ -190,7 +218,6 @@ const Index = () => {
                   <h2 className="text-lg font-semibold text-foreground">Customer Verified</h2>
                 </div>
 
-                {/* Customer Details */}
                 <div className="p-6 border-b border-border space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Name:</span>
@@ -206,7 +233,6 @@ const Index = () => {
                   </div>
                 </div>
 
-                {/* Accounts List */}
                 <div className="p-4 space-y-3">
                   {activeCustomer.accounts.map((acc) => (
                     <div key={acc.id} className="bg-background p-3 rounded-lg border border-border flex justify-between items-center">
@@ -234,7 +260,6 @@ const Index = () => {
                   ))}
                 </div>
 
-                {/* Footer Actions */}
                 <div className="p-4 border-t border-border flex gap-3">
                   <Button variant="outline" className="flex-1" onClick={handleChangeCustomer}>
                     Change Customer
@@ -242,6 +267,77 @@ const Index = () => {
                   <Button className="flex-1 bg-orange-500 hover:bg-orange-600" onClick={handleProceedToDashboard}>
                     Proceed
                   </Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* RESET PASSWORD VIEW */}
+          {view === 'reset-password' && (
+            <motion.div
+              key="reset-password"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="p-8 overflow-auto h-full flex flex-col items-center"
+            >
+              <div className="w-full max-w-md">
+                <Button variant="ghost" onClick={goBack} className="mb-6 touch-target">
+                  <ArrowLeft className="h-5 w-5 mr-2" /> Back to Dashboard
+                </Button>
+
+                <div className="bg-card p-8 rounded-xl shadow-lg border border-border">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-primary/10 rounded-full">
+                      <KeyRound className="w-6 h-6 text-primary" />
+                    </div>
+                    <h2 className="font-display text-2xl font-bold text-foreground">Reset Password</h2>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Old Password</label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <input 
+                          type="password" 
+                          value={oldPassword}
+                          onChange={(e) => setOldPassword(e.target.value)}
+                          className="w-full rounded-lg border border-input bg-background pl-10 pr-4 py-2.5 text-base outline-none focus:ring-2 focus:ring-ring" 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">New Password</label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <input 
+                          type="password" 
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full rounded-lg border border-input bg-background pl-10 pr-4 py-2.5 text-base outline-none focus:ring-2 focus:ring-ring" 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Confirm New Password</label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <input 
+                          type="password" 
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="w-full rounded-lg border border-input bg-background pl-10 pr-4 py-2.5 text-base outline-none focus:ring-2 focus:ring-ring" 
+                        />
+                      </div>
+                    </div>
+
+                    <Button className="w-full mt-4" onClick={handlePasswordUpdate}>
+                      Update Password
+                    </Button>
+                  </div>
                 </div>
               </div>
             </motion.div>
