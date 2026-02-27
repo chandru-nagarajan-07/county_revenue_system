@@ -1,100 +1,155 @@
-import { useEffect } from 'react'; // 1. Import useEffect
-import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { CheckCircle, Landmark, Wallet, DollarSign, Clock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
+import { CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const VerifyPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Retrieve customer data passed from Login
-  const customer = location.state?.customer;
 
-  // 2. Move the redirect logic into useEffect
+  // Get full API response
+  const stateData = location.state?.userData;
+  const savedData = JSON.parse(localStorage.getItem("verifiedUser"));
+  const data = stateData || savedData;
+
   useEffect(() => {
-    if (!customer) {
-      navigate('/');
+    if (stateData) {
+      localStorage.setItem("verifiedUser", JSON.stringify(stateData));
     }
-  }, [customer, navigate]);
+  }, [stateData]);
 
-  // 3. Keep this guard clause to prevent the code below from crashing 
-  // if customer is null (while the redirect happens)
-  if (!customer) {
-    return null;
-  }
+  useEffect(() => {
+    if (!data) {
+      navigate("/");
+    }
+  }, [data, navigate]);
+
+  if (!data) return null;
+
+  const user = data.user_basic_info;
+  const accounts = data.accounts || [];
 
   const handleChangeCustomer = () => {
-    navigate('/');
+    localStorage.removeItem("verifiedUser");
+    navigate("/");
   };
 
   const handleProceed = () => {
-    // Pass the customer data forward to the Dashboard
-    navigate('/dashboard', { state: { customer } });
+    navigate("/dashboard", { state: { userData: data } });
   };
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="flex-1 flex flex-col items-center justify-center p-4 overflow-auto bg-muted/40"
+      className="flex-1 flex flex-col items-center justify-center p-4 bg-[#f4f6f8]"
     >
-      <div className="w-full max-w-md bg-card rounded-xl shadow-lg border border-border overflow-hidden">
-        <div className="bg-primary/5 p-6 border-b border-border text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-600 mb-3">
-            <CheckCircle className="w-6 h-6" />
-          </div>
-          <h2 className="text-lg font-semibold text-foreground">Customer Verified</h2>
+      <div className="w-full max-w-md bg-green-50 rounded-xl shadow-sm border border-green-200 overflow-hidden">
+
+        {/* Header */}
+        <div className="bg-green-100 p-6 border-b border-green-200 text-center">
+          <CheckCircle className="w-10 h-10 text-green-600 mx-auto mb-3" />
+          <h2 className="text-lg font-semibold text-gray-800">
+            Customer Verification
+          </h2>
         </div>
 
-        <div className="p-6 border-b border-border space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Name:</span>
-            <span className="font-medium text-foreground">{customer.fullName}</span>
+        {/* User Info */}
+        <div className="p-6 border-b border-green-200 space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Name:</span>
+            <span className="font-medium text-gray-800">
+              {user?.name}
+            </span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Customer ID:</span>
-            <span className="font-medium text-foreground">{customer.id}</span>
+
+          <div className="flex justify-between">
+            <span className="text-gray-600">Customer ID:</span>
+            <span className="font-medium text-gray-800">
+              {user?.user_ID}
+            </span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Phone:</span>
-            <span className="font-medium text-foreground">{customer.phone}</span>
+
+          <div className="flex justify-between">
+            <span className="text-gray-600">Phone:</span>
+            <span className="font-medium text-gray-800">
+              {user?.phone}
+            </span>
+          </div>
+
+          <div className="flex justify-between">
+            <span className="text-gray-600">Email:</span>
+            <span className="font-medium text-gray-800">
+              {user?.email}
+            </span>
           </div>
         </div>
 
-        <div className="p-4 space-y-3">
-          {customer.accounts.map((acc) => (
-            <div key={acc.id} className="bg-background p-3 rounded-lg border border-border flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                   {acc.type.includes('Savings') ? <Landmark className="w-4 h-4"/> : 
-                    acc.type.includes('Current') ? <Wallet className="w-4 h-4"/> :
-                    acc.type.includes('Foreign') ? <DollarSign className="w-4 h-4"/> : 
-                    <Clock className="w-4 h-4"/>}
+        {/* Accounts Section */}
+        <div className="p-4 space-y-4">
+          <h3 className="font-semibold text-sm text-gray-700">
+            Accounts ({accounts.length})
+          </h3>
+
+          {accounts.length > 0 ? (
+            accounts.map((acc) => (
+              <div
+                key={acc.id}
+                className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm"
+              >
+                {/* Row 1 */}
+                <div className="flex justify-between items-center">
+                  <p className="text-sm font-semibold text-gray-800">
+                    {acc.account_number}
+                  </p>
+
+                  <p className="text-sm font-bold text-gray-900">
+                    Ksh {Number(acc.balance).toLocaleString()}
+                  </p>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">{acc.number}</p>
-                  <p className="text-sm font-medium text-foreground">{acc.type} · {acc.currency}</p>
+
+                {/* Row 2 */}
+                <div className="flex justify-between items-center mt-1">
+                  <p className="text-xs text-gray-500">
+                    {acc.account_type_name || "Savings Account"}
+                  </p>
+
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full font-medium ${
+                      acc.status === "ACTIVE"
+                        ? "bg-green-100 text-green-700"
+                        : acc.status === "PENDING"
+                        ? "bg-yellow-100 text-yellow-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {acc.status}
+                  </span>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-foreground">
-                  {acc.currency === 'KES' ? 'Ksh' : 'US$'} {acc.balance}
-                </p>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                  {acc.status}
-                </span>
-              </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <p className="text-sm text-gray-500 text-center">
+              No accounts available
+            </p>
+          )}
         </div>
 
-        <div className="p-4 border-t border-border flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={handleChangeCustomer}>
+        {/* Buttons */}
+        <div className="p-4 border-t border-green-200 flex gap-3">
+          <Button
+            variant="outline"
+            className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-100"
+            onClick={handleChangeCustomer}
+          >
             Change Customer
           </Button>
-          <Button className="flex-1 bg-orange-500 hover:bg-orange-600" onClick={handleProceed}>
+
+          <Button
+            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+            onClick={handleProceed}
+          >
             Proceed
           </Button>
         </div>

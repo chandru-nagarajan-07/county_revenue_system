@@ -1,17 +1,21 @@
 import React, { useState, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom'; // Added useLocation
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShieldCheck } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+
 const EmailOtp = () => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef([]);
   const navigate = useNavigate();
-  const location = useLocation(); // 1. Get access to passed state
+  const location = useLocation();
+
   const email = location.state?.email;
-  // 2. Retrieve the customer data passed from the Login page
-  // If the user refreshes the page, this might be undefined, so we handle that in handleVerify
-  // const customer = location.state?.customer;
+
+  // If page refreshed and email missing → go back to login
+  if (!email) {
+    navigate("/");
+  }
 
   const handleChange = (element, index) => {
     if (isNaN(element.value)) return;
@@ -20,7 +24,6 @@ const EmailOtp = () => {
     newOtp[index] = element.value;
     setOtp(newOtp);
 
-    // Move to next input
     if (element.value && index < 5) {
       inputRefs.current[index + 1].focus();
     }
@@ -51,27 +54,25 @@ const EmailOtp = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            email:email,
+            email: email,
             otp: otpValue,
           }),
         }
       );
 
       const data = await response.json();
-      console.log('jgsdhfs',data)
-      const customer = data.data
+      console.log("OTP response:", data);
+
       if (!response.ok) {
-        alert(data.error || "OTP verification failed");
+        alert(data.message || "OTP verification failed");
         return;
       }
 
-      // If verification successful
-      if (customer) {
-        navigate('/verify', { state: { customer } });
-      } else {
-        alert("Session expired. Please login again.");
-        navigate('/');
-      }
+      // ✅ Store full response safely
+      localStorage.setItem("verifiedUser", JSON.stringify(data));
+
+      // ✅ Navigate to verify page
+      navigate("/verify", { state: { userData: data } });
 
     } catch (error) {
       console.error("OTP error:", error);
@@ -94,19 +95,19 @@ const EmailOtp = () => {
             </div>
             <h2 className="text-2xl font-bold">Email Verify OTP</h2>
             <p className="text-sm text-muted-foreground mt-2">
-              Enter the 6-digit code sent to your device{email}
+              Enter the 6-digit code sent to {email}
             </p>
           </div>
 
           <form onSubmit={handleVerify} className="space-y-6">
             <div className="flex justify-center gap-3">
-              {otp.map((data, index) => (
+              {otp.map((value, index) => (
                 <input
                   key={index}
                   type="text"
                   inputMode="numeric"
                   maxLength="1"
-                  value={data}
+                  value={value}
                   onChange={(e) => handleChange(e.target, index)}
                   onKeyDown={(e) => handleKeyDown(e, index)}
                   onFocus={(e) => e.target.select()}
