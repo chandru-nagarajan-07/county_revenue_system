@@ -3,16 +3,15 @@ import { useNavigate, useLocation } from 'react-router-dom'; // Added useLocatio
 import { motion } from 'framer-motion';
 import { ShieldCheck } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-
 const EmailOtp = () => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef([]);
   const navigate = useNavigate();
   const location = useLocation(); // 1. Get access to passed state
-
+  const email = location.state?.email;
   // 2. Retrieve the customer data passed from the Login page
   // If the user refreshes the page, this might be undefined, so we handle that in handleVerify
-  const customer = location.state?.customer;
+  // const customer = location.state?.customer;
 
   const handleChange = (element, index) => {
     if (isNaN(element.value)) return;
@@ -33,8 +32,9 @@ const EmailOtp = () => {
     }
   };
 
-  const handleVerify = (e) => {
+  const handleVerify = async (e) => {
     e.preventDefault();
+
     const otpValue = otp.join('');
 
     if (otpValue.length !== 6) {
@@ -42,14 +42,40 @@ const EmailOtp = () => {
       return;
     }
 
-    // 3. Check if customer data exists before navigating
-    if (customer) {
-      // Pass the customer data forward to VerifyPage
-      navigate('/verify', { state: { customer } });
-    } else {
-      // If customer data is missing (e.g., page refresh), send back to login
-      alert("Session expired or invalid access. Please login again.");
-      navigate('/');
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/email-verification/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email:email,
+            otp: otpValue,
+          }),
+        }
+      );
+
+      const data = await response.json();
+      console.log('jgsdhfs',data)
+      const customer = data.data
+      if (!response.ok) {
+        alert(data.error || "OTP verification failed");
+        return;
+      }
+
+      // If verification successful
+      if (customer) {
+        navigate('/verify', { state: { customer } });
+      } else {
+        alert("Session expired. Please login again.");
+        navigate('/');
+      }
+
+    } catch (error) {
+      console.error("OTP error:", error);
+      alert("Server connection failed");
     }
   };
 
@@ -68,7 +94,7 @@ const EmailOtp = () => {
             </div>
             <h2 className="text-2xl font-bold">Email Verify OTP</h2>
             <p className="text-sm text-muted-foreground mt-2">
-              Enter the 6-digit code sent to your device
+              Enter the 6-digit code sent to your device{email}
             </p>
           </div>
 

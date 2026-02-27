@@ -94,7 +94,9 @@ const Register = () => {
       console.log("Success:", data);
 
       // Navigate after success
-      navigate("/verify-otp");
+      navigate("/verify-otp", {
+        state: { email: formData.email }
+      });
 
     } catch (error) {
       console.log('error')

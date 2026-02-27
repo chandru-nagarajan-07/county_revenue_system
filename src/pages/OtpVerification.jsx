@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShieldCheck } from 'lucide-react';
-
+import { useLocation } from "react-router-dom";
 // --- Mock UI Components ---
 const Button = ({ children, className, ...props }) => (
   <button
@@ -194,16 +194,19 @@ const OtpVerification = () => {
       inputRefs.current[index - 1].focus();
     }
   };
-
+  const location = useLocation();
+  const email = location.state?.email;
   const handleVerify = (e) => {
     e.preventDefault();
     const otpValue = otp.join('');
     
     if (otpValue.length === 6) {
       alert("Successfully Verified!");
-      
+      console.log('khsdtgjhd',email)
       // Move to Login page
-      navigate('/account');
+      navigate('/email-otp',{
+        state: { email: email }
+      });
     } else {
       alert("Please enter a valid 6-digit OTP");
     }
