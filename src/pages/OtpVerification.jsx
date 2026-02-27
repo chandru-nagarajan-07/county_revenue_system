@@ -39,7 +39,7 @@ const OtpVerification = () => {
       alert("Successfully Verified!");
       
       // Move to Login page
-      navigate('/');
+      navigate('/account');
     } else {
       alert("Please enter a valid 6-digit OTP");
     }

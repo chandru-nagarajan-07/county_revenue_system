@@ -11,10 +11,9 @@ const Register = () => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    phone: '',
+    phone: '', 
     email: '',
-    password: '',
-    confirmPassword: ''
+    userName: '',
   });
 
   const [errors, setErrors] = useState({});
@@ -54,34 +53,53 @@ const Register = () => {
       tempErrors.email = "Email format is invalid";
       isValid = false;
     }
-
-    if (!formData.password) {
-      tempErrors.password = "Password is required";
-      isValid = false;
-    } else if (formData.password.length < 6) {
-      tempErrors.password = "Password must be at least 6 characters";
-      isValid = false;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      tempErrors.confirmPassword = "Passwords do not match";
+    if (!formData.userName) {
+      tempErrors.userName = "user name is required";
       isValid = false;
     }
 
     setErrors(tempErrors);
     return isValid;
   };
-
-  const handleSubmit = (e) => {
+ 
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (validate()) {
-      console.log("Form Submitted Successfully:", formData);
-      
-      // Navigate to OTP Verification page
-      navigate('/verify-otp');
-      
-      /* Do not clear form here, just navigate away */
+
+    if (!validate()) return;
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/sign-up/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          email: formData.email,
+          userName: formData.userName,
+        }),
+      });
+
+      const data = await response.json(); 
+
+      if (!response.ok) {
+        // Django validation errors
+        console.log("Backend errors:", data);
+        alert("Registration failed");
+        return;
+      }
+
+      console.log("Success:", data);
+
+      // Navigate after success
+      navigate("/verify-otp");
+
+    } catch (error) {
+      console.log('error')
+      console.error("Error:", error);
+      alert("Something went wrong");
     }
   };
 
@@ -184,41 +202,20 @@ const Register = () => {
               {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
             </div>
 
-            {/* Password */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <input 
-                  type="password" 
-                  name="password" 
-                  value={formData.password} 
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  className={`w-full rounded-xl border bg-background pl-12 pr-4 py-3 text-base outline-none focus:ring-2 transition-all
-                    ${errors.password ? 'border-destructive focus:ring-destructive/50' : 'border-input focus:ring-ring'}`}
-                />
+                <label className="text-sm font-medium text-foreground">User Name</label>
+                 <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-50" />
+                  <input 
+                    type="text" 
+                    name="userName" 
+                    value={formData.UserName} 
+                    onChange={handleChange} 
+                    placeholder="Doe"
+                    className="w-full rounded-xl border border-input bg-background pl-12 pr-4 py-3 text-base outline-none focus:ring-2 focus:ring-ring transition-all"
+                  />
+                </div>
               </div>
-              {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
-            </div>
-
-            {/* Confirm Password */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Confirm Password</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <input 
-                  type="password" 
-                  name="confirmPassword" 
-                  value={formData.confirmPassword} 
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  className={`w-full rounded-xl border bg-background pl-12 pr-4 py-3 text-base outline-none focus:ring-2 transition-all
-                    ${errors.confirmPassword ? 'border-destructive focus:ring-destructive/50' : 'border-input focus:ring-ring'}`}
-                />
-              </div>
-              {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword}</p>}
-            </div>
 
             <Button type="submit" className="w-full h-12 text-base font-semibold mt-4">
               Create Account
