@@ -126,14 +126,17 @@ const Index = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <DashboardHeader
-        customerName={activeCustomer?.fullName}
-        // Pass dropdown state and handlers to the header
-        isDropdownOpen={navDropdownOpen}
-        setIsDropdownOpen={setNavDropdownOpen}
-        onResetPassword={handleResetPassword}
-        onLogout={handleLogout}
-      />
+      {/* FIX: Only show DashboardHeader when NOT on the login/lookup screen */}
+      {view !== 'customer-lookup' && (
+        <DashboardHeader
+          customerName={activeCustomer?.fullName}
+          // Pass dropdown state and handlers to the header
+          isDropdownOpen={navDropdownOpen}
+          setIsDropdownOpen={setNavDropdownOpen}
+          onResetPassword={handleResetPassword}
+          onLogout={handleLogout}
+        />
+      )}
 
       <main className="flex-1 overflow-hidden flex flex-col">
         <AnimatePresence mode="wait">
