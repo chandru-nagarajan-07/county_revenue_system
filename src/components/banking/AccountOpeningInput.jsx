@@ -1,10 +1,28 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, Bot, User, Loader2, AlertCircle, ShoppingCart, Plus, X, ChevronDown, Check } from 'lucide-react';
+import { 
+  Send, Bot, User, Loader2, AlertCircle, ShoppingCart, Plus, X, ChevronDown, Check,
+  Building2, Landmark, Wallet, Activity, Users, CreditCard, Banknote, TrendingUp, Hash
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { getEligibleAccounts, ACCOUNT_TYPE_LABELS } from '@/data/demoCustomers';
+
+// --- Constants ---
+
+const BRANCHES = [
+  { id: '1', name: 'Main Branch' },
+  { id: '2', name: 'Downtown Branch' },
+  { id: '3', name: 'Westside Branch' },
+];
+
+const CURRENCIES = [
+  { id: 'usd', name: 'USD - US Dollar' },
+  { id: 'eur', name: 'EUR - Euro' },
+  { id: 'gbp', name: 'GBP - British Pound' },
+  { id: 'inr', name: 'INR - Indian Rupee' },
+  { id: 'aed', name: 'AED - UAE Dirham' },
+];
 
 const ACCOUNT_TYPES = [
   { value: 'savings', label: 'Savings Account', desc: 'Earn interest on your deposits', icon: '💰' },
@@ -23,301 +41,294 @@ const CROSS_SELL_BY_ACCOUNT = {
   current: [
     { id: 'debit-card', label: 'Visa Debit Card', desc: 'Instant card for your account', icon: '💳' },
     { id: 'cheque-book', label: 'Cheque Book', desc: 'Business & personal cheques', icon: '📝' },
-    { id: 'mobile-banking', label: 'Mobile Banking', desc: 'Manage transactions anywhere', icon: '📱' },
-  ],
-  'fixed-deposit': [
-    { id: 'maturity-alert', label: 'Maturity Alerts', desc: 'SMS & email notifications', icon: '🔔' },
-    { id: 'savings', label: 'Linked Savings Account', desc: 'Receive interest payouts', icon: '💰' },
-  ],
-  fx: [
-    { id: 'fx-alerts', label: 'FX Rate Alerts', desc: 'Get notified on favorable rates', icon: '📊' },
-    { id: 'intl-transfer', label: 'International Transfers', desc: 'Send money abroad easily', icon: '✈️' },
-  ],
-  'junior-savings': [
-    { id: 'parent-alert', label: 'Parent Notifications', desc: 'Track your child\'s savings', icon: '👨‍👩‍👧' },
-    { id: 'edu-plan', label: 'Education Plan', desc: 'Goal-based saving for school fees', icon: '🎓' },
-  ],
-  'business-current': [
-    { id: 'pos-terminal', label: 'POS Terminal', desc: 'Accept card payments', icon: '🖥️' },
-    { id: 'payroll', label: 'Payroll Services', desc: 'Automate salary payments', icon: '💼' },
-    { id: 'business-loan', label: 'Business Overdraft', desc: 'Working capital facility', icon: '🏗️' },
   ],
 };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/product-advisor`;
 
-export function AccountOpeningInput({ customer, onSubmit, validationErrors }) {
-  const [selectedAccounts, setSelectedAccounts] = useState([]);
-  const [crossSellSelected, setCrossSellSelected] = useState([]);
-  const [showManualSelect, setShowManualSelect] = useState(false);
+// --- Helper Components ---
 
-  // AI advisor state
-  const [chatMessages, setChatMessages] = useState([]);
-  const [chatInput, setChatInput] = useState('');
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [chatError, setChatError] = useState(null);
+const ThemeInput = ({ label, name, type = "text", icon: Icon, placeholder, value, onChange, error, readOnly, disabled }) => (
+  <div className="space-y-1.5">
+    <label htmlFor={name} className="text-xs font-medium text-foreground flex items-center gap-1.5">
+      {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
+      {label}
+    </label>
+    <Input
+      id={name}
+      name={name}
+      type={type}
+      placeholder={placeholder}
+      value={value || ''}
+      onChange={onChange}
+      readOnly={readOnly}
+      disabled={disabled}
+      className={`bg-input border-border focus-visible:ring-ring ${error ? 'border-destructive' : ''} ${readOnly ? 'bg-muted/50 cursor-not-allowed' : ''}`}
+    />
+    {error && <p className="text-xs text-destructive">{error}</p>}
+  </div>
+);
+
+const ThemeSelect = ({ label, name, icon: Icon, options, value, onChange, error }) => (
+  <div className="space-y-1.5">
+    <label htmlFor={name} className="text-xs font-medium text-foreground flex items-center gap-1.5">
+      {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
+      {label}
+    </label>
+    <select
+      id={name}
+      name={name}
+      value={value || ''}
+      onChange={onChange}
+      className={`flex h-10 w-full items-center justify-between rounded-md border bg-input px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${error ? 'border-destructive' : 'border-border'}`}
+    >
+      <option value="" disabled>Select...</option>
+      {options.map(opt => (
+        <option key={opt.id || opt} value={opt.id || opt}>{opt.name || opt}</option>
+      ))}
+    </select>
+    {error && <p className="text-xs text-destructive">{error}</p>}
+  </div>
+);
+
+// --- Main Component ---
+
+export function AccountOpeningInput({ customer, onSubmit, validationErrors }) {
+  // Form State mapped to CustomerAccount Model - ALL 3 FIELDS INCLUDED
+  const [formData, setFormData] = useState({
+    branch: '',
+    currency: '',
+    account_category: 'INDIVIDUAL',
+    balance: '0',           // ✅ FIELD 3: BALANCE
+    mode_of_operation: '',
+    source_of_funds: '',
+    expected_monthly_transaction_volume: '',
+    account_type: '',       // ✅ FIELD 1: ACCOUNT TYPE
+    account_number: '',     // ✅ FIELD 2: ACCOUNT NUMBER
+  });
+  const [formErrors, setFormErrors] = useState({});
+
+  // UI State - FIXED: Removed TypeScript generics
+  const [selectedAccounts, setSelectedAccounts] = useState([]); 
+  const [crossSellSelected, setCrossSellSelected] = useState([]);
+  const [showManualSelect, setShowManualSelect] = useState(true);
+
+  // Refs
   const chatEndRef = useRef(null);
 
+  // Sync account_number from customer prop
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
+    if (customer?.account_number) {
+      setFormData(prev => ({ ...prev, account_number: customer.account_number }));
+    }
+  }, [customer]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (formErrors[name]) setFormErrors(prev => ({ ...prev, [name]: null }));
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.branch) newErrors.branch = "Branch is required";
+    if (!formData.account_type) newErrors.account_type = "Account Type is required";     // ✅ account_type validation
+    if (!formData.source_of_funds) newErrors.source_of_funds = "Source of funds is required";
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const toggleAccount = (value) => {
     setSelectedAccounts(prev =>
       prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value]
     );
-  };
-
-  const toggleCrossSell = (id) => {
-    setCrossSellSelected(prev =>
-      prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]
-    );
-  };
-
-  // Compute cross-sell products based on selected accounts
-  const availableCrossSells = (() => {
-    const seen = new Set();
-    const items = [];
-    selectedAccounts.forEach(acc => {
-      (CROSS_SELL_BY_ACCOUNT[acc] || []).forEach(cs => {
-        if (!seen.has(cs.id)) {
-          seen.add(cs.id);
-          items.push(cs);
-        }
-      });
-    });
-    return items;
-  })();
-
-  const sendMessage = async () => {
-    const text = chatInput.trim();
-    if (!text || isStreaming) return;
-    setChatError(null);
-
-    const userMsg = { role: 'user', content: text };
-    setChatMessages(prev => [...prev, userMsg]);
-    setChatInput('');
-    setIsStreaming(true);
-
-    let assistantSoFar = '';
-    const allMsgs = [...chatMessages, userMsg];
-
-    try {
-      const resp = await fetch(CHAT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({ messages: allMsgs }),
-      });
-
-      if (!resp.ok) {
-        const errBody = await resp.json().catch(() => ({}));
-        throw new Error(errBody.error || `Error ${resp.status}`);
-      }
-
-      if (!resp.body) throw new Error('No response stream');
-
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let textBuffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        textBuffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex;
-        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
-          let line = textBuffer.slice(0, newlineIndex);
-          textBuffer = textBuffer.slice(newlineIndex + 1);
-          if (line.endsWith('\r')) line = line.slice(0, -1);
-          if (line.startsWith(':') || line.trim() === '') continue;
-          if (!line.startsWith('data: ')) continue;
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') break;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              assistantSoFar += content;
-              setChatMessages(prev => {
-                const last = prev[prev.length - 1];
-                if (last?.role === 'assistant') {
-                  return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
-                }
-                return [...prev, { role: 'assistant', content: assistantSoFar }];
-              });
-            }
-          } catch {
-            textBuffer = line + '\n' + textBuffer;
-            break;
-          }
-        }
-      }
-    } catch (e) {
-      console.error('Product advisor error:', e);
-      setChatError(e.message || 'Failed to get recommendation');
-    } finally {
-      setIsStreaming(false);
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+    // Sync to formData.account_type (single selection)
+    setFormData(prev => ({
+      ...prev,
+      account_type: prev.account_type === value ? '' : value,
+    }));
   };
 
   const handleSubmit = () => {
-    if (selectedAccounts.length === 0) return;
-    onSubmit({ accountTypes: selectedAccounts, crossSellProducts: crossSellSelected });
+    if (!validateForm()) return;
+
+    // ✅ ALL 3 FIELDS INCLUDED IN PAYLOAD
+    const payload = {
+      branch: formData.branch,
+      customer: customer?.id,
+      account_type: formData.account_type,                    // ✅ FIELD 1
+      account_number: formData.account_number || undefined,   // ✅ FIELD 2  
+      currency: formData.currency,
+      account_category: formData.account_category,
+      balance: Number(formData.balance || 0),                 // ✅ FIELD 3
+      mode_of_operation: formData.mode_of_operation,
+      source_of_funds: formData.source_of_funds,
+      expected_monthly_transaction_volume: formData.expected_monthly_transaction_volume,
+      cross_sell_products: crossSellSelected,
+    };
+
+    onSubmit(payload);
   };
 
-  const cartCount = selectedAccounts.length + crossSellSelected.length;
-
   return (
-    <div className="space-y-5 max-w-2xl mx-auto">
-      {/* Customer info banner */}
-      <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-4">
-        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-          {customer.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-foreground">{customer.fullName}</p>
-          <p className="text-xs text-muted-foreground">{customer.customerId} • {customer.phone}</p>
-        </div>
-      </div>
+    <div className="space-y-8 max-w-2xl mx-auto">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-2xl bg-card rounded-xl shadow-card border border-border p-8 sm:p-10 space-y-8"
+      >
+        {/* Section 1: Core Configuration (Model Fields) */}
+        <div className="space-y-6">
+          {/* Group 1: Account Context - NOW HAS ALL 3 MISSING FIELDS */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Landmark className="h-4 w-4" /> Account Configuration
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* 1. Branch */}
+              <ThemeSelect 
+                label="Branch" 
+                name="branch" 
+                icon={Building2} 
+                options={BRANCHES} 
+                value={formData.branch} 
+                onChange={handleChange} 
+                error={formErrors.branch} 
+              />
 
-      {/* AI PRODUCT ADVISOR — primary hero */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden flex flex-col" style={{ minHeight: '320px', maxHeight: '420px' }}>
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-primary/5">
-          <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-primary" />
+              {/* 2. Customer (Read Only) */}
+              <ThemeInput 
+                label="Customer" 
+                name="customer" 
+                icon={User} 
+                value={customer?.name || customer?.id || 'Selected Customer'} 
+                readOnly 
+              />
+
+              {/* ✅ FIELD 1: Account Type */}
+              <ThemeSelect 
+                label="Account Type" 
+                name="account_type" 
+                icon={Wallet} 
+                options={ACCOUNT_TYPES.map(a => ({ id: a.value, name: a.label }))} 
+                value={formData.account_type} 
+                onChange={handleChange} 
+                error={formErrors.account_type}
+              />
+
+              {/* 4. Currency */}
+              <ThemeSelect 
+                label="Currency" 
+                name="currency" 
+                icon={Banknote} 
+                options={CURRENCIES} 
+                value={formData.currency} 
+                onChange={handleChange} 
+              />
+
+              {/* 5. Account Category */}
+              <ThemeSelect 
+                label="Account Category" 
+                name="account_category" 
+                icon={Users} 
+                options={['INDIVIDUAL', 'JOINT']} 
+                value={formData.account_category} 
+                onChange={handleChange} 
+              />
+
+              {/* ✅ FIELD 2: Account Number */}
+              <ThemeInput 
+                label="Account Number" 
+                name="account_number" 
+                icon={Hash} 
+                placeholder="Auto-generated after creation" 
+                value={formData.account_number} 
+                onChange={handleChange} 
+                readOnly 
+              />
+            </div>
           </div>
-          <div className="flex-1">
-            <h3 className="text-sm font-semibold text-foreground">AI Product Advisor</h3>
-            <p className="text-[11px] text-muted-foreground">Describe your needs and I'll recommend the best accounts</p>
+
+          {/* Group 2: Operational Details */}
+          <div className="space-y-4 pt-2">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Activity className="h-4 w-4" /> Operational Details
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <ThemeInput 
+                label="Mode of Operation" 
+                name="mode_of_operation" 
+                icon={CreditCard} 
+                placeholder="e.g. Self, Jointly" 
+                value={formData.mode_of_operation} 
+                onChange={handleChange} 
+              />
+
+              <ThemeInput 
+                label="Source of Funds" 
+                name="source_of_funds" 
+                icon={Wallet} 
+                placeholder="e.g. Salary, Business" 
+                value={formData.source_of_funds} 
+                onChange={handleChange} 
+                error={formErrors.source_of_funds} 
+              />
+
+              <ThemeInput 
+                label="Expected Monthly Volume" 
+                name="expected_monthly_transaction_volume" 
+                type="number" 
+                icon={TrendingUp} 
+                placeholder="0.00" 
+                value={formData.expected_monthly_transaction_volume} 
+                onChange={handleChange} 
+              />
+
+              {/* ✅ FIELD 3: Balance */}
+              <ThemeInput 
+                label="Initial Deposit (Balance)" 
+                name="balance" 
+                type="number" 
+                icon={Banknote} 
+                placeholder="0.00" 
+                value={formData.balance} 
+                onChange={handleChange} 
+              />
+            </div>
           </div>
         </div>
+      </motion.div>
 
-        {/* Chat messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {chatMessages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-6">
-              <Bot className="h-8 w-8 text-primary/40" />
-              <p className="text-xs text-muted-foreground max-w-[280px]">
-                Tell me your financial goals — saving, business, foreign currency — and I'll suggest the right accounts.
-              </p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {['I want to save for school fees', 'I need a business account', 'I receive payments in USD'].map(q => (
-                  <button
-                    key={q}
-                    onClick={() => { setChatInput(q); }}
-                    className="text-xs rounded-full border border-border bg-muted/50 px-3 py-1.5 text-muted-foreground hover:bg-muted transition-colors"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {chatMessages.map((msg, i) => (
-            <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              {msg.role === 'assistant' && (
-                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <Bot className="h-3.5 w-3.5 text-primary" />
-                </div>
-              )}
-              <div className={`rounded-xl px-3 py-2 max-w-[85%] text-sm leading-relaxed ${
-                msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted/60 text-foreground'
-              }`}>
-                {msg.content}
-              </div>
-              {msg.role === 'user' && (
-                <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
-                  <User className="h-3.5 w-3.5 text-muted-foreground" />
-                </div>
-              )}
-            </div>
-          ))}
-
-          {isStreaming && chatMessages[chatMessages.length - 1]?.role !== 'assistant' && (
-            <div className="flex gap-2">
-              <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Bot className="h-3.5 w-3.5 text-primary" />
-              </div>
-              <div className="rounded-xl px-3 py-2 bg-muted/60">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            </div>
-          )}
-
-          {chatError && (
-            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2">
-              <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
-              <p className="text-xs text-destructive">{chatError}</p>
-            </div>
-          )}
-          <div ref={chatEndRef} />
-        </div>
-
-        {/* Input bar */}
-        <div className="border-t border-border p-3 flex gap-2">
-          <Input
-            value={chatInput}
-            onChange={e => setChatInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="What are your banking needs?"
-            disabled={isStreaming}
-            className="flex-1 touch-target"
-          />
-          <Button size="icon" onClick={sendMessage} disabled={!chatInput.trim() || isStreaming} className="shrink-0 touch-target">
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* ACCOUNT SELECTION — multi-select card grid */}
-      <div className="space-y-3">
+      {/* Account Type Cards (Optional UX enhancement) */}
+      <div className="space-y-3 pt-4 border-t border-border max-w-2xl mx-auto">
         <div className="flex items-center justify-between">
           <button
+            type="button"
             onClick={() => setShowManualSelect(!showManualSelect)}
             className="flex items-center gap-2 text-sm font-semibold text-foreground hover:text-primary transition-colors"
           >
             <ShoppingCart className="h-4 w-4" />
-            Select Accounts
-            {selectedAccounts.length > 0 && (
-              <Badge variant="default" className="h-5 min-w-[20px] px-1.5 text-[10px]">
-                {selectedAccounts.length}
-              </Badge>
-            )}
+            Browse Account Types
             <ChevronDown className={`h-4 w-4 transition-transform ${showManualSelect ? 'rotate-180' : ''}`} />
           </button>
-          {validationErrors.accountType && (
-            <p className="text-xs text-destructive">{validationErrors.accountType}</p>
-          )}
         </div>
 
         <AnimatePresence>
-          {(showManualSelect || chatMessages.length > 0) && (
+          {showManualSelect && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden"
             >
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pb-2">
                 {ACCOUNT_TYPES.map(t => {
                   const isSelected = selectedAccounts.includes(t.value);
                   return (
                     <button
                       key={t.value}
+                      type="button"
                       onClick={() => toggleAccount(t.value)}
                       className={`relative text-left rounded-xl border-2 p-3 transition-all ${
                         isSelected
@@ -342,105 +353,44 @@ export function AccountOpeningInput({ customer, onSubmit, validationErrors }) {
         </AnimatePresence>
       </div>
 
-      {/* CROSS-SELL RECOMMENDATIONS — e-commerce "You might also like" */}
-      <AnimatePresence>
-        {selectedAccounts.length > 0 && availableCrossSells.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="space-y-3"
-          >
+      {/* Summary & Submit */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-2xl mx-auto rounded-xl border border-border bg-muted/30 p-4 space-y-3"
+      >
+        <div className="flex items-center gap-2">
+          <ShoppingCart className="h-4 w-4 text-primary" />
+          <h4 className="text-sm font-semibold text-foreground">Summary</h4>
+        </div>
+
+        {formData.account_type && (
+          <div className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-card">
             <div className="flex items-center gap-2">
-              <Plus className="h-4 w-4 text-primary" />
-              <h4 className="text-sm font-semibold text-foreground">Recommended add-ons</h4>
-              <span className="text-[11px] text-muted-foreground">based on your selection</span>
+              <span className="text-sm">
+                {ACCOUNT_TYPES.find(t => t.value === formData.account_type)?.icon}
+              </span>
+              <span className="text-sm font-medium text-foreground">
+                {ACCOUNT_TYPES.find(t => t.value === formData.account_type)?.label}
+              </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {availableCrossSells.map(cs => {
-                const isAdded = crossSellSelected.includes(cs.id);
-                return (
-                  <button
-                    key={cs.id}
-                    onClick={() => toggleCrossSell(cs.id)}
-                    className={`flex items-center gap-3 rounded-xl border-2 p-3 text-left transition-all ${
-                      isAdded
-                        ? 'border-primary/60 bg-primary/5'
-                        : 'border-border bg-card hover:border-muted-foreground/30'
-                    }`}
-                  >
-                    <span className="text-xl shrink-0">{cs.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">{cs.label}</p>
-                      <p className="text-[11px] text-muted-foreground">{cs.desc}</p>
-                    </div>
-                    <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                      isAdded ? 'border-primary bg-primary' : 'border-muted-foreground/30'
-                    }`}>
-                      {isAdded && <Check className="h-3 w-3 text-primary-foreground" />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </motion.div>
+            <button
+              type="button"
+              onClick={() => {
+                setFormData(prev => ({ ...prev, account_type: '' }));
+                setSelectedAccounts([]);
+              }}
+              className="text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         )}
-      </AnimatePresence>
 
-      {/* CART SUMMARY & SUBMIT */}
-      {selectedAccounts.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl border border-border bg-muted/30 p-4 space-y-3"
-        >
-          <div className="flex items-center gap-2">
-            <ShoppingCart className="h-4 w-4 text-primary" />
-            <h4 className="text-sm font-semibold text-foreground">Your Selection</h4>
-            <Badge variant="secondary" className="ml-auto text-[10px]">{cartCount} item{cartCount !== 1 ? 's' : ''}</Badge>
-          </div>
-
-          <div className="space-y-1.5">
-            {selectedAccounts.map(acc => {
-              const at = ACCOUNT_TYPES.find(t => t.value === acc);
-              return (
-                <div key={acc} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-card">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">{at?.icon}</span>
-                    <span className="text-sm font-medium text-foreground">{at?.label}</span>
-                  </div>
-                  <button onClick={() => toggleAccount(acc)} className="text-muted-foreground hover:text-destructive transition-colors">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              );
-            })}
-            {crossSellSelected.map(csId => {
-              const cs = availableCrossSells.find(c => c.id === csId);
-              if (!cs) return null;
-              return (
-                <div key={csId} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-card">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">{cs.icon}</span>
-                    <span className="text-sm text-muted-foreground">{cs.label}</span>
-                    <Badge variant="outline" className="text-[9px] h-4">Add-on</Badge>
-                  </div>
-                  <button onClick={() => toggleCrossSell(csId)} className="text-muted-foreground hover:text-destructive transition-colors">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-
-          <Button
-            onClick={handleSubmit}
-            className="w-full touch-target gold-gradient text-accent-foreground font-semibold text-base shadow-gold hover:shadow-elevated transition-shadow"
-          >
-            Submit for Validation ({cartCount} item{cartCount !== 1 ? 's' : ''})
-          </Button>
-        </motion.div>
-      )}
+        <Button onClick={handleSubmit} className="w-full h-12 text-base font-semibold mt-4">
+          Create Account
+        </Button>
+      </motion.div>
     </div>
   );
 }
