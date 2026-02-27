@@ -15,6 +15,7 @@ import AccountCreation from "./pages/AccountCreation";
 import Profile from "./pages/Profile";
 import ResetPassword from "./pages/ResetPassword";
 import EmailOtp from "./pages/EmailOtp";
+import AccountOpeningForm from "./pages/AccountOpeningForm";
 
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/register" element={<Register />} />
+          <Route path="/create-account" element={<AccountOpeningForm />} />
           <Route path="/verify-otp" element={<VerificationFlowPage />} />
           <Route path="/email-otp" element={<EmailOtp />} />
           <Route path="/" element={<LoginPage />} />
@@ -37,6 +39,7 @@ const App = () => (
           <Route path="/account" element={<AccountCreation />} />
           <Route path="/reset" element={<ResetPassword />} />
           <Route path="/profile" element={<Profile />} />
+          
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
        

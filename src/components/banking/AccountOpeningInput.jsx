@@ -1,10 +1,29 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, Bot, User, Loader2, AlertCircle, ShoppingCart, Plus, X, ChevronDown, Check } from 'lucide-react';
+import { 
+  Send, Sparkles, Bot, User, Loader2, AlertCircle, ShoppingCart, Plus, X, ChevronDown, Check,
+  Landmark, Building2, Wallet, Banknote, Users, Hash, Activity, CreditCard, TrendingUp
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getEligibleAccounts, ACCOUNT_TYPE_LABELS } from '@/data/demoCustomers';
+
+const BRANCHES = [
+  { id: '1', name: 'Main Branch' },
+  { id: '2', name: 'Downtown Branch' },
+  { id: '3', name: 'Westside Branch' },
+];
+
+const CURRENCIES = [
+  { id: 'usd', name: 'USD - US Dollar' },
+  { id: 'eur', name: 'EUR - Euro' },
+  { id: 'gbp', name: 'GBP - British Pound' },
+  { id: 'inr', name: 'INR - Indian Rupee' },
+  { id: 'aed', name: 'AED - UAE Dirham' },
+];
 
 const ACCOUNT_TYPES = [
   { value: 'savings', label: 'Savings Account', desc: 'Earn interest on your deposits', icon: '💰' },
@@ -46,7 +65,73 @@ const CROSS_SELL_BY_ACCOUNT = {
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/product-advisor`;
 
+// --- Helper Components ---
+
+const ThemeInput = ({ label, icon: Icon, error, ...props }) => (
+  <div className="space-y-1.5">
+    <Label htmlFor={props.name} className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+      {Icon && <Icon className="h-4 w-4" />}
+      {label}
+    </Label>
+    <Input 
+      id={props.name}
+      className={`${error ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+      {...props} 
+    />
+    {error && <p className="text-xs text-destructive">{error}</p>}
+  </div>
+);
+
+const ThemeSelect = ({ label, icon: Icon, options, value, onChange, name, error }) => {
+  const handleValueChange = (val) => {
+    // Mimic event target for consistency with standard inputs
+    onChange({ target: { name, value: val } });
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={name} className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+         {Icon && <Icon className="h-4 w-4" />}
+         {label}
+      </Label>
+      <Select value={value} onValueChange={handleValueChange}>
+        <SelectTrigger className={`w-full ${error ? 'border-destructive' : ''}`}>
+          <SelectValue placeholder="Select..." />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map(opt => {
+            const isObject = typeof opt === 'object';
+            const id = isObject ? opt.id : opt;
+            const display = isObject ? opt.name : opt;
+            return (
+              <SelectItem key={id} value={id}>
+                {display}
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+};
+
+// --- Main Component ---
+
 export function AccountOpeningInput({ customer, onSubmit, validationErrors }) {
+  // State for standard form fields (Model Fields)
+  const [formData, setFormData] = useState({
+    branch: '',
+    account_type: '',
+    currency: '',
+    account_category: '',
+    account_number: '',
+    mode_of_operation: '',
+    source_of_funds: '',
+    expected_monthly_transaction_volume: '',
+    balance: ''
+  });
+
   const [selectedAccounts, setSelectedAccounts] = useState([]);
   const [crossSellSelected, setCrossSellSelected] = useState([]);
   const [showManualSelect, setShowManualSelect] = useState(false);
@@ -62,6 +147,12 @@ export function AccountOpeningInput({ customer, onSubmit, validationErrors }) {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
+  // Handler for standard form inputs
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
   const toggleAccount = (value) => {
     setSelectedAccounts(prev =>
       prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value]
@@ -74,7 +165,6 @@ export function AccountOpeningInput({ customer, onSubmit, validationErrors }) {
     );
   };
 
-  // Compute cross-sell products based on selected accounts
   const availableCrossSells = (() => {
     const seen = new Set();
     const items = [];
@@ -173,115 +263,144 @@ export function AccountOpeningInput({ customer, onSubmit, validationErrors }) {
 
   const handleSubmit = () => {
     if (selectedAccounts.length === 0) return;
-    onSubmit({ accountTypes: selectedAccounts, crossSellProducts: crossSellSelected });
+    onSubmit({ 
+      ...formData, // Include form data
+      accountTypes: selectedAccounts, 
+      crossSellProducts: crossSellSelected 
+    });
   };
 
   const cartCount = selectedAccounts.length + crossSellSelected.length;
 
   return (
     <div className="space-y-5 max-w-2xl mx-auto">
-      {/* Customer info banner */}
-      <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-4">
-        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-          {customer.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-foreground">{customer.fullName}</p>
-          <p className="text-xs text-muted-foreground">{customer.customerId} • {customer.phone}</p>
-        </div>
-      </div>
+       <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-2xl bg-card rounded-xl shadow-card border border-border p-8 sm:p-10 space-y-8"
+      >
+        {/* Section 1: Core Configuration (Model Fields) */}
+        <div className="space-y-6">
+          {/* Group 1: Account Context */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Landmark className="h-4 w-4" /> Account Configuration
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* 1. Branch */}
+              <ThemeSelect 
+                label="Branch" 
+                name="branch" 
+                icon={Building2} 
+                options={BRANCHES} 
+                value={formData.branch} 
+                onChange={handleChange} 
+                error={validationErrors?.branch} 
+              />
 
-      {/* AI PRODUCT ADVISOR — primary hero */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden flex flex-col" style={{ minHeight: '320px', maxHeight: '420px' }}>
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-primary/5">
-          <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-primary" />
+              {/* 2. Customer (Read Only) */}
+              <ThemeInput 
+                label="Customer" 
+                name="customer" 
+                icon={User} 
+                value={customer?.name || customer?.id || 'Selected Customer'} 
+                readOnly 
+              />
+
+              {/* FIELD 1: Account Type */}
+              <ThemeSelect 
+                label="Account Type" 
+                name="account_type" 
+                icon={Wallet} 
+                options={ACCOUNT_TYPES.map(a => ({ id: a.value, name: a.label }))} 
+                value={formData.account_type} 
+                onChange={handleChange} 
+                error={validationErrors?.account_type}
+              />
+
+              {/* 4. Currency */}
+              <ThemeSelect 
+                label="Currency" 
+                name="currency" 
+                icon={Banknote} 
+                options={CURRENCIES} 
+                value={formData.currency} 
+                onChange={handleChange} 
+              />
+
+              {/* 5. Account Category */}
+              <ThemeSelect 
+                label="Account Category" 
+                name="account_category" 
+                icon={Users} 
+                options={['INDIVIDUAL', 'JOINT']} 
+                value={formData.account_category} 
+                onChange={handleChange} 
+              />
+
+              {/* FIELD 2: Account Number */}
+              <ThemeInput 
+                label="Account Number" 
+                name="account_number" 
+                icon={Hash} 
+                placeholder="Auto-generated after creation" 
+                value={formData.account_number} 
+                onChange={handleChange} 
+                readOnly 
+              />
+            </div>
           </div>
-          <div className="flex-1">
-            <h3 className="text-sm font-semibold text-foreground">AI Product Advisor</h3>
-            <p className="text-[11px] text-muted-foreground">Describe your needs and I'll recommend the best accounts</p>
+
+          {/* Group 2: Operational Details */}
+          <div className="space-y-4 pt-2">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Activity className="h-4 w-4" /> Operational Details
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <ThemeInput 
+                label="Mode of Operation" 
+                name="mode_of_operation" 
+                icon={CreditCard} 
+                placeholder="e.g. Self, Jointly" 
+                value={formData.mode_of_operation} 
+                onChange={handleChange} 
+              />
+
+              <ThemeInput 
+                label="Source of Funds" 
+                name="source_of_funds" 
+                icon={Wallet} 
+                placeholder="e.g. Salary, Business" 
+                value={formData.source_of_funds} 
+                onChange={handleChange} 
+                error={validationErrors?.source_of_funds} 
+              />
+
+              <ThemeInput 
+                label="Expected Monthly Volume" 
+                name="expected_monthly_transaction_volume" 
+                type="number" 
+                icon={TrendingUp} 
+                placeholder="0.00" 
+                value={formData.expected_monthly_transaction_volume} 
+                onChange={handleChange} 
+              />
+
+              {/* FIELD 3: Balance */}
+              <ThemeInput 
+                label="Initial Deposit (Balance)" 
+                name="balance" 
+                type="number" 
+                icon={Banknote} 
+                placeholder="0.00" 
+                value={formData.balance} 
+                onChange={handleChange} 
+              />
+            </div>
           </div>
         </div>
-
-        {/* Chat messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {chatMessages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-6">
-              <Bot className="h-8 w-8 text-primary/40" />
-              <p className="text-xs text-muted-foreground max-w-[280px]">
-                Tell me your financial goals — saving, business, foreign currency — and I'll suggest the right accounts.
-              </p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {['I want to save for school fees', 'I need a business account', 'I receive payments in USD'].map(q => (
-                  <button
-                    key={q}
-                    onClick={() => { setChatInput(q); }}
-                    className="text-xs rounded-full border border-border bg-muted/50 px-3 py-1.5 text-muted-foreground hover:bg-muted transition-colors"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {chatMessages.map((msg, i) => (
-            <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              {msg.role === 'assistant' && (
-                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <Bot className="h-3.5 w-3.5 text-primary" />
-                </div>
-              )}
-              <div className={`rounded-xl px-3 py-2 max-w-[85%] text-sm leading-relaxed ${
-                msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted/60 text-foreground'
-              }`}>
-                {msg.content}
-              </div>
-              {msg.role === 'user' && (
-                <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
-                  <User className="h-3.5 w-3.5 text-muted-foreground" />
-                </div>
-              )}
-            </div>
-          ))}
-
-          {isStreaming && chatMessages[chatMessages.length - 1]?.role !== 'assistant' && (
-            <div className="flex gap-2">
-              <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Bot className="h-3.5 w-3.5 text-primary" />
-              </div>
-              <div className="rounded-xl px-3 py-2 bg-muted/60">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            </div>
-          )}
-
-          {chatError && (
-            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2">
-              <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
-              <p className="text-xs text-destructive">{chatError}</p>
-            </div>
-          )}
-          <div ref={chatEndRef} />
-        </div>
-
-        {/* Input bar */}
-        <div className="border-t border-border p-3 flex gap-2">
-          <Input
-            value={chatInput}
-            onChange={e => setChatInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="What are your banking needs?"
-            disabled={isStreaming}
-            className="flex-1 touch-target"
-          />
-          <Button size="icon" onClick={sendMessage} disabled={!chatInput.trim() || isStreaming} className="shrink-0 touch-target">
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      </motion.div>
 
       {/* ACCOUNT SELECTION — multi-select card grid */}
       <div className="space-y-3">
@@ -299,7 +418,7 @@ export function AccountOpeningInput({ customer, onSubmit, validationErrors }) {
             )}
             <ChevronDown className={`h-4 w-4 transition-transform ${showManualSelect ? 'rotate-180' : ''}`} />
           </button>
-          {validationErrors.accountType && (
+          {validationErrors?.accountType && (
             <p className="text-xs text-destructive">{validationErrors.accountType}</p>
           )}
         </div>
@@ -342,7 +461,7 @@ export function AccountOpeningInput({ customer, onSubmit, validationErrors }) {
         </AnimatePresence>
       </div>
 
-      {/* CROSS-SELL RECOMMENDATIONS — e-commerce "You might also like" */}
+      {/* CROSS-SELL RECOMMENDATIONS */}
       <AnimatePresence>
         {selectedAccounts.length > 0 && availableCrossSells.length > 0 && (
           <motion.div
