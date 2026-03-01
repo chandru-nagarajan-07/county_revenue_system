@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo ,useEffect} from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Search, KeyRound } from 'lucide-react';
@@ -9,18 +9,21 @@ import { ChatPanel } from '@/components/banking/ChatPanel';
 import { TransactionWorkflow } from '@/components/banking/TransactionWorkflow';
 import { FxTicker } from '@/components/banking/FxTicker';
 import { CrossSellCard } from '@/components/banking/CrossSellCard';
-import { SERVICE_CATEGORIES, SERVICES } from '@/types/banking';
+// import { useState, useMemo, useEffect } from 'react';
+// import { SERVICE_CATEGORIES, SERVICES } from '@/types/banking';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const customer = location.state?.customer;
-
+  const [serviceCategories, setServiceCategories] = useState({});
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
   // Redirect if no customer data (protected route logic)
-  if (!customer) {
-    navigate('/');
-    return null;
-  }
+  // if (!customer) {
+  //   navigate('/');
+  //   return null;
+  // }
 
   // Internal View State
   const [view, setView] = useState('dashboard'); // dashboard, category, workflow, reset-password
@@ -39,16 +42,55 @@ const DashboardPage = () => {
 
   const categoryServices = useMemo(() => {
     if (!selectedCategory) return [];
-    return SERVICES.filter(s => s.category === selectedCategory);
+    return services.filter(s => s.category === selectedCategory);
   }, [selectedCategory]);
 
   const filteredServices = useMemo(() => {
     if (!searchQuery.trim()) return null;
     const q = searchQuery.toLowerCase();
-    return SERVICES.filter(s =>
+    return services.filter(s =>
       s.title.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)
     );
   }, [searchQuery]);
+  useEffect(() => {
+  const fetchServices = async () => {
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/services/");
+      const data = await response.json();
+
+      const categoriesObj = {};
+      const servicesArr = [];
+
+      data.forEach(category => {
+        categoriesObj[category.key] = {
+          label: category.label,
+          description: category.description,
+          icon: category.icon,
+          color: category.color,
+        };
+
+        category.services.forEach(service => {
+          servicesArr.push({
+            id: service.service_id,
+            title: service.title,
+            description: service.description,
+            category: category.key,
+            icon: service.icon,
+          });
+        });
+      });
+
+      setServiceCategories(categoriesObj);
+      setServices(servicesArr);
+    } catch (err) {
+      console.error("Failed to load services", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchServices();
+}, []);
 
   const openCategory = (cat) => {
     setSelectedCategory(cat);
@@ -96,7 +138,9 @@ const DashboardPage = () => {
     setConfirmPassword('');
     setView('dashboard');
   };
-
+if (loading) {
+  return <div className="p-8">Loading services...</div>;
+}
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <DashboardHeader
@@ -200,10 +244,10 @@ const DashboardPage = () => {
                 </Button>
                 <div>
                   <h2 className="font-display text-2xl font-bold text-foreground">
-                    {SERVICE_CATEGORIES[selectedCategory].label}
+                    {serviceCategories[selectedCategory].label}
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    {SERVICE_CATEGORIES[selectedCategory].description}
+                    {serviceCategories[selectedCategory].description}
                   </p>
                 </div>
               </div>

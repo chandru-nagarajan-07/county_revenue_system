@@ -9,25 +9,37 @@ const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
-    // Mock Customer Data
-    const customerData = {
-      id: 'CUSTO01',
-      fullName: 'James Mwangi Kariuki',
-      phone: '+254 712 345 678',
-      username: username || 'demo_user',
-      accounts: [
-        { id: 'acc1', number: '0011 - 2345 - 6789', type: 'Savings Account', currency: 'KES', balance: '245,000', status: 'ACTIVE' },
-        { id: 'acc2', number: '0011 - 2345 - 6790', type: 'Current Account', currency: 'KES', balance: '1,230,000', status: 'ACTIVE' },
-        { id: 'acc3', number: '0011 - 2345 - 6791', type: 'Foreign Currency Account', currency: 'USD', balance: '5,200', status: 'ACTIVE' },
-        { id: 'acc4', number: '0011 - 2345 - 6792', type: 'Fixed Deposit', currency: 'KES', balance: '500,000', status: 'ACTIVE' }
-      ]
-    };
+const handleLogin = async () => {
+  try {
+    const response = await fetch("http://127.0.0.1:8000/api/login/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        username: username,
+        password: password,
+      }),
+    });
 
-    // Navigate to verify page and pass data via router state
-    navigate('/verify', { state: { customer: customerData } });
-  };
+    const data = await response.json();
+    console.log('gdhgdhasfhsdfhs',data)
+    if (!response.ok) {
+      alert(data.error || "Login failed");
+      return;
+    }
+    
+    // Set customer from backend response
+    // setActiveCustomer(data);
+    navigate("/dashboard", {
+      state: { customer: data }
+    });
 
+  } catch (error) {
+    console.error("Login error:", error);
+    alert("Server connection failed");
+  }
+};
   return (
     <motion.div
       initial={{ opacity: 0 }}

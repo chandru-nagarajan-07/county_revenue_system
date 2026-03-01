@@ -54,10 +54,6 @@ const ResetPassword = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!validate())return;
-    try{
-      const response = await fetch()
-    }
     if (validate()) {
       console.log("Password Reset Successful:", formData);
       
