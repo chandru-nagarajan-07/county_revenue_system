@@ -156,6 +156,64 @@ const DashboardPage = () => {
       <main className="flex-1 overflow-hidden flex flex-col">
         <AnimatePresence mode="wait">
 
+          {/* RESET PASSWORD VIEW */}
+          {view === 'reset-password' && (
+            <motion.div
+              key="reset-password"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}  
+              exit={{ opacity: 0 }}
+              className="p-8 overflow-auto h-full flex flex-col items-center"
+            >
+              <div className="w-full max-w-md">
+                <Button variant="ghost" onClick={goBack} className="mb-6 touch-target">
+                  <ArrowLeft className="h-5 w-5 mr-2" /> Back to Dashboard
+                </Button>
+                <div className="bg-card p-8 rounded-xl shadow-lg border border-border">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-primary/10 rounded-full">
+                      <KeyRound className="w-6 h-6 text-primary" />
+                    </div>
+                    <h2 className="font-display text-2xl font-bold text-foreground">Reset Password</h2>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Old Password</label>
+                      <input 
+                        type="password" 
+                        value={oldPassword}
+                        onChange={(e) => setOldPassword(e.target.value)}
+                        className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-base outline-none focus:ring-2 focus:ring-ring" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">New Password</label>
+                      <input 
+                        type="password" 
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-base outline-none focus:ring-2 focus:ring-ring" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Confirm New Password</label>
+                      <input 
+                        type="password" 
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-base outline-none focus:ring-2 focus:ring-ring" 
+                      />
+                    </div>
+                    <Button className="w-full mt-4" onClick={handlePasswordUpdate}>
+                      Update Password
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+
           {view === 'workflow' && selectedService && (
             <motion.div key="workflow" className="h-full">
               {formFieldsLoading ? (
