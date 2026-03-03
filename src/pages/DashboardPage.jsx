@@ -159,7 +159,7 @@ if (loading) {
             <motion.div
               key="reset-password"
               initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              animate={{ opacity: 1 }}  
               exit={{ opacity: 0 }}
               className="p-8 overflow-auto h-full flex flex-col items-center"
             >
