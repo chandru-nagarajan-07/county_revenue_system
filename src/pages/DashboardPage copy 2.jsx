@@ -7,6 +7,7 @@ import { DashboardHeader } from '@/components/banking/DashboardHeader';
 import ServiceCard from '@/components/banking/ServiceCard';
 import { ChatPanel } from '@/components/banking/ChatPanel';
 import { TransactionWorkflow } from '@/components/banking/TransactionWorkflow';
+import { AccountSelection } from "@/components/banking/AccountSelection";
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -26,12 +27,16 @@ const DashboardPage = () => {
   const [selectedService, setSelectedService] = useState(null);
   const [serviceFormFields, setServiceFormFields] = useState([]);
 
+  // 🔥 NEW STATES
+  const [selectedAccountType, setSelectedAccountType] = useState(null);
+  const [selectedAddons, setSelectedAddons] = useState([]);
+
   const [chatOpen, setChatOpen] = useState(false);
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (stateCustomer) {
-      sessionStorage.setItem("customer", JSON.stringify(stateCustomer));
+      localStorage.setItem("customer", JSON.stringify(stateCustomer));
     }
   }, [stateCustomer]);
 
@@ -39,6 +44,7 @@ const DashboardPage = () => {
     if (!customer) navigate('/');
   }, [customer, navigate]);
 
+  // FETCH SERVICE GROUPS
   useEffect(() => {
     const fetchServiceGroups = async () => {
       try {
@@ -116,10 +122,11 @@ const DashboardPage = () => {
     }
   };
 
+  // 🔥 UPDATED: Open service now goes to account-selection
   const openService = async (service) => {
     await fetchFormFields(service.code);
     setSelectedService(service);
-    setView('workflow');
+    setView('account-selection'); // 👈 changed
   };
 
   const goHome = () => {
@@ -127,10 +134,14 @@ const DashboardPage = () => {
     setSelectedCategory(null);
     setSelectedService(null);
     setServiceFormFields([]);
+    setSelectedAccountType(null);
+    setSelectedAddons([]);
   };
 
   const goBack = () => {
     if (view === 'workflow') {
+      setView('account-selection');
+    } else if (view === 'account-selection') {
       setView('category');
     } else {
       goHome();
@@ -156,6 +167,7 @@ const DashboardPage = () => {
       <main className="flex-1 overflow-hidden flex flex-col">
         <AnimatePresence mode="wait">
 
+          {/* ================= WORKFLOW ================= */}
           {view === 'workflow' && selectedService && (
             <motion.div key="workflow" className="h-full">
               {formFieldsLoading ? (
@@ -167,6 +179,8 @@ const DashboardPage = () => {
                   service={selectedService}
                   customer={customer}
                   formFields={serviceFormFields}
+                  selectedAccountType={selectedAccountType}
+                  selectedAddons={selectedAddons}
                   onBack={goBack}
                   onComplete={goHome}
                 />
@@ -174,12 +188,28 @@ const DashboardPage = () => {
             </motion.div>
           )}
 
+          {/* ================= ACCOUNT SELECTION ================= */}
+          {view === 'account-selection' && (
+            <motion.div key="account-selection" className="h-full overflow-auto">
+              <AccountSelection
+                customer={customer}
+                onContinue={(accountType, addons) => {
+                  setSelectedAccountType(accountType);
+                  setSelectedAddons(addons);
+                  setView('workflow');
+                }}
+              />
+            </motion.div>
+          )}
+
+          {/* ================= CATEGORY ================= */}
           {view === 'category' && selectedCategory && (
             <motion.div key="category" className="p-8 overflow-auto h-full">
               <div className="flex items-center gap-4 mb-6">
                 <Button variant="ghost" size="icon" onClick={goHome}>
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
+
                 <h2 className="text-2xl font-bold">
                   {serviceCategories[selectedCategory]?.label}
                 </h2>
@@ -199,6 +229,7 @@ const DashboardPage = () => {
             </motion.div>
           )}
 
+          {/* ================= DASHBOARD ================= */}
           {view === 'dashboard' && (
             <motion.div key="dashboard" className="p-8 overflow-auto h-full">
               <h2 className="text-xl font-semibold mb-5">
