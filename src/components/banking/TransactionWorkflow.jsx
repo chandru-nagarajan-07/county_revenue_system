@@ -1,38 +1,50 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ArrowLeft, Check, AlertCircle, Shield, Eye, ThumbsUp, Star, Gift, ChevronRight, Receipt, Info, Zap
+} from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import WorkflowStepper from './WorkflowStepper'; // Assuming this component exists from your new code
 
-const STEPS = [
-  "Input",
-  "Validate",
-  "Review",
-  "Process",
-  "Verify",
-  "Approve",
+// Constants
+const CROSS_SELL_OFFERS = [
+  { title: 'Premium Savings Account', description: 'Earn up to 8.5% p.a. on your savings', icon: '💰' },
+  { title: 'Mobile Banking', description: 'Bank anytime, anywhere with our app', icon: '📱' },
+  { title: 'Insurance Cover', description: 'Protect what matters most to you', icon: '🛡️' },
 ];
+
+const pageVariants = {
+  initial: { opacity: 0, x: 40 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -40 },
+};
 
 export const TransactionWorkflow = ({
   service,
   customer: propCustomer,
-  formFields = [],
   onBack,
   onComplete,
 }) => {
-
+  // Data & State
   const sessionCustomer = JSON.parse(sessionStorage.getItem("customer"));
-
   const customer = propCustomer || sessionCustomer;
-  console.log("Customer in workflow:", customer);
-  const [step, setStep] = useState(1);
+
+  const [workflow, setWorkflow] = useState({
+    stage: 'input', // input -> validation -> review -> processing -> verification -> authorization -> cross-sell -> feedback
+    data: {},
+    officerNotes: '',
+  });
+
   const [accountTypes, setAccountTypes] = useState([]);
   const [addonsMap, setAddonsMap] = useState({});
   const [selectedAccounts, setSelectedAccounts] = useState([]);
-  const [formData, setFormData] = useState({});
-  const [officerNotes, setOfficerNotes] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const [rating, setRating] = useState(null);
-  const [additionalComments, setAdditionalComments] = useState("");
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [reviewCompleted, setReviewCompleted] = useState(false);
+  
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackText, setFeedbackText] = useState("");
 
+  // Fetch Account Types
   useEffect(() => {
     fetch("http://127.0.0.1:8000/api/account-types/")
       .then(res => res.json())
@@ -40,33 +52,44 @@ export const TransactionWorkflow = ({
       .catch(err => console.error(err));
   }, []);
 
-  // Auto-advance review step after 3 seconds
-  useEffect(() => {
-    let timer;
-    if (step === 3 && !reviewCompleted) {
-      timer = setTimeout(() => {
-        setReviewCompleted(true);
-        setStep(4);
-      }, 3000);
-    }
-    return () => clearTimeout(timer);
-  }, [step, reviewCompleted]);
+  // Helper Functions
+  const itemCount = selectedAccounts.reduce(
+    (total, acc) => total + 1 + acc.addons.length,
+    0
+  );
 
+  const getAccountNames = () => {
+    return selectedAccounts.map(a => a.account.name).join(", ");
+  };
+
+  const getAddonNames = () => {
+    const allAddons = [];
+    selectedAccounts.forEach(item => {
+      item.addons.forEach(addonId => {
+        const addonObj = addonsMap[item.account.id]?.find(a => a.id === addonId);
+        if (addonObj) {
+          allAddons.push(addonObj.addon?.name);
+        }
+      });
+    });
+    return allAddons.join(", ");
+  };
+
+  const goToStage = (stage) => {
+    setWorkflow(prev => ({ ...prev, stage }));
+  };
+
+  // Interaction Handlers
   const toggleAccount = async (account) => {
-    const exists = selectedAccounts.find(
-      acc => acc.account.id === account.id
-    );
+    const exists = selectedAccounts.find(acc => acc.account.id === account.id);
 
     if (exists) {
-      setSelectedAccounts(prev =>
-        prev.filter(a => a.account.id !== account.id)
-      );
+      setSelectedAccounts(prev => prev.filter(a => a.account.id !== account.id));
       return;
     }
 
-    const res = await fetch(
-      `http://127.0.0.1:8000/account-addons/${account.code}/`
-    );
+    // Fetch Addons for this account
+    const res = await fetch(`http://127.0.0.1:8000/account-addons/${account.code}/`);
     const data = await res.json();
 
     setAddonsMap(prev => ({
@@ -96,9 +119,7 @@ export const TransactionWorkflow = ({
   };
 
   const removeAccount = (accountId) => {
-    setSelectedAccounts(prev =>
-      prev.filter(a => a.account.id !== accountId)
-    );
+    setSelectedAccounts(prev => prev.filter(a => a.account.id !== accountId));
   };
 
   const removeAddon = (accountId, addonId) => {
@@ -113,19 +134,20 @@ export const TransactionWorkflow = ({
     );
   };
 
-  const itemCount = selectedAccounts.reduce(
-    (total, acc) => total + 1 + acc.addons.length,
-    0
-  );
+  const handleSubmitInput = () => {
+    if (selectedAccounts.length === 0) return;
+    goToStage('validation');
+    setTimeout(() => goToStage('review'), 1500);
+  };
 
-  const handleSubmit = async () => {
+  const handleFinalSubmit = async () => {
     const payload = {
       service_code: service?.code,
       service_name: service?.title,
       customer_id: customer?.id || customer?.user_ID,
       selections: selectedAccounts,
-      form_data: formData,
-      officer_notes: officerNotes,
+      form_data: workflow.data,
+      officer_notes: workflow.officerNotes,
     };
 
     await fetch("http://127.0.0.1:8000/create_api_formfields1/", {
@@ -133,477 +155,392 @@ export const TransactionWorkflow = ({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-
-    onComplete();
+    
+    goToStage('processing');
   };
-
+  
   const handleFeedbackSubmit = () => {
-    console.log("Feedback submitted:", { rating, feedback, additionalComments });
+    console.log("Feedback submitted:", { rating: feedbackRating, feedback: feedbackText });
     onComplete();
   };
 
-  const getAccountNames = () => {
-    return selectedAccounts.map(a => a.account.name).join(", ");
-  };
-
-  const getAddonNames = () => {
-    const allAddons = [];
-    selectedAccounts.forEach(item => {
-      item.addons.forEach(addonId => {
-        const addonObj = addonsMap[item.account.id]?.find(a => a.id === addonId);
-        if (addonObj) {
-          allAddons.push(addonObj.addon?.name);
-        }
-      });
-    });
-    return allAddons.join(", ");
-  };
-
-  const renderStars = () => {
-    return [1, 2, 3, 4, 5].map((star) => (
-      <button
-        key={star}
-        onClick={() => setRating(star)}
-        className={`text-2xl ${
-          star <= rating ? "text-yellow-400" : "text-gray-300"
-        }`}
-      >
-        ★
-      </button>
-    ));
-  };
+  // Summary Fields for Review/Verification
+  const summaryFields = [
+    { label: 'Customer', value: customer?.first_name },
+    { label: 'Customer ID', value: customer?.user_id },
+    { label: 'New Account(s)', value: getAccountNames() || 'None' },
+    { label: 'Add-on Products', value: getAddonNames() || 'None' },
+    { label: 'Reference / Narration', value: 'Service Charges' },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10">
-      <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-sm">
-        <button onClick={onBack} className="mb-4 text-blue-600 text-sm">
-          ← Back
-        </button>
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center gap-4 px-6 py-4 border-b border-border bg-card">
+        <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 touch-target">
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div className="flex-1">
+          <h2 className="font-display text-xl font-semibold text-foreground">{service?.title}</h2>
+          <p className="text-sm text-muted-foreground">Account Opening Workflow</p>
+        </div>
+      </div>
 
-        <h1 className="text-2xl font-bold mb-6 text-center">
-          {service?.title}
-        </h1>
+      {/* Stepper */}
+      <div className="px-6 py-4 bg-card border-b border-border">
+        <WorkflowStepper currentStage={workflow.stage} />
+      </div>
 
-        {/* STEP BAR */}
-        <div className="flex items-center justify-between mb-8">
-          {STEPS.map((label, index) => {
-            const number = index + 1;
-            const active = step === number;
-            const completed = step > number;
-
-            return (
-              <div key={label} className="flex flex-col items-center flex-1">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm
-                  ${completed
-                    ? "bg-green-500 text-white"
-                    : active
-                    ? "bg-orange-500 text-white"
-                    : "bg-gray-200 text-gray-600"}
-                  `}
-                >
-                  {completed ? "✓" : number}
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <AnimatePresence mode="wait">
+          
+          {/* INPUT STAGE */}
+          {workflow.stage === 'input' && (
+            <motion.div key="input" {...pageVariants} className="space-y-6 max-w-4xl mx-auto">
+              
+              {/* Customer Info Banner */}
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-4">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                  {customer?.first_name?.charAt(0) || 'C'}
                 </div>
-                <span className="text-xs mt-1">{label}</span>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{customer?.first_name}</p>
+                  <p className="text-xs text-muted-foreground">{customer?.email} • {customer?.phone}</p>
+                </div>
               </div>
-            );
-          })}
-        </div>
 
-        {/* CUSTOMER INFO */}
-        <div className="border rounded-lg p-4 mb-6 bg-gray-50 text-sm">
-          <p className="font-medium">{customer?.name}</p>
-          <p className="text-gray-500">{customer?.email}</p>
-          <p className="text-gray-400 text-xs">
-            ID: {customer?.user_ID}
-          </p>
-        </div>
+              <h2 className="font-semibold text-lg text-foreground">Select Accounts</h2>
 
-        {/* STEP 1 - INPUT */}
-        {step === 1 && (
-          <>
-            <h2 className="font-semibold mb-4">Select Accounts</h2>
-
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              {accountTypes.map(account => {
-                const selected = selectedAccounts.some(
-                  a => a.account.id === account.id
-                );
-
-                return (
-                  <div
-                    key={account.id}
-                    onClick={() => toggleAccount(account)}
-                    className={`border rounded-lg p-4 cursor-pointer transition text-sm
-                      ${selected
-                        ? "border-blue-600 bg-blue-50"
-                        : "hover:border-gray-400"}
-                    `}
-                  >
-                    <p className="font-medium">{account.name}</p>
-                    <p className="text-xs text-gray-500">
-                      {account.description}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* ADDONS */}
-            {selectedAccounts.map(item => (
-              <div key={item.account.id} className="mb-6">
-                <h3 className="font-semibold mb-3 text-sm">
-                  Add-ons for {item.account.name}
-                </h3>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {(addonsMap[item.account.id] || []).map(addon => (
+              {/* Account Types Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {accountTypes.map(account => {
+                  const selected = selectedAccounts.some(a => a.account.id === account.id);
+                  return (
                     <div
-                      key={addon.id}
-                      onClick={() =>
-                        toggleAddon(item.account.id, addon.id)
-                      }
-                      className={`border rounded-lg p-3 cursor-pointer text-sm
-                        ${item.addons.includes(addon.id)
-                          ? "border-green-500 bg-green-50"
-                          : "hover:border-gray-400"}
+                      key={account.id}
+                      onClick={() => toggleAccount(account)}
+                      className={`border rounded-xl p-4 cursor-pointer transition-all duration-200
+                        ${selected 
+                          ? "border-primary bg-primary/5 ring-1 ring-primary" 
+                          : "border-border hover:border-gray-400 bg-card"}
                       `}
                     >
-                      {addon.addon?.name}
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-semibold text-foreground">{account.name}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{account.description}</p>
+                        </div>
+                        {selected && (
+                          <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="h-3 w-3 text-primary-foreground" />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            ))}
 
-            {/* CART */}
-            {selectedAccounts.length > 0 && (
-              <div className="border rounded-lg p-5 bg-gray-50 mt-6">
-                <div className="flex justify-between mb-4">
-                  <h3 className="font-semibold text-sm">
-                    Your Selection
+              {/* Add-ons Section */}
+              {selectedAccounts.map(item => (
+                <div key={item.account.id} className="mt-6 border-t border-border pt-6">
+                  <h3 className="font-semibold text-sm text-foreground mb-3">
+                    Add-ons for {item.account.name}
                   </h3>
-                  <span className="text-xs bg-gray-200 px-3 py-1 rounded-full">
-                    {itemCount} items
-                  </span>
-                </div>
-
-                {selectedAccounts.map(item => (
-                  <div key={item.account.id} className="mb-4">
-                    <div className="flex justify-between bg-white border rounded-lg px-4 py-2 mb-2 text-sm">
-                      {item.account.name}
-                      <button
-                        onClick={() =>
-                          removeAccount(item.account.id)
-                        }
-                        className="text-gray-400 hover:text-red-500"
-                      >
-                        ✕
-                      </button>
-                    </div>
-
-                    {item.addons.map(addonId => {
-                      const addonObj =
-                        addonsMap[item.account.id]?.find(
-                          a => a.id === addonId
-                        );
-
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {(addonsMap[item.account.id] || []).map(addon => {
+                      const isSelected = item.addons.includes(addon.id);
                       return (
                         <div
-                          key={addonId}
-                          className="flex justify-between bg-white border rounded-lg px-4 py-2 mb-2 ml-4 text-sm"
+                          key={addon.id}
+                          onClick={() => toggleAddon(item.account.id, addon.id)}
+                          className={`border rounded-lg p-3 cursor-pointer text-sm transition-all
+                            ${isSelected 
+                              ? "border-success bg-success/10 text-success" 
+                              : "border-border hover:border-gray-400 bg-muted/30"}
+                          `}
                         >
-                          {addonObj?.addon?.name}
-                          <button
-                            onClick={() =>
-                              removeAddon(item.account.id, addonId)
-                            }
-                            className="text-gray-400 hover:text-red-500"
-                          >
-                            ✕
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {isSelected && <Check className="h-3 w-3" />}
+                            <span>{addon.addon?.name}</span>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
-                ))}
+                </div>
+              ))}
 
-                <button
-                  onClick={() => setStep(2)}
-                  className="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-black font-semibold py-2 rounded-lg"
-                >
-                  Submit for Validation ({itemCount} items)
-                </button>
-              </div>
-            )}
-          </>
-        )}
+              {/* Selection Summary / Cart */}
+              {selectedAccounts.length > 0 && (
+                <div className="border rounded-xl p-5 bg-card shadow-sm mt-6">
+                  <div className="flex justify-between mb-4 border-b border-border pb-3">
+                    <h3 className="font-semibold text-foreground">Your Selection</h3>
+                    <span className="text-xs bg-muted px-3 py-1 rounded-full text-muted-foreground">
+                      {itemCount} items
+                    </span>
+                  </div>
 
-        {/* STEP 2 - VALIDATE */}
-        {step === 2 && (
-          <>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-              <div className="text-green-600 text-sm font-medium text-center">
-                ✓ Validation passed — Ready for officer review
-              </div>
-            </div>
+                  <div className="space-y-3">
+                    {selectedAccounts.map(item => (
+                      <div key={item.account.id} className="space-y-2">
+                        <div className="flex justify-between items-center bg-muted/40 rounded-lg px-4 py-2 text-sm">
+                          <span className="font-medium text-foreground">{item.account.name}</span>
+                          <button
+                            onClick={() => removeAccount(item.account.id)}
+                            className="text-muted-foreground hover:text-destructive transition"
+                          >
+                            ✕
+                          </button>
+                        </div>
 
-            <h2 className="text-lg font-semibold mb-4">Transaction Summary</h2>
+                        {item.addons.map(addonId => {
+                          const addonObj = addonsMap[item.account.id]?.find(a => a.id === addonId);
+                          return (
+                            <div
+                              key={addonId}
+                              className="flex justify-between items-center bg-muted/20 rounded-lg px-4 py-2 ml-4 text-xs text-muted-foreground"
+                            >
+                              <span>{addonObj?.addon?.name}</span>
+                              <button
+                                onClick={() => removeAddon(item.account.id, addonId)}
+                                className="hover:text-destructive transition"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
 
-            <div className="border rounded-lg p-5 bg-gray-50 text-sm mb-4">
-              <div className="flex justify-between mb-3 pb-2 border-b">
-                <span className="font-medium">Customer</span>
-                <span>{customer?.first_name}</span>
-              </div>
-
-              <div className="flex justify-between mb-3 pb-2 border-b">
-                <span className="font-medium">Customer ID</span>
-                <span>{customer?.user_id}</span>
-              </div>
-
-              <div className="flex justify-between mb-3 pb-2 border-b">
-                <span className="font-medium">New Account(s)</span>
-                <span className="capitalize">{getAccountNames()}</span>
-              </div>
-
-              <div className="flex justify-between mb-3 pb-2 border-b">
-                <span className="font-medium">Add-on Products</span>
-                <span className="capitalize">{getAddonNames() || "None"}</span>
-              </div>
-
-              <div className="flex justify-between mb-3 pb-2 border-b">
-                <span className="font-medium">Reference / Narration</span>
-                <span>Service Charges</span>
-              </div>
-
-              <div className="flex justify-between mb-3 pb-2 border-b">
-                <span className="font-medium">Premium rate</span>
-                <span>-</span>
-              </div>
-
-              <div className="flex justify-between mb-3 pb-2 border-b">
-                <span className="font-medium">Service Fee</span>
-                <span className="text-green-600">FREE</span>
-              </div>
-
-              <div className="flex justify-between mb-3">
-                <span className="font-medium">Total Charges</span>
-                <span className="font-semibold">No Charge</span>
-              </div>
-
-              <p className="text-xs text-green-600 mt-2 italic">
-                This transaction is free for Premium customers
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Officer Notes (optional)
-              </label>
-              <textarea
-                value={officerNotes}
-                onChange={(e) => setOfficerNotes(e.target.value)}
-                placeholder="Add any processing notes..."
-                className="w-full border rounded-lg p-3 text-sm"
-                rows="3"
-              />
-            </div>
-
-            <button
-              onClick={() => setStep(3)}
-              className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
-            >
-              Proceed to Processing
-            </button>
-          </>
-        )}
-
-        {/* STEP 3 - REVIEW */}
-        {step === 3 && (
-          <>
-            <div className="text-center mb-8">
-              <div className="inline-block p-4 bg-gray-100 rounded-full mb-4">
-                <span className="text-3xl">🔍</span>
-              </div>
-              <h2 className="text-xl font-semibold mb-2">Reviewing Transaction</h2>
-              <p className="text-gray-600 text-sm">Please wait while we review your request...</p>
-              <div className="mt-4 flex justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              </div>
-              {!reviewCompleted && (
-                <p className="text-xs text-gray-500 mt-4">Auto-advancing in 3 seconds...</p>
+                  <Button
+                    onClick={handleSubmitInput}
+                    className="w-full mt-6 gold-gradient text-accent-foreground font-semibold shadow-gold hover:shadow-elevated transition-shadow"
+                  >
+                    Submit for Validation ({itemCount} items)
+                  </Button>
+                </div>
               )}
-            </div>
-          </>
-        )}
+            </motion.div>
+          )}
 
-        {/* STEP 4 - PROCESS */}
-        {step === 4 && (
-          <>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <div className="text-yellow-700 text-sm font-medium text-center">
-                ⚠️ Customer verification required
+          {/* VALIDATION STAGE */}
+          {workflow.stage === 'validation' && (
+            <motion.div key="validation" {...pageVariants} className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="h-16 w-16 rounded-full bg-info/10 flex items-center justify-center animate-pulse">
+                <Shield className="h-8 w-8 text-info" />
               </div>
-            </div>
+              <h3 className="font-display text-lg font-semibold">Validating Selection...</h3>
+              <p className="text-sm text-muted-foreground">Checking account eligibility and compliance</p>
+            </motion.div>
+          )}
 
-            <h2 className="text-lg font-semibold mb-4">Please Verify Details</h2>
-
-            <div className="border rounded-lg p-5 bg-gray-50 text-sm mb-6">
-              <div className="flex justify-between mb-3 pb-2 border-b">
-                <span className="font-medium">Customer</span>
-                <span>{customer?.first_name}</span>
-              </div>
-
-              <div className="flex justify-between mb-3 pb-2 border-b">
-                <span className="font-medium">Customer ID</span>
-                <span>{customer?.user_id}</span>
+          {/* REVIEW STAGE */}
+          {workflow.stage === 'review' && (
+            <motion.div key="review" {...pageVariants} className="space-y-6 max-w-lg mx-auto">
+              <div className="flex items-center gap-2 mb-2">
+                <Check className="h-5 w-5 text-success" />
+                <p className="text-sm font-medium text-success">Validation passed — Ready for officer review</p>
               </div>
 
-              <div className="flex justify-between mb-3 pb-2 border-b">
-                <span className="font-medium">New Account(s)</span>
-                <span className="capitalize">{getAccountNames()}</span>
+              {/* Summary Card */}
+              <div className="rounded-xl border border-border bg-muted/30 p-5 space-y-3">
+                <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Transaction Summary</h4>
+                {summaryFields.map((field) => (
+                  <div key={field.label} className="flex justify-between items-center py-2 border-b border-border last:border-0">
+                    <span className="text-sm text-muted-foreground">{field.label}</span>
+                    <span className="text-sm font-medium text-foreground text-right">{field.value}</span>
+                  </div>
+                ))}
               </div>
 
-              <div className="flex justify-between mb-3 pb-2 border-b">
-                <span className="font-medium">Add-on Products</span>
-                <span className="capitalize">{getAddonNames() || "None"}</span>
+              {/* Charges Card */}
+              <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Receipt className="h-4 w-4 text-accent" />
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Service Charges</h4>
+                </div>
+                <div className="flex justify-between items-center py-1.5">
+                  <span className="text-sm text-muted-foreground">Service Fee</span>
+                  <span className="text-sm font-semibold text-success">FREE</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-t border-border mt-1">
+                  <span className="text-sm font-semibold text-foreground">Total Charges</span>
+                  <span className="text-base font-bold text-success">No Charge</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg bg-success/10 p-3">
+                  <Info className="h-4 w-4 text-success shrink-0" />
+                  <p className="text-xs text-success font-medium">This transaction is free for Premium customers</p>
+                </div>
               </div>
 
-              <div className="flex justify-between mb-3">
-                <span className="font-medium">Reference / Narration</span>
-                <span>Service Charges</span>
+              {/* Officer Notes */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Officer Notes (optional)</Label>
+                <Textarea
+                  placeholder="Add any processing notes..."
+                  value={workflow.officerNotes}
+                  onChange={(e) => setWorkflow(prev => ({ ...prev, officerNotes: e.target.value }))}
+                  className="touch-target"
+                />
               </div>
-            </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => setStep(2)}
-                className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-50"
+              <Button 
+                onClick={() => {
+                  goToStage('processing');
+                  setTimeout(() => goToStage('verification'), 2000);
+                }} 
+                className="w-full touch-target gold-gradient text-accent-foreground font-semibold shadow-gold"
               >
-                Request Changes
-              </button>
-              <button
-                onClick={() => setStep(5)}
-                className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
-              >
-                Confirm & Verify
-              </button>
-            </div>
-          </>
-        )}
+                Proceed to Processing
+              </Button>
+            </motion.div>
+          )}
 
-        {/* STEP 5 - VERIFY */}
-        {step === 5 && (
-          <>
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 mb-6 text-center">
-              <div className="inline-block p-3 bg-purple-100 rounded-full mb-3">
-                <span className="text-2xl">⏳</span>
+          {/* PROCESSING STAGE */}
+          {workflow.stage === 'processing' && (
+            <motion.div key="processing" {...pageVariants} className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="h-16 w-16 rounded-full bg-accent/10 flex items-center justify-center animate-pulse">
+                <Zap className="h-8 w-8 text-accent" />
               </div>
-              <h2 className="text-lg font-semibold text-purple-800 mb-2">
-                Awaiting supervisor authorization
-              </h2>
-              <p className="text-sm text-purple-600">
-                Supervisor approval is required to complete this transaction
-              </p>
-            </div>
+              <h3 className="font-display text-lg font-semibold">Processing Transaction...</h3>
+              <p className="text-sm text-muted-foreground">Applying changes and updating records</p>
+            </motion.div>
+          )}
 
-            <button
-              onClick={() => setStep(6)}
-              className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 font-semibold"
-            >
-              Authorize Transaction
-            </button>
-          </>
-        )}
-
-        {/* STEP 6 - APPROVE */}
-        {step === 6 && (
-          <>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-8 mb-6 text-center">
-              <div className="inline-block p-3 bg-green-100 rounded-full mb-4">
-                <span className="text-3xl">✓</span>
-              </div>
-              <h2 className="text-2xl font-bold text-green-800 mb-2">
-                Transaction Successful!
-              </h2>
-              <p className="text-sm text-green-600">
-                Your transaction has been processed and authorized.
-              </p>
-            </div>
-
-            <h3 className="font-semibold mb-4 text-gray-700">
-              You might also be interested in
-            </h3>
-
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="border rounded-lg p-4 text-center hover:shadow-md transition">
-                <div className="text-3xl mb-2">💰</div>
-                <h4 className="font-medium text-sm">Premium Savings Account</h4>
-                <p className="text-xs text-gray-500 mt-1">Earn up to 8.5% p.a. on your savings</p>
+          {/* VERIFICATION STAGE */}
+          {workflow.stage === 'verification' && (
+            <motion.div key="verification" {...pageVariants} className="space-y-6 max-w-lg mx-auto">
+              <div className="flex items-center gap-2 mb-2">
+                <Eye className="h-5 w-5 text-info" />
+                <p className="text-sm font-medium text-info">Customer verification required</p>
               </div>
 
-              <div className="border rounded-lg p-4 text-center hover:shadow-md transition">
-                <div className="text-3xl mb-2">📱</div>
-                <h4 className="font-medium text-sm">Mobile Banking</h4>
-                <p className="text-xs text-gray-500 mt-1">Bank anytime, anywhere with our app</p>
+              <div className="rounded-xl border border-border bg-muted/30 p-5 space-y-3">
+                <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Please Verify Details</h4>
+                {summaryFields.map((field) => (
+                  <div key={field.label} className="flex justify-between items-center py-2 border-b border-border last:border-0">
+                    <span className="text-sm text-muted-foreground">{field.label}</span>
+                    <span className="text-sm font-medium text-foreground">{field.value}</span>
+                  </div>
+                ))}
               </div>
 
-              <div className="border rounded-lg p-4 text-center hover:shadow-md transition">
-                <div className="text-3xl mb-2">🛡️</div>
-                <h4 className="font-medium text-sm">Insurance Cover</h4>
-                <p className="text-xs text-gray-500 mt-1">Protect what matters most to you</p>
+              <div className="flex gap-3">
+                <Button onClick={() => goToStage('input')} variant="outline" className="flex-1 touch-target">
+                  Request Changes
+                </Button>
+                <Button 
+                  onClick={() => goToStage('authorization')} 
+                  className="flex-1 touch-target gold-gradient text-accent-foreground font-semibold shadow-gold"
+                >
+                  Confirm & Verify
+                </Button>
               </div>
-            </div>
+            </motion.div>
+          )}
 
-            <button
-              onClick={() => setStep(7)}
-              className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
-            >
-              Continue
-            </button>
-          </>
-        )}
+          {/* AUTHORIZATION STAGE */}
+          {workflow.stage === 'authorization' && (
+            <motion.div key="authorization" {...pageVariants} className="space-y-6 max-w-lg mx-auto text-center">
+              <div className="flex items-center gap-2 justify-center mb-2">
+                <ThumbsUp className="h-5 w-5 text-accent" />
+                <p className="text-sm font-medium">Awaiting supervisor authorization</p>
+              </div>
+              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-8">
+                <Shield className="h-12 w-12 text-accent mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mb-4">Supervisor approval is required to complete this transaction</p>
+                <Button 
+                  onClick={() => {
+                    handleFinalSubmit();
+                    setTimeout(() => goToStage('cross-sell'), 1000);
+                  }} 
+                  className="touch-target gold-gradient text-accent-foreground font-semibold shadow-gold"
+                >
+                  Authorize Transaction
+                </Button>
+              </div>
+            </motion.div>
+          )}
 
-        {/* STEP 7 - FEEDBACK */}
-        {step === 7 && (
-          <>
-            <h2 className="text-xl font-semibold mb-4 text-center">
-              How was your experience?
-            </h2>
-            <p className="text-sm text-gray-600 text-center mb-6">
-              Your feedback helps us improve our services
-            </p>
+          {/* CROSS-SELL / SUCCESS STAGE */}
+          {workflow.stage === 'cross-sell' && (
+            <motion.div key="cross-sell" {...pageVariants} className="space-y-6 max-w-lg mx-auto">
+              <div className="text-center mb-4">
+                <div className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-success/10 mb-3">
+                  <Check className="h-7 w-7 text-success" />
+                </div>
+                <h3 className="font-display text-xl font-semibold">Transaction Successful!</h3>
+                <p className="text-sm text-muted-foreground mt-1">Your transaction has been processed and authorized.</p>
+              </div>
 
-            <div className="flex justify-center gap-2 mb-6">
-              {renderStars()}
-            </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Gift className="h-5 w-5 text-accent" />
+                  <h4 className="font-semibold text-base">You might also be interested in</h4>
+                </div>
+                {CROSS_SELL_OFFERS.map((offer) => (
+                  <button
+                    key={offer.title}
+                    className="w-full flex items-center gap-4 rounded-xl border border-border bg-card p-4 text-left hover:shadow-card transition-shadow touch-target group"
+                  >
+                    <span className="text-2xl">{offer.icon}</span>
+                    <div className="flex-1">
+                      <h5 className="font-semibold text-sm">{offer.title}</h5>
+                      <p className="text-xs text-muted-foreground">{offer.description}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                  </button>
+                ))}
+              </div>
 
-            <div className="mb-6">
-              <textarea
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
+              <Button onClick={() => goToStage('feedback')} className="w-full touch-target gold-gradient text-accent-foreground font-semibold shadow-gold mt-2">
+                Continue
+              </Button>
+            </motion.div>
+          )}
+
+          {/* FEEDBACK STAGE */}
+          {workflow.stage === 'feedback' && (
+            <motion.div key="feedback" {...pageVariants} className="space-y-6 max-w-lg mx-auto text-center">
+              <h3 className="font-display text-xl font-semibold">How was your experience?</h3>
+              <p className="text-sm text-muted-foreground">Your feedback helps us improve our services</p>
+
+              <div className="flex justify-center gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setFeedbackRating(star)}
+                    className="touch-target p-1"
+                  >
+                    <Star className={`h-10 w-10 transition-colors ${star <= feedbackRating ? 'text-accent fill-accent' : 'text-border'}`} />
+                  </button>
+                ))}
+              </div>
+
+              <Textarea
                 placeholder="Any additional comments or service requests? (optional)"
-                className="w-full border rounded-lg p-4 text-sm"
-                rows="4"
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                className="touch-target"
+                rows={3}
               />
-            </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={handleFeedbackSubmit}
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
-              >
-                Submit Feedback
-              </button>
-              <button
-                onClick={onComplete}
-                className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-50"
-              >
-                Skip
-              </button>
-            </div>
-          </>
-        )}
+              <div className="flex gap-3">
+                <Button onClick={handleFeedbackSubmit} variant="outline" className="flex-1 touch-target">
+                  Skip
+                </Button>
+                <Button onClick={handleFeedbackSubmit} className="flex-1 touch-target gold-gradient text-accent-foreground font-semibold shadow-gold">
+                  Submit Feedback
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
       </div>
     </div>
   );

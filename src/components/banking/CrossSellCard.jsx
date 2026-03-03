@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, CreditCard, ShieldCheck, ChevronRight, Sparkles, PiggyBank, Landmark, ArrowRight, Globe, Send, Wallet, Building2 } from 'lucide-react';
+import { 
+  TrendingUp, CreditCard, ShieldCheck, ChevronRight, 
+  Sparkles, PiggyBank, Landmark, ArrowRight, Globe, 
+  Send, Wallet, Building2 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// Category-specific offer pools per segment
+// Category-specific offer pools per segment (your existing CATEGORY_OFFERS data)
 const CATEGORY_OFFERS = {
   'cash-operations': {
     'high-value': [
@@ -137,16 +141,35 @@ const CATEGORY_OFFERS = {
   },
 };
 
+// Safe segment inference with fallback
 function inferSegment(customer) {
-  const totalBalance = customer.accounts.reduce((sum, a) => sum + Math.abs(a.balance), 0);
-  const hasLoan = customer.accounts.some(a => a.type === 'loan');
-  const hasFx = customer.accounts.some(a => a.type === 'fx');
-  const accountCount = customer.accounts.length;
+  // If no customer data, return default segment
+  if (!customer) return 'retail';
+  
+  try {
+    // Check if accounts exist and is an array
+    if (!customer.accounts || !Array.isArray(customer.accounts)) {
+      return 'retail';
+    }
 
-  if (totalBalance > 1500000 || hasFx) return 'high-value';
-  if (accountCount >= 3 && hasLoan) return 'sme';
-  if (totalBalance < 200000) return 'young-professional';
-  return 'retail';
+    const totalBalance = customer.accounts.reduce((sum, a) => {
+      // Ensure a.balance exists and is a number
+      const balance = a?.balance || 0;
+      return sum + Math.abs(balance);
+    }, 0);
+    
+    const hasLoan = customer.accounts.some(a => a?.type === 'loan');
+    const hasFx = customer.accounts.some(a => a?.type === 'fx');
+    const accountCount = customer.accounts.length;
+
+    if (totalBalance > 1500000 || hasFx) return 'high-value';
+    if (accountCount >= 3 && hasLoan) return 'sme';
+    if (totalBalance < 200000) return 'young-professional';
+    return 'retail';
+  } catch (error) {
+    console.error('Error inferring customer segment:', error);
+    return 'retail'; // Default fallback
+  }
 }
 
 function OfferCard({ offer, index }) {
@@ -159,6 +182,10 @@ function OfferCard({ offer, index }) {
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}
       className="group relative overflow-hidden rounded-2xl text-left w-full shadow-elevated transition-shadow hover:shadow-gold"
+      onClick={() => {
+        // Handle offer click - you can customize this
+        console.log('Offer clicked:', offer.title);
+      }}
     >
       <div className={`absolute inset-0 bg-gradient-to-br ${offer.gradient} opacity-95`} />
       <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10" />
@@ -189,13 +216,25 @@ function OfferCard({ offer, index }) {
 }
 
 export function CrossSellCard({ customer, category = 'cash-operations' }) {
-  const segment = inferSegment(customer);
-  const categoryKey = (category in CATEGORY_OFFERS ? category : 'cash-operations');
-  const offers = CATEGORY_OFFERS[categoryKey][segment];
   const [showAll, setShowAll] = useState(false);
+  
+  // Safely determine segment
+  const segment = inferSegment(customer);
+  
+  // Safely get offers with fallbacks
+  const categoryKey = category && CATEGORY_OFFERS[category] ? category : 'cash-operations';
+  const segmentOffers = CATEGORY_OFFERS[categoryKey]?.[segment] || [];
+  
+  // If no offers for this segment, try retail as fallback
+  const offers = segmentOffers.length > 0 
+    ? segmentOffers 
+    : (CATEGORY_OFFERS[categoryKey]?.retail || []);
 
   const visibleOffers = showAll ? offers : offers.slice(0, 2);
   const hasMore = offers.length > 2 && !showAll;
+
+  // If no offers at all, don't render anything
+  if (offers.length === 0) return null;
 
   return (
     <div className="space-y-3">
@@ -221,7 +260,7 @@ export function CrossSellCard({ customer, category = 'cash-operations' }) {
           onClick={() => setShowAll(true)}
           className="w-full mt-1 text-xs"
         >
-          <ChevronRight className="h-3.5 w-3.5" />
+          <ChevronRight className="h-3.5 w-3.5 mr-1" />
           See {offers.length - 2} more product{offers.length - 2 > 1 ? 's' : ''}
         </Button>
       )}
@@ -239,3 +278,5 @@ export function CrossSellCard({ customer, category = 'cash-operations' }) {
     </div>
   );
 }
+
+export default CrossSellCard;
