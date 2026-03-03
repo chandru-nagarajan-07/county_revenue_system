@@ -11,11 +11,16 @@ const STEPS = [
 
 export const TransactionWorkflow = ({
   service,
-  customer,
+  customer: propCustomer,
   formFields = [],
   onBack,
   onComplete,
 }) => {
+
+  const sessionCustomer = JSON.parse(sessionStorage.getItem("customer"));
+
+  const customer = propCustomer || sessionCustomer;
+  console.log("Customer in workflow:", customer);
   const [step, setStep] = useState(1);
   const [accountTypes, setAccountTypes] = useState([]);
   const [addonsMap, setAddonsMap] = useState({});
@@ -348,12 +353,12 @@ export const TransactionWorkflow = ({
             <div className="border rounded-lg p-5 bg-gray-50 text-sm mb-4">
               <div className="flex justify-between mb-3 pb-2 border-b">
                 <span className="font-medium">Customer</span>
-                <span>{customer?.name}</span>
+                <span>{customer?.first_name}</span>
               </div>
 
               <div className="flex justify-between mb-3 pb-2 border-b">
                 <span className="font-medium">Customer ID</span>
-                <span>{customer?.user_ID}</span>
+                <span>{customer?.user_id}</span>
               </div>
 
               <div className="flex justify-between mb-3 pb-2 border-b">
@@ -446,12 +451,12 @@ export const TransactionWorkflow = ({
             <div className="border rounded-lg p-5 bg-gray-50 text-sm mb-6">
               <div className="flex justify-between mb-3 pb-2 border-b">
                 <span className="font-medium">Customer</span>
-                <span>{customer?.name}</span>
+                <span>{customer?.first_name}</span>
               </div>
 
               <div className="flex justify-between mb-3 pb-2 border-b">
                 <span className="font-medium">Customer ID</span>
-                <span>{customer?.user_ID}</span>
+                <span>{customer?.user_id}</span>
               </div>
 
               <div className="flex justify-between mb-3 pb-2 border-b">
