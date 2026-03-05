@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Bot, Landmark, Wallet, Smartphone, CreditCard, CheckCircle2, Loader2 } from "lucide-react"; // Added icons
@@ -20,9 +21,9 @@ export const TransactionWorkflow = ({
   onBack,
   onComplete,
 }) => {
+
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
-  
   const [transactionId, setTransactionId] = useState(null);
   const [customer, setCustomer] = useState(null);
 
@@ -285,12 +286,14 @@ export const TransactionWorkflow = ({
         key={star}
         onClick={() => setRating(star)}
         type="button"
+
         className={`text-2xl transition-colors ${star <= rating ? "text-yellow-400" : "text-gray-300 hover:text-yellow-200"}`}
       >
         ★
       </button>
     ));
   };
+
 
   // Helper for icons based on account name (simple heuristic)
   const getAccountIcon = (name) => {
@@ -327,6 +330,7 @@ export const TransactionWorkflow = ({
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+
       <DashboardHeader
         customerName={customer?.fullName || customer?.name || "Customer"}
         isDropdownOpen={navDropdownOpen}
@@ -353,8 +357,10 @@ export const TransactionWorkflow = ({
               </p>
             </div>
           </div>
+
         </div>
       </div>
+
 
       {/* Main Content */}
       <div className="flex-1 px-4 md:px-6 py-8 max-w-5xl mx-auto w-full">
@@ -410,11 +416,13 @@ export const TransactionWorkflow = ({
             <h3 className="font-semibold text-gray-900">{customer?.name}</h3>
             <p className="text-xs text-gray-500">ID: {customer?.user_id || "N/A"} • {customer?.email}</p>
           </div>
+
         </div>
 
         {/* STEP 1 - INPUT */}
         {step === 1 && (
           <>
+
          
             {/* Select Accounts Section */}
             <div className="mb-6">
@@ -456,6 +464,7 @@ export const TransactionWorkflow = ({
 
             {/* ADDONS */}
             {selectedAccounts.length > 0 && (
+
               <div className="mb-6">
                 <h3 className="text-sm font-semibold text-gray-800 mb-3">Recommended Add-ons</h3>
                 
@@ -480,6 +489,7 @@ export const TransactionWorkflow = ({
                            <span className={`text-sm font-medium ${item.addons.includes(addon.id) ? 'text-green-700' : 'text-gray-700'}`}>
                              {addon.addon?.name}
                            </span>
+
                         </div>
                       ))}
                     </div>
@@ -548,6 +558,7 @@ export const TransactionWorkflow = ({
                   ))}
                 </div>
 
+
                 <div className="px-5 pb-5">
                   <button
                     onClick={handleValidate}
@@ -556,6 +567,7 @@ export const TransactionWorkflow = ({
                     Submit for Validation ({itemCount} items)
                   </button>
                 </div>
+
               </div>
             )}
           </>
@@ -568,11 +580,14 @@ export const TransactionWorkflow = ({
               <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
               </div>
+
               <div>
                 <h3 className="font-semibold text-green-900 text-sm">Validation Passed</h3>
                 <p className="text-xs text-green-700">Ready for officer review</p>
+
               </div>
             </div>
+
 
             <div className="p-6 space-y-4">
               <div className="flex justify-between py-2 border-b border-gray-100">
@@ -580,6 +595,7 @@ export const TransactionWorkflow = ({
                 <span className="text-sm font-medium text-gray-800">
                   {service?.title || "Account Opening"}
                 </span>
+
               </div>
               
               <div className="flex justify-between py-2 border-b border-gray-100">
@@ -622,6 +638,7 @@ export const TransactionWorkflow = ({
               />
             </div>
 
+
             <div className="p-6 border-t border-gray-200">
               <button
                 onClick={() => setStep(3)}
@@ -631,6 +648,7 @@ export const TransactionWorkflow = ({
               </button>
             </div>
           </div>
+
         )}
 
         {/* STEP 3 - REVIEW (Loading State with Details) */}
@@ -660,6 +678,7 @@ export const TransactionWorkflow = ({
                   {officerNotes || "N/A"}
                 </span>
               </div>
+
             </div>
           </div>
         )}
@@ -671,6 +690,7 @@ export const TransactionWorkflow = ({
               <span className="text-yellow-700 text-sm font-medium">⚠️ Customer verification required</span>
             </div>
 
+
             <div className="p-6 space-y-4">
               <div className="flex justify-between py-2 border-b border-gray-100 text-sm">
                 <span className="text-gray-500">Customer</span>
@@ -681,6 +701,7 @@ export const TransactionWorkflow = ({
               <div className="flex justify-between py-2 border-b border-gray-100 text-sm">
                 <span className="text-gray-500">Customer ID</span>
                 <span className="font-medium text-gray-800">{getCustomerId() || "N/A"}</span>
+
               </div>
 
               <div className="flex justify-between py-2 border-b border-gray-100 text-sm">
@@ -749,25 +770,31 @@ export const TransactionWorkflow = ({
               <div className="inline-block p-3 bg-green-100 rounded-full mb-4 ring-4 ring-green-50">
                 <CheckCircle2 className="w-8 h-8 text-green-600" />
               </div>
-              <h2 className="text-xl font-bold text-green-800 mb-1">Transaction Successful!</h2>
-              <p className="text-sm text-green-600">Your transaction has been processed and authorized.</p>
+              <h2 className="text-2xl font-bold text-green-800 mb-2">Transaction Successful!</h2>
+              <p className="text-sm text-green-600">
+                Your transaction has been processed and authorized.
+              </p>
             </div>
-            
-            <div className="p-6">
-              <h3 className="font-semibold mb-4 text-gray-700 text-sm">You might also be interested in</h3>
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="border rounded-lg p-4 text-center hover:shadow-md transition cursor-pointer bg-gray-50">
-                  <div className="text-2xl mb-2">💰</div>
-                  <h4 className="font-medium text-xs">Premium Savings</h4>
-                </div>
-                <div className="border rounded-lg p-4 text-center hover:shadow-md transition cursor-pointer bg-gray-50">
-                  <div className="text-2xl mb-2">📱</div>
-                  <h4 className="font-medium text-xs">Mobile Banking</h4>
-                </div>
-                <div className="border rounded-lg p-4 text-center hover:shadow-md transition cursor-pointer bg-gray-50">
-                  <div className="text-2xl mb-2">🛡️</div>
-                  <h4 className="font-medium text-xs">Insurance</h4>
-                </div>
+
+            <h3 className="font-semibold mb-4 text-gray-700">You might also be interested in</h3>
+
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="border rounded-lg p-4 text-center hover:shadow-md transition">
+                <div className="text-3xl mb-2">💰</div>
+                <h4 className="font-medium text-sm">Premium Savings Account</h4>
+                <p className="text-xs text-gray-500 mt-1">Earn up to 8.5% p.a. on your savings</p>
+              </div>
+
+              <div className="border rounded-lg p-4 text-center hover:shadow-md transition">
+                <div className="text-3xl mb-2">📱</div>
+                <h4 className="font-medium text-sm">Mobile Banking</h4>
+                <p className="text-xs text-gray-500 mt-1">Bank anytime, anywhere with our app</p>
+              </div>
+
+              <div className="border rounded-lg p-4 text-center hover:shadow-md transition">
+                <div className="text-3xl mb-2">🛡️</div>
+                <h4 className="font-medium text-sm">Insurance Cover</h4>
+                <p className="text-xs text-gray-500 mt-1">Protect what matters most to you</p>
               </div>
               <button
                 onClick={() => setStep(7)}
@@ -776,16 +803,25 @@ export const TransactionWorkflow = ({
                 Continue to Feedback
               </button>
             </div>
-          </div>
+
+            <button
+              onClick={() => setStep(7)}
+              className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
+            >
+              Continue to Feedback
+            </button>
+          </>
         )}
 
         {/* STEP 7 - FEEDBACK */}
         {step === 7 && (
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-            <div className="text-center mb-6">
-              <h2 className="text-lg font-semibold mb-1">How was your experience?</h2>
-              <p className="text-sm text-gray-500">Your feedback helps us improve our services</p>
-            </div>
+          <>
+            <h2 className="text-xl font-semibold mb-4 text-center">How was your experience?</h2>
+            <p className="text-sm text-gray-600 text-center mb-6">
+              Your feedback helps us improve our services
+            </p>
+
+            <div className="flex justify-center gap-2 mb-6">{renderStars()}</div>
 
             <div className="flex justify-center gap-2 mb-6">{renderStars()}</div>
 
@@ -803,26 +839,25 @@ export const TransactionWorkflow = ({
               <button
                 onClick={handleFinalSubmit}
                 disabled={isSubmitting}
-                className={`flex-1 py-2.5 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-                  isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                }`}
+                className={`flex-1 py-2 rounded-lg ${
+                  isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+                } text-white`}
               >
-                 {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 {isSubmitting ? "Submitting..." : "Submit Feedback & Complete"}
               </button>
               <button
                 onClick={handleFinalSubmit}
                 disabled={isSubmitting}
-                className={`flex-1 py-2.5 rounded-lg font-medium border transition-all ${
+                className={`flex-1 py-2 rounded-lg ${
                   isSubmitting
-                    ? "bg-gray-100 cursor-not-allowed text-gray-400"
-                    : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "border border-gray-300 text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                {isSubmitting ? "Please wait..." : "Skip & Complete"}
+                {isSubmitting ? "Submitting..." : "Skip & Complete"}
               </button>
             </div>
-          </div>
+          </> 
         )}
       </div>
     </div>
