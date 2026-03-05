@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom"; // 1. Import useNavigate
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { DashboardHeader } from "@/components/banking/DashboardHeader";
 
 const STEPS = [
   "Input",
@@ -18,19 +20,21 @@ export const TransactionWorkflow = ({
   onBack,
   onComplete,
 }) => {
+  const navigate = useNavigate(); // 2. Initialize navigate
+  const [navDropdownOpen, setNavDropdownOpen] = useState(false); // 3. Initialize missing state
+  
   const [transactionId, setTransactionId] = useState(null);
   const [customer, setCustomer] = useState(null);
 
+
   // Initialize customer from props or session storage
   useEffect(() => {
-    // First try to use the prop customer
     if (propCustomer) {
       console.log("Using customer from props:", propCustomer);
       setCustomer(propCustomer);
       return;
     }
 
-    // Otherwise try to get from session storage
     try {
       const sessionData = sessionStorage.getItem("customer");
       if (sessionData) {
@@ -45,14 +49,10 @@ export const TransactionWorkflow = ({
     }
   }, [propCustomer]);
 
-  // Helper function to get customer ID from various possible fields
   const getCustomerId = () => {
     if (!customer) return null;
-
-    // Try different possible ID fields (in order of preference)
     return (
       customer.id ||
-      customer.pk ||
       customer.customer_id ||
       customer.customerId ||
       customer.user_id ||
@@ -62,14 +62,11 @@ export const TransactionWorkflow = ({
     );
   };
 
-  // Debug customer object on mount and when it changes
   useEffect(() => {
     console.log("Current customer state:", customer);
     if (customer) {
       console.log("Customer available fields:", Object.keys(customer));
-      console.log("Customer PK (id):", customer.id);
       console.log("Customer UID (user_id):", customer.user_id);
-      console.log("Customer UID (user_ID):", customer.user_ID);
       console.log("Resolved customer ID for API:", getCustomerId());
     }
   }, [customer]);
@@ -87,7 +84,6 @@ export const TransactionWorkflow = ({
   const [reviewCompleted, setReviewCompleted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch account types
   useEffect(() => {
     fetch("http://127.0.0.1:8000/api/account-types/")
       .then((res) => res.json())
@@ -95,7 +91,6 @@ export const TransactionWorkflow = ({
       .catch((err) => console.error("Error fetching account types:", err));
   }, []);
 
-  // Auto-advance review step after 3 seconds
   useEffect(() => {
     let timer;
     if (step === 3 && !reviewCompleted) {
@@ -175,7 +170,6 @@ export const TransactionWorkflow = ({
       return;
     }
 
-    // Double-check customer exists
     if (!customer) {
       alert("Customer information is missing. Please go back and select a customer.");
       return;
@@ -190,7 +184,6 @@ export const TransactionWorkflow = ({
     setIsSubmitting(true);
 
     try {
-      // Test API connection first
       const testResponse = await fetch("http://127.0.0.1:8000/api/service-transaction/", {
         method: "OPTIONS",
       }).catch((err) => {
@@ -206,17 +199,19 @@ export const TransactionWorkflow = ({
 
       console.log("Using customer ID:", customerId, "Type:", typeof customerId);
 
-      // Handle multiple accounts - create separate transactions for each
       let lastTransactionId = null;
       let successCount = 0;
       let errorCount = 0;
 
       for (const selected of selectedAccounts) {
+        // Using the service fee passed from Dashboard
+        const fee = parseFloat(service?.service_fee || 0);
+
         const payload = {
           customer: customerId,
           account_type: selected.account.id,
           selected_addons: selected.addons,
-          service_charge: 0,
+          service_charge: fee, // Pass the actual fee
           feedback_rating: rating,
           remarks: feedback || officerNotes || "Transaction completed successfully",
           status: "APPROVED",
@@ -256,9 +251,6 @@ export const TransactionWorkflow = ({
         } else {
           alert(`${successCount} transaction(s) completed, ${errorCount} failed.`);
         }
-
-        // Clear selected customer from session if needed
-        // sessionStorage.removeItem("customer");
 
         onComplete();
       } else {
@@ -302,7 +294,6 @@ export const TransactionWorkflow = ({
     ));
   };
 
-  // Show loading or error state if customer not available
   if (!customer) {
     return (
       <div className="min-h-screen bg-gray-50 py-10">
@@ -321,6 +312,15 @@ export const TransactionWorkflow = ({
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+         <DashboardHeader
+        customerName={customer?.fullName || customer?.name || "Customer"}
+        isDropdownOpen={navDropdownOpen}
+        setIsDropdownOpen={setNavDropdownOpen}
+        onLogout={() => {
+          localStorage.removeItem("customer");
+          navigate('/');
+        }}
+      />
       {/* Header */}
       <div className="flex items-center gap-4 px-4 md:px-6 py-4 border-b border-border bg-card shrink-0 sticky top-0 z-10">
         <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 touch-target">
@@ -367,7 +367,6 @@ export const TransactionWorkflow = ({
           <p className="text-gray-500">{customer?.email}</p>
           <div className="text-gray-400 text-xs mt-1 space-y-1">
             <p>UID: {customer?.user_id || customer?.user_ID || "N/A"}</p>
-            <p>PK: {customer?.id || customer?.pk || "N/A"}</p>
             <p>Phone: {customer?.phone || "N/A"}</p>
           </div>
         </div>
@@ -510,28 +509,24 @@ export const TransactionWorkflow = ({
               </div>
 
               <div className="flex justify-between mb-3 pb-2 border-b">
-                <span className="font-medium">Reference / Narration</span>
-                <span>Service Charges</span>
-              </div>
-
-              <div className="flex justify-between mb-3 pb-2 border-b">
-                <span className="font-medium">Premium rate</span>
-                <span>-</span>
+                <span className="font-medium">Service Type</span>
+                <span>{service?.title || "N/A"}</span>
               </div>
 
               <div className="flex justify-between mb-3 pb-2 border-b">
                 <span className="font-medium">Service Fee</span>
-                <span className="text-green-600">FREE</span>
+                {/* Updated to display fee from props */}
+                <span className="font-semibold text-blue-600">
+                  {service?.service_fee ? `${service.service_fee}` : 'FREE'}
+                </span>
               </div>
 
               <div className="flex justify-between mb-3">
                 <span className="font-medium">Total Charges</span>
-                <span className="font-semibold">No Charge</span>
+                <span className="font-semibold">
+                   {service?.service_fee ? `${service.service_fee}` : 'No Charge'}
+                </span>
               </div>
-
-              <p className="text-xs text-green-600 mt-2 italic">
-                This transaction is free for Premium customers
-              </p>
             </div>
 
             <div className="mb-6">
@@ -573,7 +568,7 @@ export const TransactionWorkflow = ({
           </>
         )}
 
-        {/* STEP 4 - PROCESS */}
+        {/* STEP 4 - PROCESS / VERIFY */}
         {step === 4 && (
           <>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
@@ -605,6 +600,14 @@ export const TransactionWorkflow = ({
               <div className="flex justify-between mb-3 pb-2 border-b">
                 <span className="font-medium">Add-on Products</span>
                 <span className="capitalize">{getAddonNames() || "None"}</span>
+              </div>
+              
+              {/* Service Fee Display Added Here as requested */}
+              <div className="flex justify-between mb-3 pb-2 border-b">
+                <span className="font-medium">Service Fee</span>
+                <span className="font-bold text-blue-600">
+                   {service?.service_fee ? `${service.service_fee}` : 'FREE'}
+                </span>
               </div>
 
               <div className="flex justify-between mb-3">
