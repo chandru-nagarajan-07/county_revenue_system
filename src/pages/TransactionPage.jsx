@@ -1,88 +1,76 @@
+// src/pages/TransactionPage.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TransactionWorkflow } from '@/components/banking/TransactionWorkflow';
+
 const TransactionPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-
+  
+  // Retrieve service and customer data passed via navigation state
   const { service, customer } = location.state || {};
 
   const [formFields, setFormFields] = useState([]);
-  const [DynamicForm, setDynamicForm] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingFields, setLoadingFields] = useState(false);
 
+  // Redirect if no service data is present (e.g., direct URL access)
   useEffect(() => {
     if (!service) {
-      navigate("/dashboard");
+      navigate('/dashboard');
     }
-  }, [service]);
+  }, [service, navigate]);
 
+  // Fetch Form Fields for this specific service
   useEffect(() => {
-    const fetchForm = async () => {
+    const fetchFormFields = async () => {
       if (!service?.code) return;
-
+      
       try {
-        setLoading(true);
-
+        setLoadingFields(true);
         const response = await fetch(
           `http://127.0.0.1:8000/view_api_formfields_by_service/${service.code}/`
         );
-
         const data = await response.json();
-
-        console.log("Form API:", data);
-
-        setFormFields(data.fields || []);
-
-        const FormComponent = TransactionWorkflow[data.form_component];
-
-        setDynamicForm(() => FormComponent);
-
+        setFormFields(data || []);
       } catch (error) {
-        console.error("Error loading form:", error);
+        console.error("Error loading form fields:", error);
+        setFormFields([]);
       } finally {
-        setLoading(false);
+        setLoadingFields(false);
       }
     };
 
-    fetchForm();
+    fetchFormFields();
   }, [service]);
 
+  const handleBack = () => {
+    navigate(-1); // Go back to the previous page (Dashboard/Category)
+  };
+
   const handleComplete = () => {
-    navigate("/dashboard");
+    navigate('/dashboard'); // Go home after completion
   };
 
   if (!service) return null;
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
-
-      <motion.div
-        initial={{ opacity: 0, x: 40 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="flex-1 p-6"
+      <motion.div 
+        initial={{ opacity: 0, x: 50 }} 
+        animate={{ opacity: 1, x: 0 }} 
+        exit={{ opacity: 0, x: -50 }} 
+        className="h-full flex-1"
       >
-
-        <h2 className="text-xl font-semibold mb-6">
-          {service.name} Transaction
-        </h2>
-
-        {loading && (
-          <p className="text-gray-500">Loading form...</p>
-        )}
-
-        {DynamicForm && (
-          <DynamicForm
-            fields={formFields}
-            service={service}
-            customer={customer}
-            onComplete={handleComplete}
-          />
-        )}
-
+        <TransactionWorkflow
+          service={service}
+          customer={customer}
+          onBack={handleBack}
+          onComplete={handleComplete}
+          formFields={formFields}
+          isLoadingFields={loadingFields}
+        />
       </motion.div>
-
     </div>
   );
 };
