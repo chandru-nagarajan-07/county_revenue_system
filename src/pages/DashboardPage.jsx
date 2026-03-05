@@ -1,4 +1,4 @@
-// src/pages/DashboardPage.jsx
+
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader';
 import ServiceCard from '@/components/banking/ServiceCard';
 import { ChatPanel } from '@/components/banking/ChatPanel';
+
 import { CrossSellCard } from '@/components/banking/CrossSellCard';
 
 const DashboardPage = () => {
@@ -20,7 +21,9 @@ const DashboardPage = () => {
   const [categoryViewServices, setCategoryViewServices] = useState([]); // For category view
   const [loading, setLoading] = useState(true);
 
+
   const [view, setView] = useState('dashboard'); // 'dashboard' or 'category'
+
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,6 +72,7 @@ const DashboardPage = () => {
             color: category.color || "blue",
           };
 
+
           if (Array.isArray(category.services)) {
             category.services.forEach(service => {
               globalServicesArr.push({
@@ -77,6 +81,7 @@ const DashboardPage = () => {
                 description: service.description,
                 category: category.key,
                 icon: service.icon || "Circle",
+
                 service_fee: service.service_fee || "0.00"
               });
             });
@@ -108,7 +113,7 @@ const DashboardPage = () => {
       if (!response.ok) throw new Error("Failed to fetch service types");
 
       const data = await response.json();
-      
+
       const servicesArr = data.map(service => ({
         id: service.id,
         code: service.code,
@@ -117,6 +122,7 @@ const DashboardPage = () => {
         category: catKey,
         icon: service.icon || "Circle",
         service_fee: service.service_fee || "0.00",
+
       }));
 
       setCategoryViewServices(servicesArr);
@@ -132,7 +138,7 @@ const DashboardPage = () => {
 
   // --- Navigation Handlers ---
 
-  // 3. Open Service: Navigate to the separate Transaction Page
+
   const openService = (service) => {
     navigate('/transaction', { state: { service, customer } });
   };
@@ -140,6 +146,7 @@ const DashboardPage = () => {
   const goHome = () => {
     setView('dashboard');
     setSelectedCategory(null);
+
     setCategoryViewServices([]); 
     setSearchQuery('');
   };
@@ -190,6 +197,7 @@ const DashboardPage = () => {
 
       <main className="flex-1 overflow-hidden flex flex-col">
         <AnimatePresence mode="wait">
+
 
           {/* --- 1. RESET PASSWORD VIEW --- */}
           {view === 'reset-password' && (
@@ -306,6 +314,7 @@ const DashboardPage = () => {
           {view === 'dashboard' && (
             <motion.div 
               key="dashboard" 
+
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }} 
@@ -313,6 +322,7 @@ const DashboardPage = () => {
             >
               <div className="max-w-6xl mx-auto">
                 
+
                 {/* Search Bar */}
                 <div className="relative max-w-xl mb-10">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
