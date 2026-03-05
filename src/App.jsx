@@ -16,6 +16,7 @@ import Profile from "./pages/Profile";
 import ResetPassword from "./pages/ResetPassword";
 import EmailOtp from "./pages/EmailOtp";
 import AccountOpeningForm from "./pages/AccountOpeningForm";
+import TransactionPage from "./pages/TransactionPage";
 
 
 const queryClient = new QueryClient();
@@ -39,7 +40,8 @@ const App = () => (
           <Route path="/account" element={<AccountCreation />} />
           <Route path="/reset" element={<ResetPassword />} />
           <Route path="/profile" element={<Profile />} />
-          
+          <Route path="/transaction" element={<TransactionPage />} />
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
        

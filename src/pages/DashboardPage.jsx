@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader';
 import ServiceCard from '@/components/banking/ServiceCard';
 import { ChatPanel } from '@/components/banking/ChatPanel';
-import { TransactionWorkflow } from '@/components/banking/TransactionWorkflow';
+
 import { CrossSellCard } from '@/components/banking/CrossSellCard';
 
 const DashboardPage = () => {
@@ -20,9 +21,10 @@ const DashboardPage = () => {
   const [categoryViewServices, setCategoryViewServices] = useState([]); // For category view
   const [loading, setLoading] = useState(true);
 
-  const [view, setView] = useState('dashboard');
+
+  const [view, setView] = useState('dashboard'); // 'dashboard' or 'category'
+
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [selectedService, setSelectedService] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
@@ -70,7 +72,7 @@ const DashboardPage = () => {
             color: category.color || "blue",
           };
 
-          // Flatten services for global search capability
+
           if (Array.isArray(category.services)) {
             category.services.forEach(service => {
               globalServicesArr.push({
@@ -79,7 +81,7 @@ const DashboardPage = () => {
                 description: service.description,
                 category: category.key,
                 icon: service.icon || "Circle",
-                // Include fee if present in initial load
+
                 service_fee: service.service_fee || "0.00"
               });
             });
@@ -111,17 +113,16 @@ const DashboardPage = () => {
       if (!response.ok) throw new Error("Failed to fetch service types");
 
       const data = await response.json();
-      console.log(`Services for category ${catKey}:`, data);
-      
-      // Updated mapping to include service_fee and code
+
       const servicesArr = data.map(service => ({
         id: service.id,
         code: service.code,
-        title: service.name || service.title, // API returns 'name'
+        title: service.name || service.title,
         description: service.description,
         category: catKey,
         icon: service.icon || "Circle",
-        service_fee: service.service_fee || "0.00", // Capture the fee
+        service_fee: service.service_fee || "0.00",
+
       }));
 
       setCategoryViewServices(servicesArr);
@@ -137,24 +138,21 @@ const DashboardPage = () => {
 
   // --- Navigation Handlers ---
 
+
   const openService = (service) => {
-    setSelectedService(service);
-    setView('workflow');
+    navigate('/transaction', { state: { service, customer } });
   };
 
   const goHome = () => {
     setView('dashboard');
     setSelectedCategory(null);
-    setSelectedService(null);
+
     setCategoryViewServices([]); 
     setSearchQuery('');
   };
 
   const goBack = () => {
-    if (view === 'workflow') {
-      setView('category');
-      setSelectedService(null);
-    } else if (view === 'reset-password') {
+    if (view === 'reset-password') {
       setView('dashboard');
     } else {
       goHome();
@@ -200,25 +198,55 @@ const DashboardPage = () => {
       <main className="flex-1 overflow-hidden flex flex-col">
         <AnimatePresence mode="wait">
 
-          {/* --- 1. WORKFLOW VIEW --- */}
-          {view === 'workflow' && selectedService && (
-            <motion.div 
-              key="workflow" 
-              initial={{ opacity: 0, x: 50 }} 
-              animate={{ opacity: 1, x: 0 }} 
-              exit={{ opacity: 0, x: -50 }} 
-              className="h-full"
-            >
-              <TransactionWorkflow
-                service={selectedService}
-                customer={customer}
-                onBack={goBack}
-                onComplete={goHome}
-              />
-            </motion.div>
+
+          {/* --- 1. RESET PASSWORD VIEW --- */}
+          {view === 'reset-password' && (
+             <motion.div 
+             key="reset-password" 
+             initial={{ opacity: 0 }} 
+             animate={{ opacity: 1 }} 
+             exit={{ opacity: 0 }} 
+             className="h-full overflow-y-auto p-4 md:p-8"
+           >
+             <div className="max-w-md mx-auto">
+               <Button variant="outline" size="sm" onClick={goBack} className="mb-4">
+                 <ArrowLeft className="h-4 w-4 mr-2" /> Back to Dashboard
+               </Button>
+               <div className="bg-white p-6 rounded-xl shadow-sm border">
+                 <div className="flex items-center gap-2 mb-4">
+                   <KeyRound className="h-5 w-5 text-blue-600" />
+                   <h2 className="text-xl font-semibold">Reset Password</h2>
+                 </div>
+                 <div className="space-y-4">
+                   <input 
+                     type="password" 
+                     placeholder="Old Password" 
+                     value={oldPassword}
+                     onChange={(e) => setOldPassword(e.target.value)}
+                     className="w-full border rounded-md p-2"
+                   />
+                   <input 
+                     type="password" 
+                     placeholder="New Password" 
+                     value={newPassword}
+                     onChange={(e) => setNewPassword(e.target.value)}
+                     className="w-full border rounded-md p-2"
+                   />
+                   <input 
+                     type="password" 
+                     placeholder="Confirm Password" 
+                     value={confirmPassword}
+                     onChange={(e) => setConfirmPassword(e.target.value)}
+                     className="w-full border rounded-md p-2"
+                   />
+                   <Button className="w-full" onClick={handlePasswordUpdate}>Update Password</Button>
+                 </div>
+               </div>
+             </div>
+           </motion.div>
           )}
 
-          {/* --- 2. CATEGORY VIEW (Services List + Sidebar) --- */}
+          {/* --- 2. CATEGORY VIEW --- */}
           {view === 'category' && selectedCategory && serviceCategories[selectedCategory] && (
             <motion.div 
               key="category" 
@@ -244,8 +272,14 @@ const DashboardPage = () => {
                   </div>
                 </div>
 
-                {/* Main Content Layout: Flex Row */}
+                {/* Main Content Layout */}
                 <div className="flex flex-col lg:flex-row gap-8">
+                  {/* Right Column: Cross-Sell Sidebar */}
+                  <div className="hidden lg:block w-80 shrink-0">
+                    <div className="sticky top-8">
+                       <CrossSellCard customer={customer} category={selectedCategory} />
+                    </div>
+                  </div>
                   
                   {/* Left Column: Service List */}
                   <div className="flex-1 space-y-3">
@@ -271,86 +305,16 @@ const DashboardPage = () => {
                       </div>
                     )}
                   </div>
-
-                  {/* Right Column: Cross-Sell Sidebar */}
-                  <div className="hidden lg:block w-80 shrink-0">
-                    <div className="sticky top-8">
-                       <CrossSellCard customer={customer} category={selectedCategory} />
-                    </div>
-                  </div>
-
                 </div>
               </div>
             </motion.div>
           )}
 
-          {/* --- 3. RESET PASSWORD VIEW --- */}
-          {view === 'reset-password' && (
-            <motion.div 
-              key="reset-password" 
-              initial={{ opacity: 0, scale: 0.95 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              exit={{ opacity: 0 }} 
-              className="h-full flex items-center justify-center p-4"
-            >
-              <div className="w-full max-w-md bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
-                <div className="flex flex-col items-center mb-8">
-                   <div className="p-4 bg-blue-50 rounded-full mb-4">
-                     <KeyRound className="h-8 w-8 text-blue-600" />
-                   </div>
-                   <h2 className="text-2xl font-bold text-slate-800">Change Password</h2>
-                   <p className="text-slate-500 text-sm mt-1">Enter your current and new password</p>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Current Password</label>
-                    <input 
-                      type="password" 
-                      value={oldPassword}
-                      onChange={(e) => setOldPassword(e.target.value)}
-                      className="mt-1 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="••••••••"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">New Password</label>
-                    <input 
-                      type="password" 
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="mt-1 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="••••••••"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Confirm Password</label>
-                    <input 
-                      type="password" 
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="mt-1 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="••••••••"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 mt-8">
-                   <Button variant="outline" className="flex-1" onClick={goBack}>
-                     Cancel
-                   </Button>
-                   <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={handlePasswordUpdate}>
-                     Update
-                   </Button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* --- 4. DASHBOARD VIEW (Default) --- */}
+          {/* --- 3. DASHBOARD VIEW (Default) --- */}
           {view === 'dashboard' && (
             <motion.div 
               key="dashboard" 
+
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }} 
@@ -358,6 +322,7 @@ const DashboardPage = () => {
             >
               <div className="max-w-6xl mx-auto">
                 
+
                 {/* Search Bar */}
                 <div className="relative max-w-xl mb-10">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />

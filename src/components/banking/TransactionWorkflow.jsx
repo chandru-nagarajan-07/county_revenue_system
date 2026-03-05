@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom"; // 1. Import useNavigate
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { DashboardHeader } from "@/components/banking/DashboardHeader";
 
 const STEPS = [
   "Input",
@@ -18,8 +20,12 @@ export const TransactionWorkflow = ({
   onBack,
   onComplete,
 }) => {
+  const navigate = useNavigate(); // 2. Initialize navigate
+  const [navDropdownOpen, setNavDropdownOpen] = useState(false); // 3. Initialize missing state
+  
   const [transactionId, setTransactionId] = useState(null);
   const [customer, setCustomer] = useState(null);
+
 
   // Initialize customer from props or session storage
   useEffect(() => {
@@ -306,6 +312,15 @@ export const TransactionWorkflow = ({
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+         <DashboardHeader
+        customerName={customer?.fullName || customer?.name || "Customer"}
+        isDropdownOpen={navDropdownOpen}
+        setIsDropdownOpen={setNavDropdownOpen}
+        onLogout={() => {
+          localStorage.removeItem("customer");
+          navigate('/');
+        }}
+      />
       {/* Header */}
       <div className="flex items-center gap-4 px-4 md:px-6 py-4 border-b border-border bg-card shrink-0 sticky top-0 z-10">
         <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 touch-target">
