@@ -215,7 +215,7 @@ export const TransactionWorkflow = ({
           <p className="font-medium">{customer?.name}</p>
           <p className="text-gray-500">{customer?.email}</p>
           <p className="text-gray-400 text-xs">
-            ID: {customer?.user_ID}
+            ID: {customer?.user_id}
           </p>
         </div>
 
@@ -602,7 +602,7 @@ export const TransactionWorkflow = ({
                 Skip
               </button>
             </div>
-          </>
+          </> 
         )}
       </div>
     </div>
