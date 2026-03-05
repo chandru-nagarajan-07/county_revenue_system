@@ -67,12 +67,23 @@ const EmailOtp = () => {
         alert(data.message || "OTP verification failed");
         return;
       }
-
       // ✅ Store full response safely
       localStorage.setItem("verifiedUser", JSON.stringify(data));
+      const response1 = await fetch(
+        `http://127.0.0.1:8002/account_fetch/${email}`,
+        {
+          method: "GET",
+        }
+      );
 
-      // ✅ Navigate to verify page
-      navigate("/verify", { state: { userData: data } });
+      const data1 = await response1.json();
+
+      if (!response1.ok) {
+        alert(data1.message || "OTP verification failed");
+        return;
+      }
+      console.log('hjgsdjgdsaj',data1)
+      navigate("/verify", { state: { userData1: data1 , userData: data } });
 
     } catch (error) {
       console.error("OTP error:", error);

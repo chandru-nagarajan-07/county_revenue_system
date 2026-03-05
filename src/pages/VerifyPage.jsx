@@ -12,7 +12,9 @@ const VerifyPage = () => {
   const stateData = location.state?.userData;
   const savedData = JSON.parse(localStorage.getItem("verifiedUser"));
   const data = stateData || savedData;
-
+  const stateData1 = location.state?.userData1;
+  const savedData1 = JSON.parse(localStorage.getItem("verifiedUser"));
+  const data1 = stateData1 || savedData1;
   useEffect(() => {
     if (stateData) {
       localStorage.setItem("verifiedUser", JSON.stringify(stateData));
@@ -28,8 +30,8 @@ const VerifyPage = () => {
   if (!data) return null;
 
   const user = data.user_basic_info;
-  const accounts = data.accounts || [];
-
+  const accounts = data1 ? [data1] : [];
+  console.log("Accounts data:", accounts);
   const handleChangeCustomer = () => {
     localStorage.removeItem("verifiedUser");
     navigate("/");
@@ -101,7 +103,7 @@ const VerifyPage = () => {
                 {/* Row 1 */}
                 <div className="flex justify-between items-center">
                   <p className="text-sm font-semibold text-gray-800">
-                    {acc.account_number}
+                    {acc.account_no}
                   </p>
 
                   <p className="text-sm font-bold text-gray-900">
