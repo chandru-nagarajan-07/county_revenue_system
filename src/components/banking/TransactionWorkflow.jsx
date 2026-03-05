@@ -17,7 +17,51 @@ export const TransactionWorkflow = ({
   onComplete,
 }) => {
 
-  const sessionCustomer = JSON.parse(sessionStorage.getItem("customer"));
+
+  // Initialize customer from props or session storage
+  useEffect(() => {
+    if (propCustomer) {
+      console.log("Using customer from props:", propCustomer);
+      setCustomer(propCustomer);
+      return;
+    }
+
+    try {
+      const sessionData = sessionStorage.getItem("customer");
+      if (sessionData) {
+        const parsedCustomer = JSON.parse(sessionData);
+        console.log("Retrieved customer from session:", parsedCustomer);
+        setCustomer(parsedCustomer);
+      } else {
+        console.warn("No customer found in session storage");
+      }
+    } catch (e) {
+      console.error("Error parsing session customer:", e);
+    }
+  }, [propCustomer]);
+
+  const getCustomerId = () => {
+    if (!customer) return null;
+    return (
+      customer.id ||
+      customer.customer_id ||
+      customer.customerId ||
+      customer.user_id ||
+      customer.user_ID ||
+      customer.userId ||
+      customer.ID
+    );
+  };
+
+  useEffect(() => {
+    console.log("Current customer state:", customer);
+    if (customer) {
+      console.log("Customer available fields:", Object.keys(customer));
+      console.log("Customer UID (user_id):", customer.user_id);
+      console.log("Resolved customer ID for API:", getCustomerId());
+    }
+  }, [customer]);
+
 
   const customer = propCustomer || sessionCustomer;
   console.log("Customer in workflow:", customer);
@@ -40,7 +84,6 @@ export const TransactionWorkflow = ({
       .catch(err => console.error(err));
   }, []);
 
-  // Auto-advance review step after 3 seconds
   useEffect(() => {
     let timer;
     if (step === 3 && !reviewCompleted) {
@@ -113,10 +156,96 @@ export const TransactionWorkflow = ({
     );
   };
 
-  const itemCount = selectedAccounts.reduce(
-    (total, acc) => total + 1 + acc.addons.length,
-    0
-  );
+
+  const itemCount = selectedAccounts.reduce((total, acc) => total + 1 + acc.addons.length, 0);
+
+  const handleValidate = () => {
+    if (selectedAccounts.length === 0) {
+      alert("Please select at least one account");
+      return;
+    }
+    setStep(2);
+  };
+
+  const handleFinalSubmit = async () => {
+    if (selectedAccounts.length === 0) {
+      alert("Please select at least one account");
+      return;
+    }
+
+    if (!customer) {
+      alert("Customer information is missing. Please go back and select a customer.");
+      return;
+    }
+
+    const customerId = getCustomerId();
+    if (!customerId) {
+      alert(`Customer ID is missing. Customer data: ${JSON.stringify(customer)}`);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const testResponse = await fetch("http://127.0.0.1:8000/api/service-transaction/", {
+        method: "OPTIONS",
+      }).catch((err) => {
+        console.error("Network error - cannot reach API:", err);
+        alert("Cannot connect to the server. Please check if the backend is running.");
+        return null;
+      });
+
+      if (!testResponse) {
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log("Using customer ID:", customerId, "Type:", typeof customerId);
+
+      let lastTransactionId = null;
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const selected of selectedAccounts) {
+        // Using the service fee passed from Dashboard
+        const fee = parseFloat(service?.service_fee || 0);
+
+        const payload = {
+          customer: customerId,
+          account_type: selected.account.id,
+          selected_addons: selected.addons,
+          service_charge: fee, // Pass the actual fee
+          feedback_rating: rating,
+          remarks: feedback || officerNotes || "Transaction completed successfully",
+          status: "APPROVED",
+        };
+
+        console.log("Creating Transaction with payload:", payload);
+
+        try {
+          const response = await fetch("http://127.0.0.1:8000/api/service-transaction/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          const data = await response.json();
+          console.log("Transaction Created:", data);
+
+          if (!response.ok) {
+            console.error("Error creating transaction:", data);
+            errorCount++;
+            alert(`Failed to create transaction for ${selected.account.name}: ${JSON.stringify(data)}`);
+          } else {
+            successCount++;
+            lastTransactionId = data.id;
+          }
+        } catch (error) {
+          console.error(`Error creating transaction for ${selected.account.name}:`, error);
+          errorCount++;
+        }
+      }
+
 
   const handleSubmit = async () => {
     const payload = {
@@ -137,9 +266,20 @@ export const TransactionWorkflow = ({
     onComplete();
   };
 
+
   const handleFeedbackSubmit = () => {
     console.log("Feedback submitted:", { rating, feedback, additionalComments });
-    onComplete();
+        onComplete();
+      } else {
+        alert("Failed to create any transactions. Please try again.");
+      }
+    } catch (error) {
+      console.error("API Error:", error);
+      alert(`An error occurred: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+
   };
 
   const getAccountNames = () => {
@@ -172,6 +312,24 @@ export const TransactionWorkflow = ({
       </button>
     ));
   };
+
+
+  if (!customer) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-10">
+        <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-sm text-center">
+          <h2 className="text-xl font-semibold text-red-600 mb-4">Customer Data Missing</h2>
+          <p className="text-gray-600 mb-6">
+            Unable to load customer information. Please go back and select a customer.
+          </p>
+          <button onClick={onBack} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="min-h-screen bg-gray-50 py-10">
@@ -217,6 +375,13 @@ export const TransactionWorkflow = ({
           <p className="text-gray-400 text-xs">
             ID: {customer?.user_id}
           </p>
+
+          <p className="text-gray-500">{customer?.email}</p>
+          <div className="text-gray-400 text-xs mt-1 space-y-1">
+            <p>UID: {customer?.user_id || customer?.user_ID || "N/A"}</p>
+            <p>Phone: {customer?.phone || "N/A"}</p>
+          </div>
+
         </div>
 
         {/* STEP 1 - INPUT */}
@@ -372,28 +537,24 @@ export const TransactionWorkflow = ({
               </div>
 
               <div className="flex justify-between mb-3 pb-2 border-b">
-                <span className="font-medium">Reference / Narration</span>
-                <span>Service Charges</span>
-              </div>
-
-              <div className="flex justify-between mb-3 pb-2 border-b">
-                <span className="font-medium">Premium rate</span>
-                <span>-</span>
+                <span className="font-medium">Service Type</span>
+                <span>{service?.title || "N/A"}</span>
               </div>
 
               <div className="flex justify-between mb-3 pb-2 border-b">
                 <span className="font-medium">Service Fee</span>
-                <span className="text-green-600">FREE</span>
+                {/* Updated to display fee from props */}
+                <span className="font-semibold text-blue-600">
+                  {service?.service_fee ? `${service.service_fee}` : 'FREE'}
+                </span>
               </div>
 
               <div className="flex justify-between mb-3">
                 <span className="font-medium">Total Charges</span>
-                <span className="font-semibold">No Charge</span>
+                <span className="font-semibold">
+                   {service?.service_fee ? `${service.service_fee}` : 'No Charge'}
+                </span>
               </div>
-
-              <p className="text-xs text-green-600 mt-2 italic">
-                This transaction is free for Premium customers
-              </p>
             </div>
 
             <div className="mb-6">
@@ -437,7 +598,7 @@ export const TransactionWorkflow = ({
           </>
         )}
 
-        {/* STEP 4 - PROCESS */}
+        {/* STEP 4 - PROCESS / VERIFY */}
         {step === 4 && (
           <>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
@@ -467,6 +628,14 @@ export const TransactionWorkflow = ({
               <div className="flex justify-between mb-3 pb-2 border-b">
                 <span className="font-medium">Add-on Products</span>
                 <span className="capitalize">{getAddonNames() || "None"}</span>
+              </div>
+              
+              {/* Service Fee Display Added Here as requested */}
+              <div className="flex justify-between mb-3 pb-2 border-b">
+                <span className="font-medium">Service Fee</span>
+                <span className="font-bold text-blue-600">
+                   {service?.service_fee ? `${service.service_fee}` : 'FREE'}
+                </span>
               </div>
 
               <div className="flex justify-between mb-3">

@@ -207,6 +207,9 @@ const openCategory = async (cat) => {
               </div>
 
               <div className="grid gap-3">
+                <div className="hidden lg:block w-80 shrink-0">
+                     <CrossSellCard customer={customer} category={selectedCategory} />
+                   </div>
                 {categoryServices.map((service, i) => (
                   <motion.div key={service.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}>
                     <ServiceCard
