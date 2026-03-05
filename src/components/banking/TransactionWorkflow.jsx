@@ -361,8 +361,12 @@ export const TransactionWorkflow = ({
 
         {/* CUSTOMER INFO */}
         <div className="border rounded-lg p-4 mb-6 bg-gray-50 text-sm">
-          <p className="font-medium">
-            {customer?.first_name} {customer?.last_name}
+
+          <p className="font-medium">{customer?.name}</p>
+          <p className="text-gray-500">{customer?.email}</p>
+          <p className="text-gray-400 text-xs">
+            ID: {customer?.user_id}
+
           </p>
           <p className="text-gray-500">{customer?.email}</p>
           <div className="text-gray-400 text-xs mt-1 space-y-1">
@@ -740,7 +744,7 @@ export const TransactionWorkflow = ({
                 {isSubmitting ? "Submitting..." : "Skip & Complete"}
               </button>
             </div>
-          </>
+          </> 
         )}
       </div>
     </div>
