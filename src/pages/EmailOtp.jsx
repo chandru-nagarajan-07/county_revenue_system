@@ -46,29 +46,6 @@ const EmailOtp = () => {
     }
 
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/email-verification/",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: email,
-            otp: otpValue,
-          }),
-        }
-      );
-
-      const data = await response.json();
-      console.log("OTP response:", data);
-
-      if (!response.ok) {
-        alert(data.message || "OTP verification failed");
-        return;
-      }
-      // ✅ Store full response safely
-      localStorage.setItem("verifiedUser", JSON.stringify(data));
       const response1 = await fetch(
         `http://127.0.0.1:8002/account_fetch/${email}`,
         {
@@ -83,6 +60,32 @@ const EmailOtp = () => {
         return;
       }
       console.log('hjgsdjgdsaj',data1)
+
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/email-verification/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: email,
+            otp: otpValue,
+            userData1: data1
+          }),
+        }
+      );
+
+      const data = await response.json();
+      console.log("OTP response:", data);
+
+      if (!response.ok) {
+        alert(data.message || "OTP verification failed");
+        return;
+      }
+      // ✅ Store full response safely
+      localStorage.setItem("verifiedUser", JSON.stringify(data));
+      sessionStorage.setItem("userData1", JSON.stringify(data1));
       navigate("/verify", { state: { userData1: data1 , userData: data } });
 
     } catch (error) {

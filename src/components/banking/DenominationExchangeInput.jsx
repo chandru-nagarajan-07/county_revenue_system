@@ -12,7 +12,6 @@ import {
   SelectValue
 } from "@/components/ui/select";
 
-import { ACCOUNT_TYPE_LABELS } from "@/data/demoCustomers";
 import { inferSegment, SEGMENT_LABELS } from "@/data/serviceCharges";
 
 /* FX PAIRS */
@@ -25,10 +24,14 @@ const FX_PAIRS = [
 
 export function DenominationExchangeInput({ customer, onSubmit }) {
 
-  /* SAFE CUSTOMER */
-  if (!customer) return null;
+  /* SESSION USER */
 
-  const accounts = customer?.accounts || [];
+  const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
+
+  const accounts = sessionUser?.account || [];
+
+  console.log("SESSION USER:", sessionUser);
+  console.log("ACCOUNTS:", accounts);
 
   const [direction, setDirection] = useState("BUY");
   const [selectedPair, setSelectedPair] = useState(null);
@@ -37,38 +40,32 @@ export function DenominationExchangeInput({ customer, onSubmit }) {
   const [settlementAccNum, setSettlementAccNum] = useState("");
   const [errors, setErrors] = useState({});
 
-  /* SAFE SEGMENT */
+  /* CUSTOMER SEGMENT */
+
   const segment = useMemo(() => {
 
     if (!customer) return "retail";
 
     return inferSegment({
       ...customer,
-      accounts: customer.accounts || []
+      accounts: accounts
     });
 
-  }, [customer]);
+  }, [customer, accounts]);
 
   /* ACCOUNT FILTERS */
 
-  const kesAccounts = useMemo(() =>
+  const activeAccounts = useMemo(() =>
     accounts.filter(
-      acc =>
-        acc?.status === "active" &&
-        acc?.currency === "KES" &&
-        (acc?.type === "current" || acc?.type === "savings")
+      acc => acc?.status === "ACTIVE"
     ),
     [accounts]
   );
 
-  const fxAccounts = useMemo(() =>
-    accounts.filter(
-      acc =>
-        acc?.status === "active" &&
-        acc?.type === "fx"
-    ),
-    [accounts]
-  );
+  /* For now both use same accounts */
+
+  const kesAccounts = activeAccounts;
+  const fxAccounts = activeAccounts;
 
   const sourceOptions =
     direction === "BUY" ? kesAccounts : fxAccounts;
@@ -120,35 +117,39 @@ export function DenominationExchangeInput({ customer, onSubmit }) {
 
       {/* CUSTOMER BANNER */}
 
-      <div className="flex items-center gap-3 rounded-xl border p-4">
+      {customer && (
 
-        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold">
+        <div className="flex items-center gap-3 rounded-xl border p-4">
 
-          {(customer?.fullName || "")
-            .split(" ")
-            .map(n => n[0])
-            .join("")
-            .slice(0, 2)}
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold">
+
+            {(customer?.fullName || "")
+              .split(" ")
+              .map(n => n[0])
+              .join("")
+              .slice(0, 2)}
+
+          </div>
+
+          <div>
+
+            <p className="text-sm font-semibold">
+              {customer?.fullName}
+            </p>
+
+            <p className="text-xs text-muted-foreground">
+              {customer?.customerId} • {customer?.phone}
+            </p>
+
+          </div>
+
+          <span className="px-2 py-1 text-xs rounded bg-accent/10 text-accent">
+            {SEGMENT_LABELS?.[segment]}
+          </span>
 
         </div>
 
-        <div>
-
-          <p className="text-sm font-semibold">
-            {customer?.fullName}
-          </p>
-
-          <p className="text-xs text-muted-foreground">
-            {customer?.customerId} • {customer?.phone}
-          </p>
-
-        </div>
-
-        <span className="px-2 py-1 text-xs rounded bg-accent/10 text-accent">
-          {SEGMENT_LABELS?.[segment]}
-        </span>
-
-      </div>
+      )}
 
       {/* BUY / SELL */}
 
@@ -274,13 +275,11 @@ export function DenominationExchangeInput({ customer, onSubmit }) {
             {sourceOptions.map(acc => (
 
               <SelectItem
-                key={acc.accountNumber}
-                value={acc.accountNumber}
+                key={acc.account_number}
+                value={acc.account_number}
               >
 
-                {acc.accountNumber} •
-                {ACCOUNT_TYPE_LABELS?.[acc.type]} •
-                {acc.currency} {acc.balance}
+                {acc.account_number} • {acc.balance}
 
               </SelectItem>
 
