@@ -8,11 +8,14 @@ import { motion } from "framer-motion";
 import { TransactionWorkflow } from "@/components/banking/TransactionWorkflow";
 import { AccountModificationInput } from "@/components/banking/AccountModificationInput";
 import { KycUpdateInput } from "@/components/banking/KycUpdateInput";
-import { DenominationExchangeInput } from "@/components/banking/DenominationExchangeInput";
+import DenominationExchange from "@/components/banking/DenominationExchangeInput";
 import { FundsTransferInput } from "@/components/banking/FundsTransferInput";
 import { BillPaymentInput  } from "@/components/banking/BillPaymentInput";
 import  StandingOrderInput  from "@/components/banking/StandingOrderInput";
 import { CardServicesInput } from "@/components/banking/CardServicesInput";
+import { CashDepositWorkflow } from "@/components/banking/CashDeposit";
+import { CashWithdrawalWorkflow } from "@/components/banking/CashWithdrawal";
+
 
 /* --- Service → Component Map --- */
 const SERVICE_COMPONENTS = {
@@ -20,13 +23,15 @@ const SERVICE_COMPONENTS = {
   "kyc update": KycUpdateInput,
   "account modification": AccountModificationInput,
   "standing order": StandingOrderInput,
-  "denomination exchange": DenominationExchangeInput,
+  "denomination exchange": DenominationExchange,
   "funds transfer": FundsTransferInput,
   "bill payment": BillPaymentInput ,
   "card issuance": CardServicesInput,
   "card replacement": CardServicesInput,
   "pin management": CardServicesInput,
-  "card limit update": CardServicesInput
+  "card limit update": CardServicesInput,
+  "cash deposit": CashDepositWorkflow,
+  "cash withdrawal": CashWithdrawalWorkflow,
 
 };
 
