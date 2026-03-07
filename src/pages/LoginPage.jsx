@@ -28,7 +28,7 @@ const handleLogin = async () => {
       alert(data.error || "Login failed");
       return;
     }
-    
+    sessionStorage.setItem("userData1", JSON.stringify(data));
     // Set customer from backend response
     // setActiveCustomer(data);
     navigate("/dashboard", {
