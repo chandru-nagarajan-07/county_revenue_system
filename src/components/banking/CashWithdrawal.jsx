@@ -380,6 +380,9 @@ export const CashWithdrawalWorkflow = ({
                 
                 <div className="space-y-0">
                   {[
+                    { l: "Customer Name", v: customer?.first_name || sessionUser?.first_name || "N/A" },
+                    { l: "Customer ID", v: customer?.user_id || sessionUser?.user_id || "N/A" },
+                    { l: "Transaction Time", v: new Date().toLocaleString() },
                     { l: "Debit Account", v: selectedAccount?.account_number },
                     { l: "Amount", v: `KES ${withdrawalAmount.toLocaleString()}` },
                     { l: "Reference", v: reference || "-" },
@@ -444,7 +447,22 @@ export const CashWithdrawalWorkflow = ({
                 <Zap className="h-5 w-5" />
                 <span className="text-sm font-medium">Officer Review</span>
               </div>
-
+   <div className="space-y-0">
+                  {[
+                    { l: "Customer Name", v: customer?.first_name || sessionUser?.first_name || "N/A" },
+                    { l: "Customer ID", v: customer?.user_id || sessionUser?.user_id || "N/A" },
+                    { l: "Transaction Time", v: new Date().toLocaleString() },
+                    { l: "Debit Account", v: selectedAccount?.account_number },
+                    { l: "Amount", v: `KES ${withdrawalAmount.toLocaleString()}` },
+                    { l: "Reference", v: reference || "-" },
+                    { l: "Narration", v: narration || "-" },
+                  ].map((row) => (
+                    <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
+                      <span className="text-sm text-gray-500">{row.l}</span>
+                      <span className="text-sm font-medium text-gray-800">{row.v}</span>
+                    </div>
+                  ))}
+                </div>
               <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div className="bg-gray-50 p-3 rounded-lg">
