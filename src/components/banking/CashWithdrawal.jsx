@@ -1,8 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+
+import { DashboardHeader } from "@/components/banking/DashboardHeader";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
 import {
   Select,
   SelectContent,
@@ -10,13 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ArrowLeft,
-  Bot,
-  CheckCircle2,
-  Loader2,
-} from "lucide-react";
-import { DashboardHeader } from "@/components/banking/DashboardHeader";
+
+import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 
 const STEPS = [
   "Input",
@@ -48,11 +47,7 @@ export const CashWithdrawalWorkflow = ({
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [officerNotes, setOfficerNotes] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const [rating, setRating] = useState(null);
-
-  /* ---------------- SESSION USER ACCOUNTS ---------------- */
+  /* SESSION USER */
 
   const sessionUser = JSON.parse(
     sessionStorage.getItem("userData1") || "{}"
@@ -60,7 +55,7 @@ export const CashWithdrawalWorkflow = ({
 
   const accounts = sessionUser?.account || [];
 
-  /* ---------------- CUSTOMER INIT ---------------- */
+  /* INIT CUSTOMER */
 
   useEffect(() => {
 
@@ -69,16 +64,14 @@ export const CashWithdrawalWorkflow = ({
       return;
     }
 
-    try {
-      const sessionData = sessionStorage.getItem("customer");
-      if (sessionData) setCustomer(JSON.parse(sessionData));
-    } catch (e) {
-      console.error("Customer session parse error", e);
-    }
+    const sessionCustomer = sessionStorage.getItem("customer");
+
+    if (sessionCustomer)
+      setCustomer(JSON.parse(sessionCustomer));
 
   }, [propCustomer]);
 
-  /* ---------------- ACCOUNTS FROM SESSION ---------------- */
+  /* ELIGIBLE ACCOUNTS */
 
   const eligibleAccounts = useMemo(() => {
 
@@ -88,17 +81,7 @@ export const CashWithdrawalWorkflow = ({
 
   }, [accounts]);
 
-  const getCustomerId = () => {
-    if (!customer) return null;
-    return (
-      customer.id ||
-      customer.customer_id ||
-      customer.customerId ||
-      customer.user_id
-    );
-  };
-
-  /* ---------------- VALIDATION ---------------- */
+  /* VALIDATION */
 
   const validate = () => {
 
@@ -117,8 +100,7 @@ export const CashWithdrawalWorkflow = ({
     return Object.keys(errs).length === 0;
 
   };
-
-  const handleInputSubmit = async () => {
+const handleSubmit = async () => {
   if (!validate()) return;
 
   try {
@@ -148,67 +130,35 @@ export const CashWithdrawalWorkflow = ({
   }
 };
 
-  /* ---------------- FINAL SUBMIT ---------------- */
-
-  const handleFinalSubmit = async () => {
+  const handleFinish = async () => {
 
     setIsSubmitting(true);
 
     const payload = {
-      customer: getCustomerId(),
       account_number: selectedAccount.account_number,
       amount: Number(amount),
       reference,
-      narration,
-      officer_notes: officerNotes,
-      rating,
-      status: "APPROVED",
+      narration
     };
 
     console.log("Withdrawal Payload:", payload);
 
-    await new Promise(r => setTimeout(r,1500));
+    await new Promise(r => setTimeout(r, 1500));
 
-    alert("Transaction Completed");
+    setIsSubmitting(false);
+
+    alert("Withdrawal Successful");
 
     if (onComplete)
       onComplete();
 
-    setIsSubmitting(false);
-
   };
 
-  /* ---------------- RATING ---------------- */
-
-  const renderStars = () => {
-
-    return [1,2,3,4,5].map(star => (
-
-      <button
-        key={star}
-        onClick={()=>setRating(star)}
-        type="button"
-        className={`text-2xl ${
-          star <= rating
-            ? "text-yellow-400"
-            : "text-gray-300"
-        }`}
-      >
-        ★
-      </button>
-
-    ));
-
-  };
-
-  if (!customer) {
+  if (!customer && !sessionUser) {
 
     return (
-      <div className="min-h-screen bg-gray-50 py-10">
-        <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl text-center">
-          Customer Data Missing
-          <Button onClick={onBack}>Go Back</Button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        Customer not found
       </div>
     );
 
@@ -218,21 +168,25 @@ export const CashWithdrawalWorkflow = ({
 
     <div className="min-h-screen bg-gray-50 flex flex-col">
 
+      {/* HEADER */}
+
       <DashboardHeader
-        customerName={customer?.fullName || "Customer"}
+        customerName={customer?.fullName || sessionUser?.first_name || "Customer"}
         isDropdownOpen={navDropdownOpen}
         setIsDropdownOpen={setNavDropdownOpen}
-        onLogout={()=>{
+        onLogout={() => {
           localStorage.removeItem("customer");
           navigate("/");
         }}
       />
 
-      {/* HEADER */}
+      {/* PAGE */}
 
-      <div className="bg-white border-b sticky top-0 z-20">
+      <div className="flex-1 px-4 md:px-6 py-8 max-w-5xl mx-auto w-full">
 
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-4">
+        {/* TITLE */}
+
+        <div className="flex items-center gap-4 mb-6">
 
           <Button
             variant="ghost"
@@ -243,52 +197,37 @@ export const CashWithdrawalWorkflow = ({
           </Button>
 
           <div>
-
             <h1 className="text-xl font-bold">
-              Cash Withdrawal
+              Cash Withdrawals
             </h1>
 
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               Service Workflow
             </p>
-
           </div>
 
         </div>
 
-      </div>
-
-      {/* MAIN */}
-
-      <div className="flex-1 px-4 md:px-6 py-8 max-w-5xl mx-auto w-full">
-
         {/* STEP BAR */}
 
-        <div className="mb-8 flex justify-between">
+        <div className="flex items-center justify-between mb-8">
 
-          {STEPS.map((label,i)=>{
+          {STEPS.map((label, i) => {
 
-            const number = i+1;
+            const number = i + 1;
 
-            const active = step===number;
-            const completed = step>number;
-
-            return(
+            return (
 
               <div key={label} className="flex flex-col items-center">
 
-                <div className={`w-8 h-8 rounded-full border flex items-center justify-center
-                  ${completed
-                    ? "bg-blue-600 text-white"
-                    : active
-                    ? "border-blue-600 text-blue-600"
-                    : "border-gray-300 text-gray-400"}
-                `}>
-
-                  {completed
-                    ? <CheckCircle2 className="w-5 h-5"/>
-                    : number}
-
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center border ${
+                    step >= number
+                      ? "bg-blue-600 text-white"
+                      : "border-gray-300 text-gray-400"
+                  }`}
+                >
+                  {number}
                 </div>
 
                 <span className="text-xs mt-1">
@@ -305,13 +244,13 @@ export const CashWithdrawalWorkflow = ({
 
         {/* CUSTOMER CARD */}
 
-        <div className="bg-white rounded-xl border p-4 mb-6 flex items-center gap-4">
+        <div className="bg-white rounded-xl border p-4 mb-6 flex items-center gap-3">
 
-          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-600">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold">
 
-            {(customer.fullName || "U")
+            {(customer?.fullName || sessionUser?.first_name || "C")
               .split(" ")
-              .map(n=>n[0])
+              .map(n => n[0])
               .join("")
               .slice(0,2)}
 
@@ -320,11 +259,11 @@ export const CashWithdrawalWorkflow = ({
           <div>
 
             <p className="text-sm font-semibold">
-              {customer.fullName}
+              {customer?.fullName || sessionUser?.first_name}
             </p>
 
-            <p className="text-xs text-gray-500">
-              {customer.customerId} • {customer.phone}
+            <p className="text-xs text-muted-foreground">
+              {customer?.user_id || sessionUser?.user_id} • {customer?.phone || sessionUser?.phone}
             </p>
 
           </div>
@@ -333,11 +272,13 @@ export const CashWithdrawalWorkflow = ({
 
         {/* STEP 1 */}
 
-        {step===1 && (
+        {step === 1 && (
 
           <div className="bg-white border rounded-xl shadow-sm p-6 space-y-5">
 
-            <div className="space-y-2">
+            {/* ACCOUNT */}
+
+            <div>
 
               <Label>Select Account *</Label>
 
@@ -347,21 +288,16 @@ export const CashWithdrawalWorkflow = ({
 
                   const acc =
                     eligibleAccounts.find(
-                      a => a.account_number===val
+                      a => a.account_number === val
                     );
 
                   setSelectedAccount(acc);
-
-                  setErrors(prev=>({
-                    ...prev,
-                    account:null
-                  }));
 
                 }}
               >
 
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose account"/>
+                  <SelectValue placeholder="Choose account to Withdrawal into"/>
                 </SelectTrigger>
 
                 <SelectContent>
@@ -391,23 +327,16 @@ export const CashWithdrawalWorkflow = ({
 
             </div>
 
-            <div className="space-y-2">
+            {/* AMOUNT */}
+
+            <div>
 
               <Label>Amount *</Label>
 
               <Input
                 type="number"
                 value={amount}
-                onChange={(e)=>{
-
-                  setAmount(e.target.value);
-
-                  setErrors(prev=>({
-                    ...prev,
-                    amount:null
-                  }));
-
-                }}
+                onChange={(e)=>setAmount(e.target.value)}
                 placeholder="0.00"
               />
 
@@ -419,33 +348,37 @@ export const CashWithdrawalWorkflow = ({
 
             </div>
 
-            <div className="space-y-2">
+            {/* REFERENCE */}
+
+            <div>
 
               <Label>Reference</Label>
 
               <Input
                 value={reference}
                 onChange={(e)=>setReference(e.target.value)}
-                placeholder="Enter reference"
+                placeholder="Enter reference (optional)"
               />
 
             </div>
 
-            <div className="space-y-2">
+            {/* NARRATION */}
+
+            <div>
 
               <Label>Narration</Label>
 
               <Input
                 value={narration}
                 onChange={(e)=>setNarration(e.target.value)}
-                placeholder="Enter narration"
+                placeholder="Enter narration (optional)"
               />
 
             </div>
 
             <Button
-              onClick={handleInputSubmit}
-              className="w-full bg-blue-600"
+              onClick={handleSubmit}
+              className="w-full"
             >
               Submit for Validation
             </Button>
@@ -456,13 +389,13 @@ export const CashWithdrawalWorkflow = ({
 
         {/* STEP 2 */}
 
-        {step===2 && (
+        {step === 2 && (
 
           <div className="text-center py-16">
 
             <Loader2 className="animate-spin mx-auto mb-4"/>
 
-            Validating Transaction...
+            Validating transaction...
 
             {setTimeout(()=>setStep(3),1500)}
 
@@ -472,7 +405,7 @@ export const CashWithdrawalWorkflow = ({
 
         {/* STEP 3 */}
 
-        {step===3 && (
+        {step === 3 && (
 
           <div className="bg-white p-6 rounded-xl border">
 
@@ -485,6 +418,70 @@ export const CashWithdrawalWorkflow = ({
               onClick={()=>setStep(4)}
             >
               Proceed
+            </Button>
+
+          </div>
+
+        )}
+
+        {/* STEP 4 */}
+
+        {step === 4 && (
+
+          <div className="text-center py-16">
+
+            Customer Verification Required
+
+            <Button
+              className="w-full mt-4"
+              onClick={()=>setStep(5)}
+            >
+              Confirm
+            </Button>
+
+          </div>
+
+        )}
+
+        {/* STEP 5 */}
+
+        {step === 5 && (
+
+          <div className="text-center py-16">
+
+            Awaiting Authorization
+
+            <Button
+              className="w-full mt-4"
+              onClick={()=>setStep(6)}
+            >
+              Authorize
+            </Button>
+
+          </div>
+
+        )}
+
+        {/* STEP 6 */}
+
+        {step === 6 && (
+
+          <div className="text-center py-16">
+
+            <CheckCircle2 className="mx-auto text-green-600 mb-4"/>
+
+            Withdrawal Successful
+
+            <Button
+              disabled={isSubmitting}
+              onClick={handleFinish}
+              className="w-full mt-4"
+            >
+
+              {isSubmitting
+                ? "Completing..."
+                : "Finish"}
+
             </Button>
 
           </div>

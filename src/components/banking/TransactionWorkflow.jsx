@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Bot, Landmark, Wallet, Smartphone, CreditCard, CheckCircle2, Loader2 } from "lucide-react"; // Added icons
+import { ArrowLeft, Bot, Landmark, Wallet, Smartphone, CreditCard, CheckCircle2, Loader2 } from "lucide-react";
 import { DashboardHeader } from "@/components/banking/DashboardHeader";
 
 const STEPS = [
@@ -26,7 +26,16 @@ export const TransactionWorkflow = ({
   const [transactionId, setTransactionId] = useState(null);
   const [customer, setCustomer] = useState(null);
 
-  // Initialize customer from props or session storage
+  // Get session user data
+  let sessionUser = {};
+  try {
+    sessionUser = JSON.parse(sessionStorage.getItem("userData1")) || {};
+  } catch {
+    sessionUser = {};
+  }
+  const accounts = sessionUser?.account || [];
+
+  // Initialize customer from props, session storage, or session user
   useEffect(() => {
     if (propCustomer) {
       console.log("Using customer from props:", propCustomer);
@@ -40,13 +49,20 @@ export const TransactionWorkflow = ({
         const parsedCustomer = JSON.parse(sessionData);
         console.log("Retrieved customer from session:", parsedCustomer);
         setCustomer(parsedCustomer);
-      } else {
-        console.warn("No customer found in session storage");
+        return;
       }
     } catch (e) {
       console.error("Error parsing session customer:", e);
     }
-  }, [propCustomer]);
+
+    // If no customer in props or session storage, try to use session user
+    if (sessionUser && Object.keys(sessionUser).length > 0) {
+      console.log("Using session user as customer:", sessionUser);
+      setCustomer(sessionUser);
+    } else {
+      console.warn("No customer found in props, session storage, or session user");
+    }
+  }, [propCustomer, sessionUser]);
 
   const getCustomerId = () => {
     if (!customer) return null;
@@ -67,8 +83,9 @@ export const TransactionWorkflow = ({
       console.log("Customer available fields:", Object.keys(customer));
       console.log("Customer UID (user_id):", customer.user_id);
       console.log("Resolved customer ID for API:", getCustomerId());
+      console.log("Session accounts:", accounts);
     }
-  }, [customer]);
+  }, [customer, accounts]);
 
   const [step, setStep] = useState(1);
   const [accountTypes, setAccountTypes] = useState([]);
@@ -328,11 +345,12 @@ export const TransactionWorkflow = ({
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <DashboardHeader
-        customerName={customer?.fullName || customer?.name || "Customer"}
+        customerName={customer?.fullName || customer?.name || customer?.first_name || "Customer"}
         isDropdownOpen={navDropdownOpen}
         setIsDropdownOpen={setNavDropdownOpen}
         onLogout={() => {
           localStorage.removeItem("customer");
+          sessionStorage.removeItem("customer");
           navigate('/');
         }}
       />
@@ -401,14 +419,23 @@ export const TransactionWorkflow = ({
           </div>
         </div>
 
-        {/* Customer Info Card - Simplified */}
+        {/* Customer Info Card - Simplified with session data */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-6 flex items-center gap-4">
           <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-            {customer?.name?.charAt(0) || 'U'}
+            {customer?.first_name?.charAt(0) || customer?.name?.charAt(0) || 'U'}
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-gray-900">{customer?.name}</h3>
-            <p className="text-xs text-gray-500">ID: {customer?.user_id || "N/A"} • {customer?.email}</p>
+            <h3 className="font-semibold text-gray-900">
+              {customer?.first_name} {customer?.last_name} {customer?.name}
+            </h3>
+            <p className="text-xs text-gray-500">
+              ID: {customer?.user_id || customer?.id || "N/A"} • {customer?.email || "No email"}
+            </p>
+            {accounts && accounts.length > 0 && (
+              <p className="text-xs text-gray-400 mt-1">
+                {accounts.length} account(s) available
+              </p>
+            )}
           </div>
         </div>
 
@@ -585,7 +612,7 @@ export const TransactionWorkflow = ({
               <div className="flex justify-between py-2 border-b border-gray-100">
                 <span className="text-sm text-gray-500">Customer</span>
                 <span className="text-sm font-medium text-gray-800">
-                  {customer?.first_name} {customer?.last_name}
+                  {customer?.first_name} {customer?.last_name} {customer?.name}
                 </span>
               </div>
               <div className="flex justify-between py-2 border-b border-gray-100">
@@ -674,7 +701,7 @@ export const TransactionWorkflow = ({
             <div className="p-6 space-y-4">
               <div className="flex justify-between py-2 border-b border-gray-100 text-sm">
                 <span className="text-gray-500">Customer</span>
-                <span className="font-medium">{customer?.first_name} {customer?.last_name}</span>
+                <span className="font-medium">{customer?.first_name} {customer?.last_name} {customer?.name}</span>
               </div>
 
               {/* Added Customer ID */}

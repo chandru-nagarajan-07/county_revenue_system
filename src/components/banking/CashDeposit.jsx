@@ -154,8 +154,8 @@ const handleSubmit = async () => {
 
   };
 
-  if (!customer) {
-
+  if (!customer && !sessionUser) {
+    console.error("Customer or session user data missing", { customer, sessionUser });
     return (
       <div className="min-h-screen flex items-center justify-center">
         Customer not found
@@ -171,7 +171,7 @@ const handleSubmit = async () => {
       {/* HEADER */}
 
       <DashboardHeader
-        customerName={customer?.fullName || "Customer"}
+        customerName={customer?.fullName || sessionUser?.first_name || "Customer"}
         isDropdownOpen={navDropdownOpen}
         setIsDropdownOpen={setNavDropdownOpen}
         onLogout={() => {
@@ -248,7 +248,7 @@ const handleSubmit = async () => {
 
           <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold">
 
-            {(customer?.fullName || "U")
+            {(customer?.fullName || sessionUser?.first_name || "C")
               .split(" ")
               .map(n => n[0])
               .join("")
@@ -259,11 +259,11 @@ const handleSubmit = async () => {
           <div>
 
             <p className="text-sm font-semibold">
-              {customer?.fullName}
+              {customer?.fullName || sessionUser?.first_name}
             </p>
 
             <p className="text-xs text-muted-foreground">
-              {customer?.user_id} • {customer?.phone}
+              {customer?.user_id || sessionUser?.user_id} • {customer?.phone || sessionUser?.phone}
             </p>
 
           </div>
