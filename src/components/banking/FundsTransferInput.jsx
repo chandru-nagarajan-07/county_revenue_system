@@ -1,22 +1,49 @@
-import { useState, useMemo } from "react";
-import { Zap, Clock, Shield, ArrowLeftRight, Smartphone, Check, AlertCircle, Info, Star } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import {
+  ArrowLeft,
+  Check,
+  AlertCircle,
+  Shield,
+  Eye,
+  ThumbsUp,
+  Receipt,
+  Zap,
+  Star,
+  ArrowLeftRight,
+  Clock,
+  Smartphone,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
+import { DashboardHeader } from "@/components/banking/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from "@/components/ui/select";
-
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 
 import { getEligibleAccounts, ACCOUNT_TYPE_LABELS } from "@/data/demoCustomers";
 import { recommendChannels } from "@/data/paymentChannels";
+import { inferSegment, SEGMENT_LABELS, computeCharges } from "@/data/serviceCharges";
+
+/* CONSTANTS */
+const STEPS = [
+  { id: 1, name: "Input" },
+  { id: 2, name: "Validation" },
+  { id: 3, name: "Review" },
+  { id: 4, name: "Processing" },
+  { id: 5, name: "Verification" },
+  { id: 6, name: "Authorization" },
+];
 
 const ICON_MAP = {
   ArrowLeftRight: <ArrowLeftRight className="h-4 w-4" />,
@@ -26,20 +53,29 @@ const ICON_MAP = {
   Smartphone: <Smartphone className="h-4 w-4" />
 };
 
-export function FundsTransferInput({ customer, onSubmit }) {
+export function FundsTransferInput({ customer: propCustomer, onBack }) {
+  const navigate = useNavigate();
+  const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
-  if (!customer) return null;
+  /* SESSION USER */
+  let sessionUser = {};
+  try {
+    sessionUser = JSON.parse(sessionStorage.getItem("userData1")) || {};
+  } catch {
+    sessionUser = {};
+  }
+  
+  // 1. Extract accounts safely
+  const accounts = sessionUser?.account || [];
+  
+  // 2. Determine customer
+  const customer = propCustomer || sessionUser;
 
-  /* SAFE ACCOUNTS */
+  /* WORKFLOW STATE */
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
 
-  const eligibleAccounts = useMemo(() => {
-    try {
-      return getEligibleAccounts(customer, "funds-transfer") || [];
-    } catch {
-      return [];
-    }
-  }, [customer]);
-
+  /* FORM STATE */
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [destination, setDestination] = useState("other-bank");
   const [beneficiaryAccount, setBeneficiaryAccount] = useState("");
@@ -47,7 +83,20 @@ export function FundsTransferInput({ customer, onSubmit }) {
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [selectedChannelId, setSelectedChannelId] = useState(null);
-  const [errors, setErrors] = useState({});
+  const [formErrors, setFormErrors] = useState({});
+
+  /* PROCESSING STATE */
+  const [officerNotes, setOfficerNotes] = useState("");
+
+  /* DERIVED DATA */
+  const eligibleAccounts = useMemo(() => {
+    try {
+      return getEligibleAccounts(customer, "funds-transfer") || [];
+    } catch {
+      // Fallback to session accounts if helper fails
+      return accounts;
+    }
+  }, [customer, accounts]);
 
   const numAmount = useMemo(() => {
     const n = Number(amount);
@@ -65,298 +114,546 @@ export function FundsTransferInput({ customer, onSubmit }) {
 
   const recommendedId = recommendations.find(r => r.recommended)?.channel?.id;
   const effectiveChannelId = selectedChannelId ?? recommendedId ?? null;
-
   const selectedRec = recommendations.find(r => r.channel?.id === effectiveChannelId);
 
+  // 3. FIX: Create safeCustomer with 'accounts' property expected by inferSegment
+  const segment = useMemo(() => {
+    const safeCustomer = {
+      ...customer,
+      accounts: accounts // Ensure accounts array is attached
+    };
+    return inferSegment(safeCustomer);
+  }, [customer, accounts]);
+
+  const charges = useMemo(() => {
+    return computeCharges('funds-transfer', segment, numAmount);
+  }, [segment, numAmount]);
+
+  /* HANDLERS */
   const validate = () => {
-
     const errs = {};
-
-    if (!selectedAccount)
-      errs.account = "Please select a source account";
-
-    if (!beneficiaryAccount.trim())
-      errs.beneficiaryAccount = "Beneficiary account is required";
-
-    if (!beneficiaryName.trim())
-      errs.beneficiaryName = "Beneficiary name is required";
-
-    if (numAmount <= 0)
-      errs.amount = "Enter a valid amount";
-
-    if (!effectiveChannelId)
-      errs.channel = "Please select a payment channel";
-
-    if (selectedRec && !selectedRec.eligible)
-      errs.channel =
-        selectedRec.ineligibleReason ||
-        "Channel not available for this amount";
-
-    setErrors(errs);
-
+    if (!selectedAccount) errs.account = "Please select a source account";
+    if (!beneficiaryAccount.trim()) errs.beneficiaryAccount = "Beneficiary account is required";
+    if (!beneficiaryName.trim()) errs.beneficiaryName = "Beneficiary name is required";
+    if (numAmount <= 0) errs.amount = "Enter a valid amount";
+    if (!effectiveChannelId) errs.channel = "Please select a payment channel";
+    if (selectedRec && !selectedRec.eligible) errs.channel = selectedRec.ineligibleReason || "Channel not available";
+    
+    setFormErrors(errs);
     return Object.keys(errs).length === 0;
-
   };
 
-  const handleSubmit = () => {
-
-    if (!validate() || !selectedRec) return;
-
-    onSubmit({
-      sourceAccount: selectedAccount.accountNumber,
-      beneficiaryAccount,
-      beneficiaryName,
-      amount,
-      reference,
-      destination,
-      channelId: selectedRec.channel.id,
-      channelName: selectedRec.channel.name,
-      channelSla: selectedRec.channel.sla,
-      networkCost: selectedRec.estimatedCost
-    });
-
+  const handleStepOneSubmit = async () => {
+    if (!validate()) return;
+    
+    setLoading(true);
+    await new Promise(r => setTimeout(r, 800));
+    setLoading(false);
+    setStep(2);
   };
 
-  return (
+  useEffect(() => {
+    if (step === 2) {
+      const timer = setTimeout(() => setStep(3), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
 
-    <div className="space-y-5 max-w-lg mx-auto">
+  const handleFinalComplete = async () => {
+    setLoading(true);
+    await new Promise(r => setTimeout(r, 1000));
+    setLoading(false);
+    alert("Transfer Authorized & Processed!");
+    if (onBack) onBack();
+  };
 
-      {/* CUSTOMER */}
+  /* ANIMATION VARIANTS */
+  const pageVariants = {
+    initial: { opacity: 0, x: 20 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -20 },
+  };
 
-      <div className="flex items-center gap-3 rounded-xl border p-4">
-
-        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-sm">
-
-          {(customer.fullName || "")
-            .split(" ")
-            .map(n => n[0])
-            .join("")
-            .slice(0,2)}
-
-        </div>
-
-        <div>
-
-          <p className="text-sm font-semibold">
-            {customer.fullName}
-          </p>
-
-          <p className="text-xs text-muted-foreground">
-            {customer.customerId} • {customer.phone}
-          </p>
-
-        </div>
-
+  if (!customer) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Customer not found
       </div>
-
-      {/* SOURCE ACCOUNT */}
-
-      <div className="space-y-2">
-
-        <Label>Source Account *</Label>
-
-        <Select
-          value={selectedAccount?.accountNumber || ""}
-          onValueChange={(val) => {
-
-            const acc =
-              eligibleAccounts.find(
-                a => a.accountNumber === val
-              ) || null;
-
-            setSelectedAccount(acc);
-
-          }}
-        >
-
-          <SelectTrigger>
-            <SelectValue placeholder="Choose account"/>
-          </SelectTrigger>
-
-          <SelectContent>
-
-            {eligibleAccounts.map(acc => (
-
-              <SelectItem
-                key={acc.accountNumber}
-                value={acc.accountNumber}
-              >
-
-                {acc.accountNumber} •
-                {ACCOUNT_TYPE_LABELS?.[acc.type]} •
-                {acc.currency}
-
-              </SelectItem>
-
-            ))}
-
-          </SelectContent>
-
-        </Select>
-
-        {errors.account && (
-          <p className="text-xs text-destructive">
-            {errors.account}
-          </p>
-        )}
-
-      </div>
-
-      {/* DESTINATION */}
-
-      <div className="space-y-2">
-
-        <Label>Destination *</Label>
-
-        <Select
-          value={destination}
-          onValueChange={(val)=>{
-            setDestination(val);
-            setSelectedChannelId(null);
-          }}
-        >
-
-          <SelectTrigger>
-            <SelectValue/>
-          </SelectTrigger>
-
-          <SelectContent>
-
-            <SelectItem value="same-bank">
-              Same Bank
-            </SelectItem>
-
-            <SelectItem value="other-bank">
-              Other Bank
-            </SelectItem>
-
-            <SelectItem value="mobile-wallet">
-              Mobile Wallet
-            </SelectItem>
-
-          </SelectContent>
-
-        </Select>
-
-      </div>
-
-      {/* BENEFICIARY */}
-
-      <div className="space-y-2">
-
-        <Label>Beneficiary *</Label>
-
-        <Input
-          value={beneficiaryAccount}
-          onChange={(e)=>setBeneficiaryAccount(e.target.value)}
-        />
-
-      </div>
-
-      <div className="space-y-2">
-
-        <Label>Beneficiary Name *</Label>
-
-        <Input
-          value={beneficiaryName}
-          onChange={(e)=>setBeneficiaryName(e.target.value)}
-        />
-
-      </div>
-
-      {/* AMOUNT */}
-
-      <div className="space-y-2">
-
-        <Label>Amount *</Label>
-
-        <Input
-          type="number"
-          value={amount}
-          onChange={(e)=>setAmount(e.target.value)}
-        />
-
-      </div>
-
-      {/* CHANNEL */}
-
-      {recommendations.length > 0 && (
-
-        <RadioGroup
-          value={effectiveChannelId || ""}
-          onValueChange={(val)=>setSelectedChannelId(val)}
-        >
-
-          {recommendations.map(rec => (
-
-            <ChannelOption
-              key={rec.channel.id}
-              rec={rec}
-              isSelected={
-                effectiveChannelId === rec.channel.id
-              }
-            />
-
-          ))}
-
-        </RadioGroup>
-
-      )}
-
-      <Button
-        onClick={handleSubmit}
-        className="w-full"
-      >
-
-        Submit for Validation
-
-      </Button>
-
-    </div>
-
-  );
-
-}
-
-/* CHANNEL CARD */
-
-function ChannelOption({ rec, isSelected }) {
-
-  const {
-    channel,
-    eligible,
-    estimatedCost
-  } = rec;
+    );
+  }
 
   return (
-
-    <label
-      className={`flex gap-3 border rounded-xl p-4 ${
-        isSelected
-        ? "border-primary"
-        : "border-border"
-      }`}
-    >
-
-      <RadioGroupItem
-        value={channel.id}
-        disabled={!eligible}
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <DashboardHeader
+        customerName={customer?.first_name || customer?.fullName || "Customer"}
+        isDropdownOpen={navDropdownOpen}
+        setIsDropdownOpen={setNavDropdownOpen}
+        onLogout={() => {
+          localStorage.removeItem("customer");
+          navigate("/");
+        }}
       />
 
-      <div>
+      {/* Sticky Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-20 px-4 sm:px-6 py-3 shadow-sm">
+        <div className="flex items-center gap-4 mb-3">
+          <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-lg font-bold text-gray-900 tracking-tight">
+              Funds Transfer
+            </h1>
+            <p className="text-xs text-gray-500">
+              Step {step} of 6: {STEPS[step - 1].name}
+            </p>
+          </div>
+        </div>
 
-        <p className="font-semibold">
-          {channel.name}
-        </p>
+        {/* Stepper UI */}
+        <div className="flex items-center w-full mt-2 px-1">
+          {STEPS.map((s, index) => {
+            const isCompleted = s.id < step;
+            const isCurrent = s.id === step;
 
-        <p className="text-xs text-muted-foreground">
-          Cost: {estimatedCost}
-        </p>
+            return (
+              <div key={s.id} className="flex items-center flex-1 last:flex-none">
+                <div className="relative flex flex-col items-center">
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                      isCompleted
+                        ? "bg-primary border-primary text-primary-foreground"
+                        : isCurrent
+                        ? "bg-accent border-accent text-accent-foreground scale-110 shadow-sm"
+                        : "bg-white border-gray-200 text-muted-foreground"
+                    }`}
+                  >
+                    {isCompleted ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <span className="text-[10px] font-bold">{s.id}</span>
+                    )}
+                  </div>
+                </div>
 
+                {index < STEPS.length - 1 && (
+                  <div
+                    className={`flex-1 h-[2px] mx-1 transition-colors duration-300 ${
+                      isCompleted ? "bg-primary" : "bg-gray-200"
+                    }`}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-    </label>
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <AnimatePresence mode="wait">
 
+          {/* STEP 1: INPUT */}
+          {step === 1 && (
+            <motion.div
+              key="step1"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6 max-w-lg mx-auto"
+            >
+              {/* Customer Banner */}
+              <div className="flex items-center gap-3 rounded-xl border p-4 bg-white shadow-sm">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                  {(customer?.fullName || customer?.first_name || "C")
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2)}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">{customer?.fullName || customer?.first_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {customer?.customerId || customer?.user_id} • {SEGMENT_LABELS[segment]}
+                  </p>
+                </div>
+              </div>
+
+              {/* Source Account */}
+              <div className="space-y-2">
+                <Label>Source Account *</Label>
+                <Select
+                  value={selectedAccount?.accountNumber || selectedAccount?.account_number || ""}
+                  onValueChange={(val) => {
+                    const acc = eligibleAccounts.find(a => (a.accountNumber || a.account_number) === val);
+                    setSelectedAccount(acc);
+                  }}
+                >
+                  <SelectTrigger className={formErrors.account ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Choose account"/>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {eligibleAccounts.map(acc => (
+                      <SelectItem key={acc.accountNumber || acc.account_number} value={acc.accountNumber || acc.account_number}>
+                        {acc.accountNumber || acc.account_number} • {acc.type ? ACCOUNT_TYPE_LABELS?.[acc.type] : 'Account'} • {acc.currency || 'KES'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.account && <p className="text-xs text-destructive">{formErrors.account}</p>}
+              </div>
+
+              {/* Destination */}
+              <div className="space-y-2">
+                <Label>Destination *</Label>
+                <Select
+                  value={destination}
+                  onValueChange={(val) => {
+                    setDestination(val);
+                    setSelectedChannelId(null);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue/>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="same-bank">Same Bank</SelectItem>
+                    <SelectItem value="other-bank">Other Bank</SelectItem>
+                    <SelectItem value="mobile-wallet">Mobile Wallet</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Beneficiary */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Beneficiary Account *</Label>
+                  <Input
+                    value={beneficiaryAccount}
+                    onChange={(e)=>setBeneficiaryAccount(e.target.value)}
+                    className={formErrors.beneficiaryAccount ? "border-destructive" : ""}
+                  />
+                  {formErrors.beneficiaryAccount && <p className="text-xs text-destructive">{formErrors.beneficiaryAccount}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label>Beneficiary Name *</Label>
+                  <Input
+                    value={beneficiaryName}
+                    onChange={(e)=>setBeneficiaryName(e.target.value)}
+                    className={formErrors.beneficiaryName ? "border-destructive" : ""}
+                  />
+                  {formErrors.beneficiaryName && <p className="text-xs text-destructive">{formErrors.beneficiaryName}</p>}
+                </div>
+              </div>
+
+              {/* Amount */}
+              <div className="space-y-2">
+                <Label>Amount *</Label>
+                <Input
+                  type="number"
+                  value={amount}
+                  onChange={(e)=>setAmount(e.target.value)}
+                  className={formErrors.amount ? "border-destructive" : ""}
+                />
+                {formErrors.amount && <p className="text-xs text-destructive">{formErrors.amount}</p>}
+              </div>
+
+              {/* Channels */}
+              {recommendations.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-gray-500 uppercase">Select Channel</Label>
+                  <RadioGroup
+                    value={effectiveChannelId || ""}
+                    onValueChange={(val)=>setSelectedChannelId(val)}
+                    className="space-y-2"
+                  >
+                    {recommendations.map(rec => (
+                      <label
+                        key={rec.channel.id}
+                        className={`flex gap-3 border rounded-xl p-4 cursor-pointer transition-all ${
+                          effectiveChannelId === rec.channel.id
+                          ? "border-primary bg-primary/5 shadow-sm"
+                          : "border-border bg-white hover:bg-gray-50"
+                        } ${!rec.eligible ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <RadioGroupItem value={rec.channel.id} disabled={!rec.eligible} className="mt-1" />
+                        <div className="flex-1 flex justify-between items-center">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-sm">{rec.channel.name}</p>
+                              {rec.recommended && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-green-100 text-green-700 border-green-200">
+                                  <Star className="h-2.5 w-2.5 mr-1"/>Recommended
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              SLA: {rec.channel.sla} • Cost: {rec.estimatedCost}
+                            </p>
+                          </div>
+                          <div className="text-muted-foreground">
+                            {ICON_MAP[rec.channel.icon] || <Zap className="h-4 w-4"/>}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </RadioGroup>
+                  {formErrors.channel && <p className="text-xs text-destructive">{formErrors.channel}</p>}
+                </div>
+              )}
+
+              <Button 
+                onClick={handleStepOneSubmit} 
+                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+                disabled={loading}
+              >
+                {loading ? "Processing..." : "Validate Transaction"}
+              </Button>
+            </motion.div>
+          )}
+
+          {/* STEP 2: VALIDATION */}
+          {step === 2 && (
+            <motion.div
+              key="step2"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="flex flex-col items-center justify-center py-20 gap-4"
+            >
+              <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center animate-pulse">
+                <Shield className="h-8 w-8 text-blue-600" />
+              </div>
+              <h3 className="font-semibold text-lg">Validating Transaction...</h3>
+              <p className="text-sm text-muted-foreground">Checking compliance and limits</p>
+            </motion.div>
+          )}
+
+          {/* STEP 3: REVIEW */}
+          {step === 3 && (
+            <motion.div
+              key="step3"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6 max-w-lg mx-auto"
+            >
+              <div className="flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
+                <Check className="h-5 w-5" />
+                <span className="text-sm font-medium">Validation Passed</span>
+              </div>
+
+              <div className="rounded-xl border bg-white p-5 space-y-3 shadow-sm">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Transaction Summary</h4>
+                <div className="space-y-0">
+                  {[
+                    { l: "Source Account", v: selectedAccount?.accountNumber || selectedAccount?.account_number },
+                    { l: "Beneficiary", v: `${beneficiaryName} (${beneficiaryAccount})` },
+                    { l: "Destination", v: destination.replace('-', ' ') },
+                    { l: "Amount", v: `KES ${numAmount.toLocaleString()}` },
+                    { l: "Channel", v: selectedRec?.channel?.name || "N/A" },
+                    { l: "Reference", v: reference || "-" },
+                  ].map((row) => (
+                    <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
+                      <span className="text-sm text-gray-500">{row.l}</span>
+                      <span className="text-sm font-medium text-gray-800">{row.v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Charges Section */}
+              <div className="rounded-xl border bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+                    <Receipt className="h-3.5 w-3.5" /> Service Charges
+                  </h4>
+                  <span className="text-[10px] bg-gray-100 px-2 py-0.5 rounded-full font-medium text-gray-600">
+                    {SEGMENT_LABELS[segment]}
+                  </span>
+                </div>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Transfer Fee</span>
+                    <span className="font-medium">KES {charges.serviceFee.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Excise Duty</span>
+                    <span className="font-medium">KES {charges.exciseDuty.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t mt-2">
+                    <span className="font-semibold">Total</span>
+                    <span className="font-bold text-primary">KES {charges.totalCharges.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
+                  Back
+                </Button>
+                <Button onClick={() => setStep(4)} className="flex-1 gold-gradient text-accent-foreground font-semibold shadow-gold">
+                  Proceed
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 4: PROCESSING */}
+          {step === 4 && (
+            <motion.div
+              key="step4"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6 max-w-lg mx-auto"
+            >
+              <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-3 rounded-lg mb-2">
+                <Zap className="h-5 w-5" />
+                <span className="text-sm font-medium">Processing Details</span>
+              </div>
+
+              <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Channel Information</h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Channel</p>
+                    <p className="font-semibold">{selectedRec?.channel?.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Estimated Time</p>
+                    <p className="font-bold text-lg">{selectedRec?.channel?.sla || 'Immediate'}</p>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-3 rounded-lg flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>Transaction will be processed via the selected payment rail.</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Officer Notes</Label>
+                <Textarea
+                  placeholder="Optional notes regarding the transaction..."
+                  value={officerNotes}
+                  onChange={(e) => setOfficerNotes(e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
+                  Back
+                </Button>
+                <Button onClick={() => setStep(5)} className="flex-1 gold-gradient text-accent-foreground font-semibold shadow-gold">
+                  Confirm
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 5: VERIFICATION */}
+          {step === 5 && (
+            <motion.div
+              key="step5"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6 max-w-lg mx-auto"
+            >
+              <div className="flex items-center gap-2 text-blue-600 bg-blue-50 p-3 rounded-lg">
+                <Eye className="h-5 w-5" />
+                <span className="text-sm font-medium">Customer Verification</span>
+              </div>
+
+              <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Final Deal Details</h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Beneficiary</p>
+                    <p className="font-semibold">{beneficiaryName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Amount</p>
+                    <p className="font-bold text-lg">KES {numAmount.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Source</p>
+                    <p className="font-medium text-gray-700">{selectedAccount?.accountNumber || selectedAccount?.account_number}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Destination</p>
+                    <p className="font-medium text-gray-700">{beneficiaryAccount}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
+                  <Star className="h-3.5 w-3.5" />
+                  <span>Ready for final authorization</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep(4)} className="flex-1">
+                  Request Change
+                </Button>
+                <Button onClick={() => setStep(6)} className="flex-1 gold-gradient text-accent-foreground font-semibold shadow-gold">
+                  Confirm & Verify
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 6: AUTHORIZATION */}
+          {step === 6 && (
+            <motion.div
+              key="step6"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6 max-w-lg mx-auto text-center py-10"
+            >
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
+                <ThumbsUp className="h-8 w-8 text-accent" />
+              </div>
+            
+              <h3 className="text-xl font-semibold">Awaiting Authorization</h3>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                This transaction requires supervisor approval or final confirmation.
+              </p>
+
+              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Transaction ID</span>
+                  <span className="font-mono text-xs">FT-{Date.now().toString().slice(-8)}</span>
+                </div>
+                
+                <div className="flex items-center gap-2 rounded bg-green-100 p-3 text-green-900 text-xs">
+                  <Check className="h-4 w-4" />
+                  <span>All verifications passed</span>
+                </div>
+              </div>
+
+              <Button 
+                onClick={handleFinalComplete} 
+                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+                disabled={loading}
+              >
+                {loading ? "Processing..." : "Authorize Transaction"}
+              </Button>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
+      </div>
+    </div>
   );
-
 }

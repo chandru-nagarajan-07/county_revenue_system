@@ -1,9 +1,23 @@
-import { useState, useMemo } from "react";
-import { Calendar } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import {
+  ArrowLeft,
+  Check,
+  AlertCircle,
+  Shield,
+  Eye,
+  ThumbsUp,
+  Calendar,
+  Star,
+  Zap,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
+import { DashboardHeader } from "@/components/banking/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -12,7 +26,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { getEligibleAccounts, ACCOUNT_TYPE_LABELS } from "@/data/demoCustomers";
+/* CONSTANTS */
+const STEPS = [
+  { id: 1, name: "Input" },
+  { id: 2, name: "Validation" },
+  { id: 3, name: "Review" },
+  { id: 4, name: "Processing" },
+  { id: 5, name: "Verification" },
+  { id: 6, name: "Authorization" },
+];
 
 const FREQUENCY_OPTIONS = [
   { value: "weekly", label: "Weekly" },
@@ -22,362 +44,524 @@ const FREQUENCY_OPTIONS = [
   { value: "annually", label: "Annually" },
 ];
 
-export function StandingOrderInput({ customer, onSubmit }) {
+export default function StandingOrderWorkflow({ customer: propCustomer, onBack, onComplete }) {
+  const navigate = useNavigate();
+  const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
-  if (!customer) return null;
+  /* SESSION USER */
+  let sessionUser = {};
+  try {
+    sessionUser = JSON.parse(sessionStorage.getItem("userData1")) || {};
+  } catch {
+    sessionUser = {};
+  }
+  const accounts = sessionUser?.account || [];
 
-  const eligibleAccounts = useMemo(() => {
-    try {
-      return getEligibleAccounts(customer, "standing-order") || [];
-    } catch {
-      return [];
-    }
-  }, [customer]);
+  /* STATE */
+  const [customer, setCustomer] = useState(null);
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
 
-  const [selectedAccount, setSelectedAccount] = useState(
-    eligibleAccounts.length === 1 ? eligibleAccounts[0] : null
-  );
-
+  /* FORM STATE */
+  const [selectedAccount, setSelectedAccount] = useState(null);
   const [beneficiary, setBeneficiary] = useState("");
   const [beneficiaryName, setBeneficiaryName] = useState("");
   const [amount, setAmount] = useState("");
   const [frequency, setFrequency] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [formErrors, setFormErrors] = useState({});
 
-  const [errors, setErrors] = useState({});
+  /* PROCESSING STATE */
+  const [officerNotes, setOfficerNotes] = useState("");
 
+  /* DERIVED DATA */
+  const eligibleAccounts = useMemo(() => {
+    return accounts.filter((acc) => acc?.status === "ACTIVE");
+  }, [accounts]);
+
+  /* INIT CUSTOMER */
+  useEffect(() => {
+    if (propCustomer) {
+      setCustomer(propCustomer);
+      return;
+    }
+    const sessionCustomer = sessionStorage.getItem("customer");
+    if (sessionCustomer) setCustomer(JSON.parse(sessionCustomer));
+  }, [propCustomer]);
+
+  // Auto-advance Step 2 -> 3
+  useEffect(() => {
+    if (step === 2) {
+      const timer = setTimeout(() => setStep(3), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
+
+  /* HANDLERS */
   const validate = () => {
-
     const errs = {};
-
-    if (!selectedAccount)
-      errs.account = "Please select a source account";
-
-    if (!beneficiary.trim())
-      errs.beneficiary = "Enter beneficiary account";
-
-    if (!amount || Number(amount) <= 0)
-      errs.amount = "Enter a valid amount";
-
-    if (!frequency)
-      errs.frequency = "Select frequency";
-
-    if (!startDate)
-      errs.startDate = "Select start date";
-
-    setErrors(errs);
-
+    if (!selectedAccount) errs.account = "Select source account";
+    if (!beneficiary.trim()) errs.beneficiary = "Enter beneficiary account";
+    if (!amount || Number(amount) <= 0) errs.amount = "Enter valid amount";
+    if (!frequency) errs.frequency = "Select frequency";
+    if (!startDate) errs.startDate = "Select start date";
+    setFormErrors(errs);
     return Object.keys(errs).length === 0;
-
   };
 
-  const handleSubmit = () => {
-
+  const handleSubmit = async () => {
     if (!validate()) return;
+    setLoading(true);
 
-    onSubmit({
-      sourceAccount: selectedAccount.accountNumber,
-      beneficiary,
-      beneficiaryName,
-      amount,
-      frequency,
-      startDate,
-      endDate,
-    });
-
+    try {
+      // Simulate API call
+      await new Promise((r) => setTimeout(r, 1000));
+      setStep(2); // Go to Validation
+    } catch (error) {
+      console.error(error);
+      alert("Server error");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleFinalComplete = async () => {
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 1000));
+    setLoading(false);
+    alert("Standing Order Created Successfully");
+    if (onComplete) onComplete();
+    if (onBack) onBack();
+  };
+
+  /* ANIMATION VARIANTS */
+  const pageVariants = {
+    initial: { opacity: 0, x: 20 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -20 },
+  };
+
+  if (!customer && !sessionUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Customer not found
+      </div>
+    );
+  }
 
   return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <DashboardHeader
+        customerName={customer?.fullName || sessionUser?.first_name || "Customer"}
+        isDropdownOpen={navDropdownOpen}
+        setIsDropdownOpen={setNavDropdownOpen}
+        onLogout={() => {
+          localStorage.removeItem("customer");
+          navigate("/");
+        }}
+      />
 
-    <div className="space-y-5 max-w-lg mx-auto">
-
-      {/* CUSTOMER */}
-
-      <div className="flex items-center gap-3 rounded-xl border bg-muted/30 p-4">
-
-        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-sm">
-
-          {(customer?.fullName || "")
-            .split(" ")
-            .map(n => n[0])
-            .join("")
-            .slice(0, 2)}
-
+      {/* Sticky Header with Back Button & Stepper */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-20 px-4 sm:px-6 py-3 shadow-sm">
+        <div className="flex items-center gap-4 mb-3">
+          <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-lg font-bold text-gray-900 tracking-tight">
+              Standing Order
+            </h1>
+            <p className="text-xs text-gray-500">
+              Step {step} of 6: {STEPS[step - 1].name}
+            </p>
+          </div>
         </div>
 
-        <div>
+        {/* ROUND STEPPER UI */}
+        <div className="flex items-center w-full mt-2 px-1">
+          {STEPS.map((s, index) => {
+            const isCompleted = s.id < step;
+            const isCurrent = s.id === step;
 
-          <p className="text-sm font-semibold">
-            {customer?.fullName}
-          </p>
+            return (
+              <div key={s.id} className="flex items-center flex-1 last:flex-none">
+                <div className="relative flex flex-col items-center">
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                      isCompleted
+                        ? "bg-primary border-primary text-primary-foreground"
+                        : isCurrent
+                        ? "bg-accent border-accent text-accent-foreground scale-110 shadow-sm"
+                        : "bg-white border-gray-200 text-muted-foreground"
+                    }`}
+                  >
+                    {isCompleted ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <span className="text-[10px] font-bold">{s.id}</span>
+                    )}
+                  </div>
+                </div>
 
-          <p className="text-xs text-muted-foreground">
-            {customer?.customerId} • {customer?.phone}
-          </p>
-
+                {index < STEPS.length - 1 && (
+                  <div
+                    className={`flex-1 h-[2px] mx-1 transition-colors duration-300 ${
+                      isCompleted ? "bg-primary" : "bg-gray-200"
+                    }`}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
-
       </div>
 
-      {/* HEADER */}
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <AnimatePresence mode="wait">
 
-      <div className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 p-4">
+          {/* ========== STEP 1: INPUT ========== */}
+          {step === 1 && (
+            <motion.div
+              key="step1"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6 max-w-lg mx-auto"
+            >
+              {/* Customer Banner */}
+              <div className="flex items-center gap-3 rounded-xl border p-4 bg-white shadow-sm">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                  {(customer?.fullName || sessionUser?.first_name || "C")
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2)}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">{customer?.fullName || sessionUser?.first_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {customer?.customerId || sessionUser?.user_id} • {customer?.phone || sessionUser?.phone}
+                  </p>
+                </div>
+              </div>
 
-        <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-[hsl(var(--accent))]">
+              {/* Header Info */}
+              <div className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 p-4">
+                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-[hsl(var(--accent))]">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold">Set Standing Order</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Create recurring payment instructions
+                  </p>
+                </div>
+              </div>
 
-          <Calendar className="h-5 w-5" />
+              {/* Form Fields */}
+              <div className="space-y-2">
+                <Label>Source Account *</Label>
+                <Select
+                  value={selectedAccount?.account_number || ""}
+                  onValueChange={(val) => {
+                    const acc = eligibleAccounts.find((a) => a.account_number === val);
+                    setSelectedAccount(acc);
+                    setFormErrors((prev) => ({ ...prev, account: "" }));
+                  }}
+                >
+                  <SelectTrigger className={formErrors.account ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Choose account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {eligibleAccounts.map((acc) => (
+                      <SelectItem key={acc.account_number} value={acc.account_number}>
+                        {acc.account_number} • {acc.currency || "KES"} {acc.balance?.toLocaleString()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.account && <p className="text-xs text-destructive">{formErrors.account}</p>}
+              </div>
 
-        </div>
+              <div className="space-y-2">
+                <Label>Beneficiary Account *</Label>
+                <Input
+                  placeholder="Enter beneficiary account"
+                  value={beneficiary}
+                  onChange={(e) => {
+                    setBeneficiary(e.target.value);
+                    setFormErrors((prev) => ({ ...prev, beneficiary: "" }));
+                  }}
+                  className={formErrors.beneficiary ? "border-destructive" : ""}
+                />
+                {formErrors.beneficiary && <p className="text-xs text-destructive">{formErrors.beneficiary}</p>}
+              </div>
 
-        <div>
+              <div className="space-y-2">
+                <Label>Beneficiary Name</Label>
+                <Input
+                  placeholder="Enter beneficiary name"
+                  value={beneficiaryName}
+                  onChange={(e) => setBeneficiaryName(e.target.value)}
+                />
+              </div>
 
-          <h3 className="text-sm font-semibold">
-            Set Standing Order
-          </h3>
+              <div className="space-y-2">
+                <Label>Amount ({selectedAccount?.currency || "KES"}) *</Label>
+                <Input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    setFormErrors((prev) => ({ ...prev, amount: "" }));
+                  }}
+                  className={formErrors.amount ? "border-destructive" : ""}
+                />
+                {formErrors.amount && <p className="text-xs text-destructive">{formErrors.amount}</p>}
+              </div>
 
-          <p className="text-xs text-muted-foreground">
-            Create or modify recurring payment instructions
-          </p>
+              <div className="space-y-2">
+                <Label>Frequency *</Label>
+                <Select
+                  value={frequency}
+                  onValueChange={(v) => {
+                    setFrequency(v);
+                    setFormErrors((prev) => ({ ...prev, frequency: "" }));
+                  }}
+                >
+                  <SelectTrigger className={formErrors.frequency ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Select frequency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FREQUENCY_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.frequency && <p className="text-xs text-destructive">{formErrors.frequency}</p>}
+              </div>
 
-        </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Start Date *</Label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      setFormErrors((prev) => ({ ...prev, startDate: "" }));
+                    }}
+                    className={formErrors.startDate ? "border-destructive" : ""}
+                  />
+                  {formErrors.startDate && <p className="text-xs text-destructive">{formErrors.startDate}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label>End Date</Label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
 
-      </div>
-
-      {/* ACCOUNT */}
-
-      <div className="space-y-2">
-
-        <Label>Source Account *</Label>
-
-        <Select
-          value={selectedAccount?.accountNumber || ""}
-          onValueChange={(val) => {
-
-            const acc =
-              eligibleAccounts.find(
-                a => a.accountNumber === val
-              ) || null;
-
-            setSelectedAccount(acc);
-
-            setErrors(prev => ({
-              ...prev,
-              account: ""
-            }));
-
-          }}
-        >
-
-          <SelectTrigger>
-            <SelectValue placeholder="Choose account"/>
-          </SelectTrigger>
-
-          <SelectContent>
-
-            {eligibleAccounts.map(acc => (
-
-              <SelectItem
-                key={acc.accountNumber}
-                value={acc.accountNumber}
+              <Button
+                onClick={handleSubmit}
+                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+                disabled={loading}
               >
+                {loading ? "Processing..." : "Submit for Validation"}
+              </Button>
+            </motion.div>
+          )}
 
-                {acc.accountNumber} •
-                {ACCOUNT_TYPE_LABELS?.[acc.type]} •
-                {acc.currency} {acc.balance.toLocaleString()}
+          {/* ========== STEP 2: VALIDATION ========== */}
+          {step === 2 && (
+            <motion.div
+              key="step2"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="flex flex-col items-center justify-center py-20 gap-4"
+            >
+              <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center animate-pulse">
+                <Shield className="h-8 w-8 text-blue-600" />
+              </div>
+              <h3 className="font-semibold text-lg">Validating Instruction...</h3>
+              <p className="text-sm text-muted-foreground">Checking account status and limits</p>
+            </motion.div>
+          )}
 
-              </SelectItem>
+          {/* ========== STEP 3: REVIEW ========== */}
+          {step === 3 && (
+            <motion.div
+              key="step3"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6 max-w-lg mx-auto"
+            >
+              <div className="flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
+                <Check className="h-5 w-5" />
+                <span className="text-sm font-medium">Validation Passed</span>
+              </div>
 
-            ))}
+              <div className="rounded-xl border bg-white p-5 space-y-3 shadow-sm">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Instruction Summary</h4>
+                <div className="space-y-0">
+                  {[
+                    { l: "Customer Name", v: customer?.fullName || sessionUser?.first_name },
+                    { l: "Source Account", v: selectedAccount?.account_number },
+                    { l: "Beneficiary", v: `${beneficiary} (${beneficiaryName || 'N/A'})` },
+                    { l: "Amount", v: `${selectedAccount?.currency || 'KES'} ${Number(amount).toLocaleString()}` },
+                    { l: "Frequency", v: FREQUENCY_OPTIONS.find(f => f.value === frequency)?.label },
+                    { l: "Start Date", v: startDate },
+                    { l: "End Date", v: endDate || "Until Cancelled" },
+                  ].map((row) => (
+                    <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
+                      <span className="text-sm text-gray-500">{row.l}</span>
+                      <span className="text-sm font-medium text-gray-800">{row.v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-          </SelectContent>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
+                  Back
+                </Button>
+                <Button onClick={() => setStep(4)} className="flex-1 gold-gradient text-accent-foreground font-semibold shadow-gold">
+                  Proceed
+                </Button>
+              </div>
+            </motion.div>
+          )}
 
-        </Select>
+          {/* ========== STEP 4: PROCESSING ========== */}
+          {step === 4 && (
+            <motion.div
+              key="step4"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6 max-w-lg mx-auto"
+            >
+              <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-3 rounded-lg mb-2">
+                <Zap className="h-5 w-5" />
+                <span className="text-sm font-medium">Officer Review</span>
+              </div>
 
-        {errors.account && (
-          <p className="text-xs text-destructive">
-            {errors.account}
-          </p>
-        )}
+              <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
+                <div className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-3 rounded-lg flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>Please verify the standing order details and schedule.</span>
+                </div>
+              </div>
 
-      </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Officer Notes</Label>
+                <Textarea
+                  placeholder="Optional notes..."
+                  value={officerNotes}
+                  onChange={(e) => setOfficerNotes(e.target.value)}
+                />
+              </div>
 
-      {/* BENEFICIARY */}
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
+                  Back
+                </Button>
+                <Button onClick={() => setStep(5)} className="flex-1 gold-gradient text-accent-foreground font-semibold shadow-gold">
+                  Confirm
+                </Button>
+              </div>
+            </motion.div>
+          )}
 
-      <div className="space-y-2">
+          {/* ========== STEP 5: VERIFICATION ========== */}
+          {step === 5 && (
+            <motion.div
+              key="step5"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6 max-w-lg mx-auto"
+            >
+              <div className="flex items-center gap-2 text-blue-600 bg-blue-50 p-3 rounded-lg">
+                <Eye className="h-5 w-5" />
+                <span className="text-sm font-medium">Customer Verification</span>
+              </div>
 
-        <Label>Beneficiary Account *</Label>
+              <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
+                <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
+                  <Star className="h-3.5 w-3.5" />
+                  <span>Instruction verified and ready for activation</span>
+                </div>
+              </div>
 
-        <Input
-          placeholder="Enter beneficiary account"
-          value={beneficiary}
-          onChange={(e)=>{
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep(4)} className="flex-1">
+                  Request Change
+                </Button>
+                <Button onClick={() => setStep(6)} className="flex-1 gold-gradient text-accent-foreground font-semibold shadow-gold">
+                  Confirm & Verify
+                </Button>
+              </div>
+            </motion.div>
+          )}
 
-            setBeneficiary(e.target.value);
+          {/* ========== STEP 6: AUTHORIZATION ========== */}
+          {step === 6 && (
+            <motion.div
+              key="step6"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6 max-w-lg mx-auto text-center py-10"
+            >
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
+                <ThumbsUp className="h-8 w-8 text-accent" />
+              </div>
+            
+              <h3 className="text-xl font-semibold">Authorization Complete</h3>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                Standing Order has been created successfully.
+              </p>
 
-            setErrors(prev => ({
-              ...prev,
-              beneficiary: ""
-            }));
+              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Instruction ID</span>
+                  <span className="font-mono text-xs">SO-{Date.now().toString().slice(-8)}</span>
+                </div>
+                
+                <div className="flex items-center gap-2 rounded bg-green-100 p-3 text-green-900 text-xs">
+                  <Check className="h-4 w-4" />
+                  <span>Active and Scheduled</span>
+                </div>
+              </div>
 
-          }}
-        />
-
-        {errors.beneficiary && (
-          <p className="text-xs text-destructive">
-            {errors.beneficiary}
-          </p>
-        )}
-
-      </div>
-
-      {/* BENEFICIARY NAME */}
-
-      <div className="space-y-2">
-
-        <Label>Beneficiary Name</Label>
-
-        <Input
-          placeholder="Enter beneficiary name"
-          value={beneficiaryName}
-          onChange={(e)=>setBeneficiaryName(e.target.value)}
-        />
-
-      </div>
-
-      {/* AMOUNT */}
-
-      <div className="space-y-2">
-
-        <Label>
-          Amount ({selectedAccount?.currency || "KES"}) *
-        </Label>
-
-        <Input
-          type="number"
-          value={amount}
-          onChange={(e)=>{
-
-            setAmount(e.target.value);
-
-            setErrors(prev => ({
-              ...prev,
-              amount: ""
-            }));
-
-          }}
-        />
-
-        {errors.amount && (
-          <p className="text-xs text-destructive">
-            {errors.amount}
-          </p>
-        )}
-
-      </div>
-
-      {/* FREQUENCY */}
-
-      <div className="space-y-2">
-
-        <Label>Frequency *</Label>
-
-        <Select
-          value={frequency}
-          onValueChange={(v)=>{
-
-            setFrequency(v);
-
-            setErrors(prev => ({
-              ...prev,
-              frequency: ""
-            }));
-
-          }}
-        >
-
-          <SelectTrigger>
-            <SelectValue placeholder="Select frequency"/>
-          </SelectTrigger>
-
-          <SelectContent>
-
-            {FREQUENCY_OPTIONS.map(opt => (
-
-              <SelectItem
-                key={opt.value}
-                value={opt.value}
+              <Button 
+                onClick={handleFinalComplete} 
+                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+                disabled={loading}
               >
+                {loading ? "Processing..." : "Finish"}
+              </Button>
+            </motion.div>
+          )}
 
-                {opt.label}
-
-              </SelectItem>
-
-            ))}
-
-          </SelectContent>
-
-        </Select>
-
-        {errors.frequency && (
-          <p className="text-xs text-destructive">
-            {errors.frequency}
-          </p>
-        )}
-
+        </AnimatePresence>
       </div>
-
-      {/* START DATE */}
-
-      <div className="space-y-2">
-
-        <Label>Start Date *</Label>
-
-        <Input
-          type="date"
-          value={startDate}
-          onChange={(e)=>{
-
-            setStartDate(e.target.value);
-
-            setErrors(prev => ({
-              ...prev,
-              startDate: ""
-            }));
-
-          }}
-        />
-
-      </div>
-
-      {/* END DATE */}
-
-      <div className="space-y-2">
-
-        <Label>End Date</Label>
-
-        <Input
-          type="date"
-          value={endDate}
-          onChange={(e)=>setEndDate(e.target.value)}
-        />
-
-      </div>
-
-      <Button
-        onClick={handleSubmit}
-        disabled={eligibleAccounts.length === 0}
-        className="w-full"
-      >
-
-        Submit for Validation
-
-      </Button>
-
     </div>
-
   );
-
 }
-
-export default StandingOrderInput;

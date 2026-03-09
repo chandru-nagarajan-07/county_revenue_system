@@ -1,401 +1,484 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+
 import {
-  Zap, Clock, Shield, ArrowLeftRight, Smartphone, Check, AlertCircle,
-  Info, Star, Search, Receipt, Save, CalendarClock, Mail, Wallet,
-  ChevronDown, ChevronUp
+  ArrowLeft,
+  Check,
+  AlertCircle,
+  Shield,
+  Eye,
+  ThumbsUp,
+  Receipt,
+  Zap,
+  Star,
+  CreditCard,
 } from "lucide-react";
 
+import { DashboardHeader } from "@/components/banking/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem,
-  SelectTrigger, SelectValue
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
 
-import { getEligibleAccounts, ACCOUNT_TYPE_LABELS } from "@/data/demoCustomers";
-import { recommendChannels } from "@/data/paymentChannels";
+/* CONSTANTS */
+const STEPS = [
+  { id: 1, name: "Input" },
+  { id: 2, name: "Validation" },
+  { id: 3, name: "Review" },
+  { id: 4, name: "Processing" },
+  { id: 5, name: "Verification" },
+  { id: 6, name: "Authorization" },
+];
 
-import {
-  BILLER_CATEGORY_LABELS,
-  RECURRENCE_LABELS,
-  getAllBillers,
-  fetchBillPresentment
-} from "@/data/billers";
+const BILLERS = [
+  { id: "electricity", name: "Kenya Power", icon: Zap },
+  { id: "water", name: "Nairobi Water", icon: Receipt },
+  { id: "tv", name: "DSTV/GOtv", icon: CreditCard },
+];
 
-const ICON_MAP = {
-  ArrowLeftRight: <ArrowLeftRight className="h-4 w-4" />,
-  Zap: <Zap className="h-4 w-4" />,
-  Clock: <Clock className="h-4 w-4" />,
-  Shield: <Shield className="h-4 w-4" />,
-  Smartphone: <Smartphone className="h-4 w-4" />
-};
+// defining the component with 'export const' ensures it is a Named Export immediately
+export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete }) => {
+  const navigate = useNavigate();
+  const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
-const OD_LIMITS = {
-  current: 500000,
-  savings: 100000
-};
+  /* SESSION USER */
+  const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
+  const accounts = sessionUser?.account || [];
 
-export function BillPaymentInput({ customer, onSubmit }) {
+  /* STATE */
+  const [customer, setCustomer] = useState(null);
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
 
-  if (!customer) return null;
-
-  const eligibleAccounts = useMemo(() => {
-    try {
-      return getEligibleAccounts(customer, "bill-payment") || [];
-    } catch {
-      return [];
-    }
-  }, [customer]);
-
-  const [mode, setMode] = useState("preset");
-  const [selectedAccount, setSelectedAccount] = useState(null);
-  const [billerSearch, setBillerSearch] = useState("");
+  /* FORM STATE */
   const [selectedBiller, setSelectedBiller] = useState(null);
-
-  const [manualBillerCode, setManualBillerCode] = useState("");
-  const [manualBillerName, setManualBillerName] = useState("");
-
-  const [referenceNumber, setReferenceNumber] = useState("");
+  const [selectedAccount, setSelectedAccount] = useState(null);
   const [amount, setAmount] = useState("");
+  const [accountNumber, setAccountNumber] = useState(""); 
+  const [formErrors, setFormErrors] = useState({});
 
-  const [selectedChannelId, setSelectedChannelId] = useState(null);
+  /* PROCESSING STATE */
+  const [officerNotes, setOfficerNotes] = useState("");
 
-  const [presentment, setPresentment] = useState(null);
-  const [presentmentLoading, setPresentmentLoading] = useState(false);
+  /* DERIVED DATA */
+  const eligibleAccounts = useMemo(() => {
+    return accounts.filter((acc) => acc?.status === "ACTIVE");
+  }, [accounts]);
 
-  const [emailConfirmation, setEmailConfirmation] = useState(true);
-  const [emailAddress, setEmailAddress] = useState(customer?.email || "");
+  /* INIT CUSTOMER */
+  useEffect(() => {
+    if (propCustomer) {
+      setCustomer(propCustomer);
+      return;
+    }
+    const sessionCustomer = sessionStorage.getItem("customer");
+    if (sessionCustomer) setCustomer(JSON.parse(sessionCustomer));
+  }, [propCustomer]);
 
-  const [saveBiller, setSaveBiller] = useState(false);
-  const [enableRecurrence, setEnableRecurrence] = useState(false);
-  const [recurrenceFrequency, setRecurrenceFrequency] = useState("monthly");
+  // Auto-advance Step 2 -> 3
+  useEffect(() => {
+    if (step === 2) {
+      const timer = setTimeout(() => setStep(3), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
 
-  const [useOverdraft, setUseOverdraft] = useState(false);
-
-  const [showOptions, setShowOptions] = useState(false);
-  const [errors, setErrors] = useState({});
-
-  const activeBiller = mode === "preset" ? selectedBiller : null;
-
-  const billerName =
-    mode === "preset"
-      ? selectedBiller?.name || ""
-      : manualBillerName;
-
-  const billerCode =
-    mode === "preset"
-      ? selectedBiller?.billerCode || ""
-      : manualBillerCode;
-
-  const allBillers = useMemo(() => getAllBillers(), []);
-
-  const filteredBillers = useMemo(() => {
-    if (!billerSearch) return allBillers;
-
-    const q = billerSearch.toLowerCase();
-
-    return allBillers.filter(
-      b =>
-        b.name.toLowerCase().includes(q) ||
-        b.billerCode.includes(q)
-    );
-  }, [billerSearch, allBillers]);
-
-  const groupedBillers = useMemo(() => {
-
-    const groups = {};
-
-    filteredBillers.forEach(b => {
-      if (!groups[b.category]) groups[b.category] = [];
-      groups[b.category].push(b);
-    });
-
-    return groups;
-
-  }, [filteredBillers]);
-
-  const handleFetchBill = () => {
-
-    if (!activeBiller || !referenceNumber) return;
-
-    setPresentmentLoading(true);
-
-    setTimeout(() => {
-
-      const result = fetchBillPresentment(
-        activeBiller.id,
-        referenceNumber
-      );
-
-      setPresentment(result);
-      setPresentmentLoading(false);
-
-      if (result) {
-        setAmount(String(result.outstandingAmount));
-      }
-
-    }, 800);
-
+  /* HANDLERS */
+  const validate = () => {
+    const errs = {};
+    if (!selectedBiller) errs.biller = "Select a biller";
+    if (!selectedAccount) errs.account = "Select payment account";
+    if (!accountNumber) errs.accNum = "Enter account number";
+    const num = Number(amount);
+    if (isNaN(num) || num <= 0) errs.amount = "Enter valid amount";
+    setFormErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
-  const numAmount = useMemo(() => {
-    const n = Number(amount);
-    return isNaN(n) ? 0 : n;
-  }, [amount]);
-
-  const recommendations = useMemo(() => {
-
-    if (numAmount === 0) return [];
+  const handleSubmit = async () => {
+    if (!validate()) return;
+    setLoading(true);
 
     try {
-      return recommendChannels(numAmount, "other-bank") || [];
-    } catch {
-      return [];
+      // Simulate API call
+      await new Promise((r) => setTimeout(r, 1000));
+      setStep(2); 
+    } catch (error) {
+      console.error(error);
+      alert("Server error");
+    } finally {
+      setLoading(false);
     }
+  };
 
-  }, [numAmount]);
+  const handleFinalComplete = async () => {
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 1000));
+    setLoading(false);
+    alert("Bill Payment Successful");
+    if (onComplete) onComplete();
+    if (onBack) onBack();
+  };
 
-  const recommendedId =
-    recommendations.find(r => r.recommended)?.channel?.id;
+  /* ANIMATION VARIANTS */
+  const pageVariants = {
+    initial: { opacity: 0, x: 20 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -20 },
+  };
 
-  const effectiveChannelId =
-    selectedChannelId ?? recommendedId ?? null;
-
-  const selectedRec =
-    recommendations.find(
-      r => r.channel?.id === effectiveChannelId
+  if (!customer && !sessionUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Customer not found
+      </div>
     );
-
-  const odLimit =
-    selectedAccount
-      ? OD_LIMITS[selectedAccount.type] || 0
-      : 0;
-
-  const availableBalance =
-    selectedAccount?.balance || 0;
-
-  const totalAvailable =
-    availableBalance +
-    (useOverdraft ? odLimit : 0);
-
-  const validate = () => {
-
-    const errs = {};
-
-    if (!selectedAccount)
-      errs.account = "Select source account";
-
-    if (!billerName)
-      errs.biller = "Biller required";
-
-    if (!referenceNumber)
-      errs.reference = "Reference required";
-
-    if (numAmount <= 0)
-      errs.amount = "Enter valid amount";
-
-    if (!effectiveChannelId)
-      errs.channel = "Select payment channel";
-
-    if (numAmount > totalAvailable)
-      errs.amount = "Insufficient balance";
-
-    if (emailConfirmation && !emailAddress)
-      errs.email = "Email required";
-
-    setErrors(errs);
-
-    return Object.keys(errs).length === 0;
-
-  };
-
-  const handleSubmit = () => {
-
-    if (!validate() || !selectedRec) return;
-
-    onSubmit({
-
-      sourceAccount:
-        selectedAccount.accountNumber,
-
-      billerName,
-      billerCode,
-      referenceNumber,
-      amount,
-
-      channelId: selectedRec.channel.id,
-      channelName: selectedRec.channel.name,
-
-      emailConfirmation,
-      emailAddress,
-
-      saveBiller,
-      enableRecurrence,
-      recurrenceFrequency,
-
-      overdraftUsed: useOverdraft
-
-    });
-
-  };
+  }
 
   return (
-
-    <div className="space-y-5 max-w-lg mx-auto">
-
-      {/* CUSTOMER */}
-
-      <div className="flex items-center gap-3 border p-4 rounded-xl">
-
-        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold">
-
-          {(customer.fullName || "")
-            .split(" ")
-            .map(n => n[0])
-            .join("")
-            .slice(0,2)}
-
-        </div>
-
-        <div>
-
-          <p className="text-sm font-semibold">
-            {customer.fullName}
-          </p>
-
-          <p className="text-xs text-muted-foreground">
-            {customer.customerId} • {customer.phone}
-          </p>
-
-        </div>
-
-      </div>
-
-      {/* ACCOUNT */}
-
-      <Select
-        value={selectedAccount?.accountNumber || ""}
-        onValueChange={(val)=>{
-
-          const acc =
-            eligibleAccounts.find(
-              a => a.accountNumber === val
-            ) || null;
-
-          setSelectedAccount(acc);
-
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <DashboardHeader
+        customerName={customer?.fullName || sessionUser?.first_name || "Customer"}
+        isDropdownOpen={navDropdownOpen}
+        setIsDropdownOpen={setNavDropdownOpen}
+        onLogout={() => {
+          localStorage.removeItem("customer");
+          navigate("/");
         }}
-      >
-
-        <SelectTrigger>
-          <SelectValue placeholder="Select Account"/>
-        </SelectTrigger>
-
-        <SelectContent>
-
-          {eligibleAccounts.map(acc => (
-
-            <SelectItem
-              key={acc.accountNumber}
-              value={acc.accountNumber}
-            >
-
-              {acc.accountNumber} •
-              {ACCOUNT_TYPE_LABELS?.[acc.type]} •
-              {acc.currency}
-
-            </SelectItem>
-
-          ))}
-
-        </SelectContent>
-
-      </Select>
-
-      {/* AMOUNT */}
-
-      <Input
-        type="number"
-        placeholder="Amount"
-        value={amount}
-        onChange={(e)=>setAmount(e.target.value)}
       />
 
-      {/* CHANNEL */}
+      {/* Sticky Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-20 px-4 sm:px-6 py-3 shadow-sm">
+        <div className="flex items-center gap-4 mb-3">
+          <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-lg font-bold text-gray-900 tracking-tight">
+              Bill Payment
+            </h1>
+            <p className="text-xs text-gray-500">
+              Step {step} of 6: {STEPS[step - 1].name}
+            </p>
+          </div>
+        </div>
 
-      {recommendations.length > 0 && (
-
-        <RadioGroup
-          value={effectiveChannelId || ""}
-          onValueChange={setSelectedChannelId}
-        >
-
-          {recommendations.map(rec => (
-
-            <ChannelOption
-              key={rec.channel.id}
-              rec={rec}
-              isSelected={
-                effectiveChannelId === rec.channel.id
-              }
-            />
-
-          ))}
-
-        </RadioGroup>
-
-      )}
-
-      <Button
-        onClick={handleSubmit}
-        className="w-full"
-      >
-
-        Submit for Validation
-
-      </Button>
-
-    </div>
-
-  );
-
-}
-
-function ChannelOption({ rec, isSelected }) {
-
-  const { channel, estimatedCost } = rec;
-
-  return (
-
-    <label
-      className={`flex gap-3 border rounded-xl p-4 ${
-        isSelected
-          ? "border-primary"
-          : "border-border"
-      }`}
-    >
-
-      <RadioGroupItem value={channel.id} />
-
-      <div>
-
-        <p className="font-semibold">
-          {channel.name}
-        </p>
-
-        <p className="text-xs text-muted-foreground">
-          Cost: {estimatedCost}
-        </p>
-
+        {/* Stepper */}
+        <div className="flex items-center w-full mt-2 px-1">
+          {STEPS.map((s, index) => {
+            const isCompleted = s.id < step;
+            const isCurrent = s.id === step;
+            return (
+              <div key={s.id} className="flex items-center flex-1 last:flex-none">
+                <div className="relative flex flex-col items-center">
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                      isCompleted
+                        ? "bg-primary border-primary text-primary-foreground"
+                        : isCurrent
+                        ? "bg-accent border-accent text-accent-foreground scale-110 shadow-sm"
+                        : "bg-white border-gray-200 text-muted-foreground"
+                    }`}
+                  >
+                    {isCompleted ? <Check className="h-4 w-4" /> : <span className="text-[10px] font-bold">{s.id}</span>}
+                  </div>
+                </div>
+                {index < STEPS.length - 1 && (
+                  <div className={`flex-1 h-[2px] mx-1 transition-colors duration-300 ${isCompleted ? "bg-primary" : "bg-gray-200"}`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-    </label>
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <AnimatePresence mode="wait">
 
+          {/* STEP 1: INPUT */}
+          {step === 1 && (
+            <motion.div
+              key="step1"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6 max-w-lg mx-auto"
+            >
+              {/* Customer Banner */}
+              <div className="flex items-center gap-3 rounded-xl border p-4 bg-white shadow-sm">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                  {(customer?.fullName || sessionUser?.first_name || "C")
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2)}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">{customer?.fullName || sessionUser?.first_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {customer?.user_id || sessionUser?.user_id}
+                  </p>
+                </div>
+              </div>
+
+              {/* Biller Selection */}
+              <div className="space-y-2">
+                <Label>Select Biller *</Label>
+                <Select
+                  value={selectedBiller?.id || ""}
+                  onValueChange={(val) => setSelectedBiller(BILLERS.find((b) => b.id === val) || null)}
+                >
+                  <SelectTrigger className={formErrors.biller ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Choose Biller" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BILLERS.map((biller) => (
+                      <SelectItem key={biller.id} value={biller.id}>
+                        {biller.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.biller && <p className="text-xs text-destructive">{formErrors.biller}</p>}
+              </div>
+
+              {/* Account Number */}
+              <div className="space-y-2">
+                <Label>Account Number *</Label>
+                <Input
+                  value={accountNumber}
+                  onChange={(e) => setAccountNumber(e.target.value)}
+                  placeholder="e.g. 123456789"
+                  className={formErrors.accNum ? "border-destructive" : ""}
+                />
+                {formErrors.accNum && <p className="text-xs text-destructive">{formErrors.accNum}</p>}
+              </div>
+
+              {/* Amount */}
+              <div className="space-y-2">
+                <Label>Amount *</Label>
+                <Input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  className={formErrors.amount ? "border-destructive" : ""}
+                />
+                {formErrors.amount && <p className="text-xs text-destructive">{formErrors.amount}</p>}
+              </div>
+
+              {/* Source Account */}
+              <div className="space-y-2">
+                <Label>Pay From *</Label>
+                <Select
+                  value={selectedAccount?.account_number || ""}
+                  onValueChange={(val) => {
+                    const acc = eligibleAccounts.find((a) => a.account_number === val);
+                    setSelectedAccount(acc);
+                  }}
+                >
+                  <SelectTrigger className={formErrors.account ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Select Account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {eligibleAccounts.map((acc) => (
+                      <SelectItem key={acc.account_number} value={acc.account_number}>
+                        {acc.account_number} • {acc.currency || "KES"} {acc.balance?.toLocaleString()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.account && <p className="text-xs text-destructive">{formErrors.account}</p>}
+              </div>
+
+              <Button
+                onClick={handleSubmit}
+                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+                disabled={loading}
+              >
+                {loading ? "Processing..." : "Validate Payment"}
+              </Button>
+            </motion.div>
+          )}
+
+          {/* STEP 2: VALIDATION */}
+          {step === 2 && (
+            <motion.div
+              key="step2"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="flex flex-col items-center justify-center py-20 gap-4"
+            >
+              <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center animate-pulse">
+                <Shield className="h-8 w-8 text-blue-600" />
+              </div>
+              <h3 className="font-semibold text-lg">Validating Details...</h3>
+              <p className="text-sm text-muted-foreground">Verifying biller account</p>
+            </motion.div>
+          )}
+
+          {/* STEP 3: REVIEW */}
+          {step === 3 && (
+            <motion.div
+              key="step3"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6 max-w-lg mx-auto"
+            >
+              <div className="flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
+                <Check className="h-5 w-5" />
+                <span className="text-sm font-medium">Validation Passed</span>
+              </div>
+
+              <div className="rounded-xl border bg-white p-5 space-y-3 shadow-sm">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Payment Summary</h4>
+                <div className="space-y-0">
+                  {[
+                    { l: "Biller", v: selectedBiller?.name },
+                    { l: "Account No", v: accountNumber },
+                    { l: "Amount", v: `KES ${Number(amount).toLocaleString()}` },
+                    { l: "Paid From", v: selectedAccount?.account_number },
+                  ].map((row) => (
+                    <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
+                      <span className="text-sm text-gray-500">{row.l}</span>
+                      <span className="text-sm font-medium text-gray-800">{row.v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
+                  Back
+                </Button>
+                <Button onClick={() => setStep(4)} className="flex-1 gold-gradient text-accent-foreground font-semibold shadow-gold">
+                  Proceed
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 4: PROCESSING */}
+          {step === 4 && (
+            <motion.div
+              key="step4"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6 max-w-lg mx-auto"
+            >
+              <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-3 rounded-lg mb-2">
+                <Zap className="h-5 w-5" />
+                <span className="text-sm font-medium">Processing Payment</span>
+              </div>
+
+              <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Confirm Details</h4>
+                <div className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-3 rounded-lg flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>Payment is being routed to {selectedBiller?.name}.</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Notes</Label>
+                <Textarea
+                  placeholder="Optional notes..."
+                  value={officerNotes}
+                  onChange={(e) => setOfficerNotes(e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
+                  Back
+                </Button>
+                <Button onClick={() => setStep(5)} className="flex-1 gold-gradient text-accent-foreground font-semibold shadow-gold">
+                  Confirm
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 5: VERIFICATION */}
+          {step === 5 && (
+            <motion.div
+              key="step5"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6 max-w-lg mx-auto"
+            >
+              <div className="flex items-center gap-2 text-blue-600 bg-blue-50 p-3 rounded-lg">
+                <Eye className="h-5 w-5" />
+                <span className="text-sm font-medium">Verification</span>
+              </div>
+
+              <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
+                <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
+                  <Star className="h-3.5 w-3.5" />
+                  <span>Payment verified successfully</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep(4)} className="flex-1">
+                  Request Change
+                </Button>
+                <Button onClick={() => setStep(6)} className="flex-1 gold-gradient text-accent-foreground font-semibold shadow-gold">
+                  Confirm
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 6: AUTHORIZATION */}
+          {step === 6 && (
+            <motion.div
+              key="step6"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6 max-w-lg mx-auto text-center py-10"
+            >
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
+                <ThumbsUp className="h-8 w-8 text-accent" />
+              </div>
+            
+              <h3 className="text-xl font-semibold">Payment Successful</h3>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                Transaction completed.
+              </p>
+
+              <Button 
+                onClick={handleFinalComplete} 
+                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+                disabled={loading}
+              >
+                {loading ? "Processing..." : "Finish"}
+              </Button>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
+      </div>
+    </div>
   );
-
-}
+};
