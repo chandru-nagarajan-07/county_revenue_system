@@ -90,7 +90,7 @@ const EmailOtp = () => {
 
     } catch (error) {
       console.error("OTP error:", error);
-      alert("Server connection failed");
+      alert("The entered email ID is not linked with the bank. Please enter a correct and registered email ID.");
     }
   };
 
