@@ -110,21 +110,73 @@ export default function StandingOrderWorkflow({ customer: propCustomer, onBack, 
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = async () => {
-    if (!validate()) return;
-    setLoading(true);
+const handleSubmit = async () => {
 
-    try {
-      // Simulate API call
-      await new Promise((r) => setTimeout(r, 1000));
-      setStep(2); // Go to Validation
-    } catch (error) {
-      console.error(error);
-      alert("Server error");
-    } finally {
+  if (!validate()) return;
+
+  setLoading(true);
+
+  try {
+
+    const response = await fetch(
+      "http://127.0.0.1:8000/api/standing-orders/",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+
+          source_account: selectedAccount?.account_number,
+
+          beneficiary_account: beneficiary,
+
+          beneficiary_name: beneficiaryName,
+
+          amount: Number(amount),
+
+          currency: selectedAccount?.currency || "KES",
+
+          frequency: frequency,
+
+          start_date: startDate,
+
+          end_date: endDate || null,
+
+          officer_notes: officerNotes,
+
+          user_id: customer?.user_id || sessionUser?.user_id
+
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    console.log("Standing Order API Response:", data);
+
+    if (!response.ok) {
+      alert(data.message || "Standing order creation failed");
       setLoading(false);
+      return;
     }
-  };
+
+    // Move to Validation Step
+    setStep(2);
+
+  } catch (error) {
+
+    console.error("Standing order error:", error);
+    alert("Server error");
+
+  } finally {
+
+    setLoading(false);
+
+  }
+
+};
 
   const handleFinalComplete = async () => {
     setLoading(true);

@@ -47,9 +47,12 @@ export default function CardIssuance({ customer: propCustomer, onBack }) {
   let sessionUser = {};
   try {
     sessionUser = JSON.parse(sessionStorage.getItem("userData1")) || {};
+    console.log("Session User:", sessionUser);
   } catch {
     sessionUser = {};
   }
+  
+  // Get accounts directly from session
   const accounts = sessionUser?.account || [];
 
   /* STATE */
@@ -69,30 +72,48 @@ export default function CardIssuance({ customer: propCustomer, onBack }) {
   /* PROCESSING STATE */
   const [officerNotes, setOfficerNotes] = useState("");
 
-  /* DERIVED DATA */
+  /* DERIVED DATA - FIXED: Use accounts directly */
   const eligibleAccounts = useMemo(() => {
-    // Fallback to session accounts if function not available
-    try {
-      return getEligibleAccounts?.(customer, "card-issuance") || accounts.filter(a => a.status === "ACTIVE");
-    } catch {
-      return accounts.filter(a => a.status === "ACTIVE");
-    }
-  }, [customer, accounts]);
+    // Just return active accounts from session
+    return accounts.filter(acc => acc.status === "ACTIVE");
+  }, [accounts]);
 
   /* INIT CUSTOMER */
   useEffect(() => {
-    if (propCustomer) {
-      setCustomer(propCustomer);
+  if (propCustomer) {
+    setCustomer(propCustomer);
+
+    if (!nameOnCard) {
       setNameOnCard(propCustomer?.fullName?.toUpperCase() || "");
-      return;
     }
+
+    return;
+  }
+
+  try {
     const sessionCustomer = sessionStorage.getItem("customer");
+
     if (sessionCustomer) {
-        const c = JSON.parse(sessionCustomer);
-        setCustomer(c);
+      const c = JSON.parse(sessionCustomer);
+      setCustomer(c);
+
+      if (!nameOnCard) {
         setNameOnCard(c?.fullName?.toUpperCase() || "");
+      }
+
+    } else if (sessionUser) {
+      setCustomer(sessionUser);
+
+      if (!nameOnCard) {
+        setNameOnCard(sessionUser?.first_name?.toUpperCase() || "");
+      }
     }
-  }, [propCustomer]);
+
+  } catch (error) {
+    console.error("Error parsing customer:", error);
+  }
+
+}, [propCustomer]);
 
   useEffect(() => {
     if (step === 2) {
@@ -111,14 +132,68 @@ export default function CardIssuance({ customer: propCustomer, onBack }) {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = async () => {
-    if (!validate()) return;
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    setStep(2);
-  };
+const handleSubmit = async () => {
 
+  if (!validate()) return;
+
+  setLoading(true);
+
+  try {
+
+    const response = await fetch(
+      "http://127.0.0.1:8000/api/cards/",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+
+          account: linkedAccount,
+
+          card_type: cardType,
+
+          name_on_card: nameOnCard,
+
+          contactless_enabled: enableContactless,
+
+          daily_pos_limit: Number(dailyPosLimit),
+
+          daily_atm_limit: Number(dailyAtmLimit),
+
+          officer_notes: officerNotes,
+
+          user_id: customer?.user_id || sessionUser?.user_id
+
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    console.log("Card API Response:", data);
+
+    if (!response.ok) {
+      alert(data.message || "Card request failed");
+      return;
+    }
+
+    // move to validation step
+    setStep(2);
+
+  } catch (error) {
+
+    console.error("Card API Error:", error);
+    alert("Server error");
+
+  } finally {
+
+    setLoading(false);
+
+  }
+
+};
   const handleFinalComplete = async () => {
     setLoading(true);
     await new Promise((r) => setTimeout(r, 1000));
@@ -138,7 +213,7 @@ export default function CardIssuance({ customer: propCustomer, onBack }) {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <DashboardHeader
-        customerName={customer?.fullName || sessionUser?.first_name || "Customer"}
+        customerName={customer?.fullName || customer?.first_name || sessionUser?.first_name || "Customer"}
         isDropdownOpen={navDropdownOpen}
         setIsDropdownOpen={setNavDropdownOpen}
         onLogout={() => { localStorage.removeItem("customer"); navigate("/"); }}
@@ -190,14 +265,19 @@ export default function CardIssuance({ customer: propCustomer, onBack }) {
               
               <div className="flex items-center gap-3 rounded-xl border p-4 bg-white shadow-sm">
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
-                  {(customer?.fullName || sessionUser?.first_name || "C").split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                  {(customer?.fullName || customer?.first_name || sessionUser?.first_name || "C")
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2)}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-semibold">{customer?.fullName || sessionUser?.first_name}</p>
-                  <p className="text-xs text-muted-foreground">{customer?.customerId || sessionUser?.user_id}</p>
+                  <p className="text-sm font-semibold">{customer?.fullName || customer?.first_name || sessionUser?.first_name}</p>
+                  <p className="text-xs text-muted-foreground">{customer?.customerId || customer?.user_id || sessionUser?.user_id}</p>
                 </div>
               </div>
 
+              {/* FIXED: Account Dropdown */}
               <div className="space-y-2">
                 <Label>Link Account</Label>
                 <Select value={linkedAccount} onValueChange={setLinkedAccount}>
@@ -205,13 +285,23 @@ export default function CardIssuance({ customer: propCustomer, onBack }) {
                     <SelectValue placeholder="Select account" />
                   </SelectTrigger>
                   <SelectContent>
-                    {eligibleAccounts.map((acc) => (
-                      <SelectItem key={acc.accountNumber || acc.account_number} value={acc.accountNumber || acc.account_number}>
-                        {acc.accountNumber || acc.account_number} • {ACCOUNT_TYPE_LABELS?.[acc.type] || acc.type}
+                    {eligibleAccounts && eligibleAccounts.length > 0 ? (
+                      eligibleAccounts.map((acc) => (
+                        <SelectItem 
+                          key={acc.accountNumber || acc.account_number} 
+                          value={acc.accountNumber || acc.account_number}
+                        >
+                          {acc.accountNumber || acc.account_number} • {acc.account_type === 2 ? 'Savings Account' : 'Account'} • Balance: {acc.balance || '0.00'}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-accounts" disabled>
+                        No active accounts available
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
+                {formErrors.linkedAccount && <p className="text-xs text-destructive">{formErrors.linkedAccount}</p>}
               </div>
 
               <div className="space-y-2">
@@ -228,11 +318,17 @@ export default function CardIssuance({ customer: propCustomer, onBack }) {
                     </button>
                   ))}
                 </div>
+                {formErrors.cardType && <p className="text-xs text-destructive">{formErrors.cardType}</p>}
               </div>
 
               <div className="space-y-2">
                 <Label>Name on Card</Label>
-                <Input value={nameOnCard} onChange={(e) => setNameOnCard(e.target.value.toUpperCase())} />
+                <Input 
+                  value={nameOnCard} 
+                  onChange={(e) => setNameOnCard(e.target.value.toUpperCase())} 
+                  className={formErrors.nameOnCard ? "border-destructive" : ""}
+                />
+                {formErrors.nameOnCard && <p className="text-xs text-destructive">{formErrors.nameOnCard}</p>}
               </div>
 
               <div className="flex items-center justify-between rounded-lg border p-3 bg-gray-50">
@@ -242,11 +338,11 @@ export default function CardIssuance({ customer: propCustomer, onBack }) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>POS Limit</Label>
+                  <Label>Daily POS Limit</Label>
                   <Input type="number" value={dailyPosLimit} onChange={(e) => setDailyPosLimit(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>ATM Limit</Label>
+                  <Label>Daily ATM Limit</Label>
                   <Input type="number" value={dailyAtmLimit} onChange={(e) => setDailyAtmLimit(e.target.value)} />
                 </div>
               </div>
@@ -284,7 +380,7 @@ export default function CardIssuance({ customer: propCustomer, onBack }) {
                     { l: "Card Type", v: cardType },
                     { l: "Name on Card", v: nameOnCard },
                     { l: "Contactless", v: enableContactless ? "Enabled" : "Disabled" },
-                    { l: "Limits", v: `POS: ${dailyPosLimit} / ATM: ${dailyAtmLimit}` },
+                    { l: "Limits", v: `POS: KES ${Number(dailyPosLimit).toLocaleString()} / ATM: KES ${Number(dailyAtmLimit).toLocaleString()}` },
                   ].map((row) => (
                     <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
                       <span className="text-sm text-gray-500">{row.l}</span>
@@ -337,6 +433,16 @@ export default function CardIssuance({ customer: propCustomer, onBack }) {
               </div>
 
               <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Customer Name</p>
+                    <p className="font-semibold">{customer?.fullName || customer?.first_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Customer ID</p>
+                    <p className="font-medium text-gray-700">{customer?.customerId || customer?.user_id}</p>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />
                   <span>Customer ID and details verified</span>
@@ -359,8 +465,15 @@ export default function CardIssuance({ customer: propCustomer, onBack }) {
             
               <h3 className="text-xl font-semibold">Request Authorized</h3>
               <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                Card issuance has been approved and queued.
+                Card issuance has been approved and queued for production.
               </p>
+
+              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Request ID</span>
+                  <span className="font-mono text-xs">CARD-{Date.now().toString().slice(-8)}</span>
+                </div>
+              </div>
 
               <Button onClick={handleFinalComplete} className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" disabled={loading}>
                 {loading ? "Processing..." : "Finish"}
