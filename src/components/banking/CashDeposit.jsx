@@ -357,9 +357,6 @@ export const CashDepositWorkflow = ({
 
                 <div className="space-y-0">
                   {[
-                    { l: "Customer Name", v: customer?.first_name || sessionUser?.first_name || "N/A" },
-                    { l: "Customer ID", v: customer?.user_id || sessionUser?.user_id || "N/A" },
-                    { l: "Transaction Time", v: new Date().toLocaleString() },
                     { l: "Account", v: selectedAccount?.account_number },
                     { l: "Amount", v: `KES ${Number(amount).toLocaleString()}` },
                     { l: "Reference", v: reference || "-" },
@@ -398,22 +395,7 @@ export const CashDepositWorkflow = ({
                 <Eye className="h-5 w-5" />
                 <span className="text-sm font-medium">Customer Verification</span>
               </div>
-  <div className="space-y-0">
-                  {[
-                    { l: "Customer Name", v: customer?.first_name || sessionUser?.first_name || "N/A" },
-                    { l: "Customer ID", v: customer?.user_id || sessionUser?.user_id || "N/A" },
-                    { l: "Transaction Time", v: new Date().toLocaleString() },
-                    { l: "Account", v: selectedAccount?.account_number },
-                    { l: "Amount", v: `KES ${Number(amount).toLocaleString()}` },
-                    { l: "Reference", v: reference || "-" },
-                    { l: "Narration", v: narration || "-" },
-                  ].map((row) => (
-                    <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
-                      <span className="text-sm text-gray-500">{row.l}</span>
-                      <span className="text-sm font-medium text-gray-800">{row.v}</span>
-                    </div>
-                  ))}
-                </div>
+
               <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4 text-center">
                 <p className="text-sm text-muted-foreground">
                   Please verify customer identity and confirm transaction details.

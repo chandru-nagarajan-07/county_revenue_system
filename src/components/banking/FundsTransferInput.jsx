@@ -61,6 +61,7 @@ export function FundsTransferInput({ customer: propCustomer, onBack }) {
   let sessionUser = {};
   try {
     sessionUser = JSON.parse(sessionStorage.getItem("userData1")) || {};
+    console.log("Session User:", sessionUser);
   } catch {
     sessionUser = {};
   }
@@ -89,14 +90,10 @@ export function FundsTransferInput({ customer: propCustomer, onBack }) {
   const [officerNotes, setOfficerNotes] = useState("");
 
   /* DERIVED DATA */
+  // FIXED: Use accounts directly from session
   const eligibleAccounts = useMemo(() => {
-    try {
-      return getEligibleAccounts(customer, "funds-transfer") || [];
-    } catch {
-      // Fallback to session accounts if helper fails
-      return accounts;
-    }
-  }, [customer, accounts]);
+    return accounts || [];
+  }, [accounts]);
 
   const numAmount = useMemo(() => {
     const n = Number(amount);
@@ -116,11 +113,10 @@ export function FundsTransferInput({ customer: propCustomer, onBack }) {
   const effectiveChannelId = selectedChannelId ?? recommendedId ?? null;
   const selectedRec = recommendations.find(r => r.channel?.id === effectiveChannelId);
 
-  // 3. FIX: Create safeCustomer with 'accounts' property expected by inferSegment
   const segment = useMemo(() => {
     const safeCustomer = {
       ...customer,
-      accounts: accounts // Ensure accounts array is attached
+      accounts: accounts
     };
     return inferSegment(safeCustomer);
   }, [customer, accounts]);
@@ -143,14 +139,69 @@ export function FundsTransferInput({ customer: propCustomer, onBack }) {
     return Object.keys(errs).length === 0;
   };
 
-  const handleStepOneSubmit = async () => {
-    if (!validate()) return;
-    
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 800));
+const handleStepOneSubmit = async () => {
+
+  if (!validate()) return;
+
+  setLoading(true);
+
+  try {
+
+    const response = await fetch(
+      "http://127.0.0.1:8000/api/fund-transfer/",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+
+          source_account: selectedAccount?.accountNumber || selectedAccount?.account_number,
+
+          beneficiary_account: beneficiaryAccount,
+
+          beneficiary_name: beneficiaryName,
+
+          amount: numAmount,
+
+          destination: destination,
+
+          channel_id: effectiveChannelId,
+
+          reference: reference,
+
+          officer_notes: officerNotes,
+
+          user_id: customer?.user_id
+
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    console.log("Fund Transfer Response:", data);
+
+    if (!response.ok) {
+      alert(data.message || "Transfer failed");
+      setLoading(false);
+      return;
+    }
+
     setLoading(false);
     setStep(2);
-  };
+
+  } catch (error) {
+
+    console.error("Transfer error:", error);
+    alert("Network error");
+
+    setLoading(false);
+
+  }
+
+};
 
   useEffect(() => {
     if (step === 2) {
@@ -280,13 +331,13 @@ export function FundsTransferInput({ customer: propCustomer, onBack }) {
                 </div>
               </div>
 
-              {/* Source Account */}
+              {/* FIXED: Source Account Dropdown */}
               <div className="space-y-2">
                 <Label>Source Account *</Label>
                 <Select
                   value={selectedAccount?.accountNumber || selectedAccount?.account_number || ""}
                   onValueChange={(val) => {
-                    const acc = eligibleAccounts.find(a => (a.accountNumber || a.account_number) === val);
+                    const acc = accounts.find(a => (a.accountNumber || a.account_number) === val);
                     setSelectedAccount(acc);
                   }}
                 >
@@ -294,11 +345,20 @@ export function FundsTransferInput({ customer: propCustomer, onBack }) {
                     <SelectValue placeholder="Choose account"/>
                   </SelectTrigger>
                   <SelectContent>
-                    {eligibleAccounts.map(acc => (
-                      <SelectItem key={acc.accountNumber || acc.account_number} value={acc.accountNumber || acc.account_number}>
-                        {acc.accountNumber || acc.account_number} • {acc.type ? ACCOUNT_TYPE_LABELS?.[acc.type] : 'Account'} • {acc.currency || 'KES'}
+                    {accounts && accounts.length > 0 ? (
+                      accounts.map(acc => (
+                        <SelectItem 
+                          key={acc.accountNumber || acc.account_number} 
+                          value={acc.accountNumber || acc.account_number}
+                        >
+                          {acc.accountNumber || acc.account_number} • {acc.account_type === 2 ? 'Savings Account' : 'Account'} • KES • Balance: {acc.balance || '0.00'}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-accounts" disabled>
+                        No accounts available
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
                 {formErrors.account && <p className="text-xs text-destructive">{formErrors.account}</p>}

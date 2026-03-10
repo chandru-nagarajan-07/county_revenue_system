@@ -15,6 +15,10 @@ import  StandingOrderInput  from "@/components/banking/StandingOrderInput";
 import { CardServicesInput } from "@/components/banking/CardServicesInput";
 import { CashDepositWorkflow } from "@/components/banking/CashDeposit";
 import { CashWithdrawalWorkflow } from "@/components/banking/CashWithdrawal";
+import  CardIssurance from "@/components/banking/CardIssurance";
+import CardLimitUpdate  from "@/components/banking/CardLimitUpdate";
+import CardReplacement  from "@/components/banking/CardReplacement";
+import PinManagement  from "@/components/banking/PinManagement";
 
 
 /* --- Service → Component Map --- */
@@ -26,12 +30,12 @@ const SERVICE_COMPONENTS = {
   "denomination exchange": DenominationExchange,
   "funds transfer": FundsTransferInput,
   "bill payment": BillPaymentInput ,
-  "card issuance": CardServicesInput,
-  "card replacement": CardServicesInput,
-  "pin management": CardServicesInput,
-  "card limit update": CardServicesInput,
   "cash deposit": CashDepositWorkflow,
   "cash withdrawal": CashWithdrawalWorkflow,
+  "card issuance": CardIssurance, 
+  "card replacement": CardReplacement,
+  "card limit update": CardLimitUpdate,
+  "pin management": PinManagement,
 
 };
 
@@ -73,7 +77,7 @@ const TransactionPage = () => {
         const label = data?.[0]?.label?.toLowerCase();
         setServiceLabel(label);
 
-        console.log("Fetched API Response:", data);
+        console.log("Service Fee:", data?.[0]?.service_type?.service_fee);
         console.log("Detected Service Label:", label);
 
       } catch (error) {
