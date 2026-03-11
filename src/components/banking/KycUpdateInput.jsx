@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
-import { KycArtefactForms } from './KycArtefactForms';
+import KycArtefactForms  from './KycArtefactForms';
 import KycValidationScreen from './KycValidationScreen';
 
 const ACTION_META = {

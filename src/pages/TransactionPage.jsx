@@ -19,6 +19,11 @@ import  CardIssurance from "@/components/banking/CardIssurance";
 import CardLimitUpdate  from "@/components/banking/CardLimitUpdate";
 import CardReplacement  from "@/components/banking/CardReplacement";
 import PinManagement  from "@/components/banking/PinManagement";
+import { FxTransfer } from "../components/banking/FxTransfer";
+import { BuyForeignCurrency } from "../components/banking/BuyForeignCurrency";
+import { SellForeignCurrency } from "../components/banking/SellForeignCurrency";
+import  ChequeBookRequest from "../components/banking/ChequeBookRequest";
+import StatementRequest from "../components/banking/StatementRequest";
 
 
 /* --- Service → Component Map --- */
@@ -36,6 +41,11 @@ const SERVICE_COMPONENTS = {
   "card replacement": CardReplacement,
   "card limit update": CardLimitUpdate,
   "pin management": PinManagement,
+  "foreign exchange transfer": FxTransfer,
+  "buy foreign currency": BuyForeignCurrency,
+  "sell foreign currency": SellForeignCurrency,
+  "cheque book request": ChequeBookRequest,
+  "statement request": StatementRequest,
 
 };
 
