@@ -25,6 +25,7 @@ import {
   ThumbsUp,
   Receipt,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 
 const STEPS = [
@@ -36,7 +37,7 @@ const STEPS = [
   { id: 6, name: "Complete" },
 ];
 
-export const SellForeignCurrency = ({
+export const BuyForeignCurrency = ({
   customer: propCustomer,
   onBack,
   onComplete,
@@ -51,6 +52,14 @@ export const SellForeignCurrency = ({
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [narration, setNarration] = useState("");
+  
+  // New state for currency exchange
+  const [currencies, setCurrencies] = useState([]);
+  const [selectedCurrency, setSelectedCurrency] = useState(null);
+  const [exchangeRate, setExchangeRate] = useState(null);
+  const [convertedAmount, setConvertedAmount] = useState(null);
+  const [loadingCurrencies, setLoadingCurrencies] = useState(false);
+  const [currencyError, setCurrencyError] = useState(null);
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,6 +78,77 @@ export const SellForeignCurrency = ({
     if (sessionCustomer) setCustomer(JSON.parse(sessionCustomer));
   }, [propCustomer]);
 
+  /* FETCH CURRENCIES FROM API */
+  const fetchCurrencies = async () => {
+    setLoadingCurrencies(true);
+    setCurrencyError(null);
+    
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/currencies/", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+      console.log("Fetched Currencies:", data);
+      
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to fetch currencies");
+      }
+
+      setCurrencies(data);
+      
+      // If there's a default currency (e.g., USD), select it
+      const defaultCurrency = data.find(c => c.code === "USD") || data[0];
+      if (defaultCurrency) {
+        setSelectedCurrency(defaultCurrency);
+        // Store the buy_rate (how many KES for 1 unit of foreign currency)
+        setExchangeRate(defaultCurrency.buy_rate);
+      }
+    } catch (error) {
+      console.error("Error fetching currencies:", error);
+      setCurrencyError(error.message);
+    } finally {
+      setLoadingCurrencies(false);
+    }
+  };
+
+  // Fetch currencies when component mounts
+  useEffect(() => {
+    fetchCurrencies();
+  }, []);
+
+  // Calculate converted amount when amount or exchange rate changes
+  useEffect(() => {
+    if (amount && exchangeRate && selectedCurrency) {
+      const numAmount = Number(amount);
+      if (!isNaN(numAmount) && numAmount > 0) {
+        // CORRECTED: When buying foreign currency with KES:
+        // Customer gives KES, receives foreign currency
+        // Formula: Foreign Amount = KES Amount ÷ Buy Rate
+        // Example: 100 KES ÷ 80 = 1.25 USD
+        
+        const foreignAmount = numAmount / exchangeRate;
+        setConvertedAmount(foreignAmount.toFixed(2));
+      } else {
+        setConvertedAmount(null);
+      }
+    } else {
+      setConvertedAmount(null);
+    }
+  }, [amount, exchangeRate, selectedCurrency]);
+
+  // Handle currency selection
+  const handleCurrencyChange = (currencyCode) => {
+    const currency = currencies.find(c => c.code === currencyCode);
+    if (currency) {
+      setSelectedCurrency(currency);
+      setExchangeRate(currency.buy_rate);
+    }
+  };
+
   /* ELIGIBLE ACCOUNTS */
   const eligibleAccounts = useMemo(() => {
     return accounts.filter((acc) => acc?.status === "ACTIVE");
@@ -78,8 +158,15 @@ export const SellForeignCurrency = ({
   const validate = () => {
     const errs = {};
     if (!selectedAccount) errs.account = "Please select account";
+    if (!selectedCurrency) errs.currency = "Please select currency";
     const num = Number(amount);
     if (isNaN(num) || num <= 0) errs.amount = "Enter valid amount";
+    
+    // Check if account has sufficient balance
+    if (selectedAccount && Number(selectedAccount.balance) < num) {
+      errs.amount = "Insufficient balance";
+    }
+    
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -89,14 +176,20 @@ export const SellForeignCurrency = ({
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/cash-deposits/", {
+      // Post the foreign currency purchase transaction
+      const response = await fetch("http://127.0.0.1:8000/api/foreign-currency-purchases/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           account_number: selectedAccount.account_number,
-          amount: Number(amount),
+          kes_amount: Number(amount),
+          source_currency: "KES",
+          target_currency: selectedCurrency.code,
+          exchange_rate: exchangeRate, // This is the buy_rate (KES per 1 foreign currency)
+          exchange_rate_type: "buy_rate",
+          foreign_currency_amount: Number(convertedAmount),
           reference,
           narration,
         }),
@@ -105,7 +198,7 @@ export const SellForeignCurrency = ({
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.message || "OTP verification failed");
+        alert(data.message || "Transaction failed");
         setIsSubmitting(false);
         return;
       }
@@ -132,7 +225,7 @@ export const SellForeignCurrency = ({
     // Simulate final processing
     await new Promise((r) => setTimeout(r, 1000));
     setIsSubmitting(false);
-    alert("Deposit Successful");
+    alert("Foreign Currency Purchase Successful");
     if (onComplete) onComplete();
   };
 
@@ -171,7 +264,7 @@ export const SellForeignCurrency = ({
           </Button>
           <div className="flex-1">
             <h1 className="text-lg font-bold text-gray-900 tracking-tight">
-              Cash Deposit
+              Buy Foreign Currency
             </h1>
             <p className="text-xs text-gray-500">
               Step {step} of 6: {STEPS[step - 1].name}
@@ -253,8 +346,55 @@ export const SellForeignCurrency = ({
 
               {/* Form Card */}
               <div className="rounded-xl border bg-white p-6 shadow-sm space-y-5">
+                {/* Currency Selection with Refresh Button */}
                 <div className="space-y-2">
-                  <Label>Select Account *</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Select Currency to Buy *</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={fetchCurrencies}
+                      disabled={loadingCurrencies}
+                      className="h-8 px-2"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${loadingCurrencies ? 'animate-spin' : ''}`} />
+                      <span className="ml-1 text-xs">Refresh</span>
+                    </Button>
+                  </div>
+                  
+                  {loadingCurrencies ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      <span className="ml-2 text-sm text-muted-foreground">Loading currencies...</span>
+                    </div>
+                  ) : currencyError ? (
+                    <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
+                      <AlertCircle className="h-4 w-4 inline mr-1" />
+                      {currencyError}
+                    </div>
+                  ) : (
+                    <Select
+                      value={selectedCurrency?.code || ""}
+                      onValueChange={handleCurrencyChange}
+                    >
+                      <SelectTrigger className={errors.currency ? "border-destructive" : ""}>
+                        <SelectValue placeholder="Choose currency to buy" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencies.map((currency) => (
+                          <SelectItem key={currency.code} value={currency.code}>
+                            {currency.code} - {currency.name} (1 {currency.code} = {currency.buy_rate} KES)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {errors.currency && <p className="text-xs text-destructive">{errors.currency}</p>}
+                </div>
+
+                {/* Account Selection */}
+                <div className="space-y-2">
+                  <Label>Select Account to Debit (KES) *</Label>
                   <Select
                     value={selectedAccount?.account_number || ""}
                     onValueChange={(val) => {
@@ -263,7 +403,7 @@ export const SellForeignCurrency = ({
                     }}
                   >
                     <SelectTrigger className={errors.account ? "border-destructive" : ""}>
-                      <SelectValue placeholder="Choose account to deposit into" />
+                      <SelectValue placeholder="Choose account to debit" />
                     </SelectTrigger>
                     <SelectContent>
                       {eligibleAccounts.map((acc) => (
@@ -276,17 +416,36 @@ export const SellForeignCurrency = ({
                   {errors.account && <p className="text-xs text-destructive">{errors.account}</p>}
                 </div>
 
+                {/* Amount in KES */}
                 <div className="space-y-2">
-                  <Label>Amount *</Label>
+                  <Label>Amount in KES *</Label>
                   <Input
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    placeholder="0.00"
+                    placeholder="Enter amount in KES"
                     className={errors.amount ? "border-destructive" : ""}
                   />
                   {errors.amount && <p className="text-xs text-destructive">{errors.amount}</p>}
                 </div>
+
+                {/* Converted Amount Display using buy_rate */}
+                {convertedAmount && selectedCurrency && (
+                  <div className="bg-blue-50 p-4 rounded-lg space-y-2">
+                    <p className="text-sm text-blue-700 font-medium">You will receive:</p>
+                    <p className="text-2xl font-bold text-blue-800">
+                      {selectedCurrency.symbol || selectedCurrency.code} {Number(convertedAmount).toLocaleString()}
+                    </p>
+                    <div className="text-xs text-blue-600 space-y-1">
+                      <p>
+                        {amount} KES ÷ {exchangeRate} = {convertedAmount} {selectedCurrency.code}
+                      </p>
+                      <p className="text-gray-500">
+                        1 {selectedCurrency.code} = {exchangeRate} KES
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>Reference</Label>
@@ -309,7 +468,7 @@ export const SellForeignCurrency = ({
 
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || loadingCurrencies || !convertedAmount}
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
               >
                 {isSubmitting ? "Processing..." : "Submit for Validation"}
@@ -331,7 +490,7 @@ export const SellForeignCurrency = ({
                 <Shield className="h-8 w-8 text-blue-600" />
               </div>
               <h3 className="font-semibold text-lg">Validating Transaction...</h3>
-              <p className="text-sm text-muted-foreground">Checking account status and limits</p>
+              <p className="text-sm text-muted-foreground">Checking account status and exchange rates</p>
             </motion.div>
           )}
 
@@ -352,13 +511,16 @@ export const SellForeignCurrency = ({
 
               <div className="rounded-xl border bg-white p-5 space-y-3 shadow-sm">
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Deposit Summary
+                  Purchase Summary
                 </h4>
 
                 <div className="space-y-0">
                   {[
-                    { l: "Account", v: selectedAccount?.account_number },
-                    { l: "Amount", v: `KES ${Number(amount).toLocaleString()}` },
+                    { l: "Debit Account (KES)", v: selectedAccount?.account_number },
+                    { l: "You Pay", v: `KES ${Number(amount).toLocaleString()}` },
+                    { l: "Currency to Buy", v: selectedCurrency?.code },
+                    { l: "Exchange Rate", v: `1 ${selectedCurrency?.code} = ${exchangeRate} KES` },
+                    { l: "You Receive", v: `${selectedCurrency?.code} ${Number(convertedAmount).toLocaleString()}` },
                     { l: "Reference", v: reference || "-" },
                     { l: "Narration", v: narration || "-" },
                   ].map((row) => (
@@ -438,7 +600,7 @@ export const SellForeignCurrency = ({
               <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Transaction ID</span>
-                  <span className="font-mono text-xs">DEP-{Date.now().toString().slice(-8)}</span>
+                  <span className="font-mono text-xs">FC-{Date.now().toString().slice(-8)}</span>
                 </div>
 
                 <div className="flex items-center gap-2 rounded bg-green-100 p-3 text-green-900 text-xs">
@@ -470,16 +632,30 @@ export const SellForeignCurrency = ({
                 <Check className="h-8 w-8 text-green-600" />
               </div>
 
-              <h3 className="text-xl font-semibold">Deposit Successful</h3>
+              <h3 className="text-xl font-semibold">Purchase Successful</h3>
               <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                The funds have been successfully deposited to the account.
+                You have successfully purchased {selectedCurrency?.code} {Number(convertedAmount).toLocaleString()}
               </p>
 
-              <div className="rounded-xl border bg-white p-6 shadow-sm text-left space-y-2">
+              <div className="rounded-xl border bg-white p-6 shadow-sm text-left space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">New Balance</span>
+                  <span className="text-gray-500">Amount Paid</span>
+                  <span className="font-medium">KES {Number(amount).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Rate Applied</span>
+                  <span className="font-medium">1 {selectedCurrency?.code} = {exchangeRate} KES</span>
+                </div>
+                <div className="flex justify-between text-sm border-t pt-2">
+                  <span className="text-gray-500">Foreign Currency Received</span>
                   <span className="font-bold text-primary">
-                    KES {(Number(selectedAccount?.balance || 0) + Number(amount)).toLocaleString()}
+                    {selectedCurrency?.code} {Number(convertedAmount).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">New KES Balance</span>
+                  <span className="font-bold text-primary">
+                    KES {(Number(selectedAccount?.balance || 0) - Number(amount)).toLocaleString()}
                   </span>
                 </div>
               </div>
