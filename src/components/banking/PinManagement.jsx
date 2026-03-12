@@ -315,6 +315,32 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
                       </Select>
                       {formErrors.deliveryMethod && <p className="text-xs text-destructive">{formErrors.deliveryMethod}</p>}
                     </div>
+                       <div className="space-y-2">
+                      <Label htmlFor="newPin">New PIN (4 digits)</Label>
+                      <Input 
+                        id="newPin" 
+                        type="password" 
+                        maxLength={4} 
+                        value={newPin} 
+                        onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))} 
+                        className={formErrors.newPin ? "border-destructive" : ""}
+                        placeholder="****"
+                      />
+                      {formErrors.newPin && <p className="text-xs text-destructive">{formErrors.newPin}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPin">Confirm PIN</Label>
+                      <Input 
+                        id="confirmPin" 
+                        type="password" 
+                        maxLength={4} 
+                        value={confirmPin} 
+                        onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))} 
+                        className={formErrors.confirmPin ? "border-destructive" : ""}
+                        placeholder="****"
+                      />
+                      {formErrors.confirmPin && <p className="text-xs text-destructive">{formErrors.confirmPin}</p>}
+                    </div>
                   </motion.div>
                 )}
 
@@ -504,4 +530,4 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
       </div>
     </div>
   );
-}
+}    
