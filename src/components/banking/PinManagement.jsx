@@ -17,6 +17,7 @@ import { DashboardHeader } from "@/components/banking/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input"; // Added Input component
 import {
   Select,
   SelectContent,
@@ -68,6 +69,13 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
   const [pinAction, setPinAction] = useState("");
   const [formErrors, setFormErrors] = useState({});
   
+  /* ACTION SPECIFIC STATE */
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [resetReason, setResetReason] = useState("");
+  const [deliveryMethod, setDeliveryMethod] = useState("");
+  const [unblockReason, setUnblockReason] = useState("");
+
   /* PROCESSING STATE */
   const [officerNotes, setOfficerNotes] = useState("");
 
@@ -90,6 +98,24 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
     const e = {};
     if (!pinCard) e.card = "Select card";
     if (!pinAction) e.action = "Select action";
+
+    // Specific validations based on action
+    if (pinAction === 'set-new') {
+      if (!newPin) e.newPin = "Enter new PIN";
+      else if (newPin.length !== 4) e.newPin = "PIN must be 4 digits";
+      if (!confirmPin) e.confirmPin = "Confirm your PIN";
+      else if (newPin !== confirmPin) e.confirmPin = "PINs do not match";
+    }
+
+    if (pinAction === 'reset') {
+      if (!resetReason) e.resetReason = "Select a reason";
+      if (!deliveryMethod) e.deliveryMethod = "Select delivery method";
+    }
+
+    if (pinAction === 'unblock') {
+      if (!unblockReason) e.unblockReason = "Enter a reason for unblock";
+    }
+
     setFormErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -111,6 +137,7 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
   };
 
   const pageVariants = { initial: { opacity: 0, x: 20 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 } };
+  const fieldVariants = { initial: { opacity: 0, y: -10 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -10 } };
   
   const actionLabel = {
     'set-new': 'Set New PIN',
@@ -170,6 +197,7 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
                 </div>
               </div>
 
+              {/* Card Selection */}
               <div className="space-y-2">
                 <Label>Select Card</Label>
                 <div className="space-y-2">
@@ -191,9 +219,10 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
                 </div>
               </div>
 
+              {/* Action Selection */}
               <div className="space-y-2">
                 <Label>Action</Label>
-                <Select value={pinAction} onValueChange={setPinAction}>
+                <Select value={pinAction} onValueChange={(val) => { setPinAction(val); setFormErrors({}); }}>
                   <SelectTrigger className={formErrors.action ? "border-destructive" : ""}>
                     <SelectValue placeholder="Select action" />
                   </SelectTrigger>
@@ -204,6 +233,115 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* DYNAMIC FIELDS BASED ON ACTION */}
+              <AnimatePresence mode="wait">
+                {pinAction === 'set-new' && (
+                  <motion.div 
+                    key="fields-set-new" 
+                    variants={fieldVariants} 
+                    initial="initial" 
+                    animate="animate" 
+                    exit="exit"
+                    className="space-y-4 p-4 bg-white border rounded-xl shadow-sm"
+                  >
+                    <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                      <KeyRound className="h-4 w-4" /> Set New PIN Details
+                    </h4>
+                    <div className="space-y-2">
+                      <Label htmlFor="newPin">New PIN (4 digits)</Label>
+                      <Input 
+                        id="newPin" 
+                        type="password" 
+                        maxLength={4} 
+                        value={newPin} 
+                        onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))} 
+                        className={formErrors.newPin ? "border-destructive" : ""}
+                        placeholder="****"
+                      />
+                      {formErrors.newPin && <p className="text-xs text-destructive">{formErrors.newPin}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPin">Confirm PIN</Label>
+                      <Input 
+                        id="confirmPin" 
+                        type="password" 
+                        maxLength={4} 
+                        value={confirmPin} 
+                        onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))} 
+                        className={formErrors.confirmPin ? "border-destructive" : ""}
+                        placeholder="****"
+                      />
+                      {formErrors.confirmPin && <p className="text-xs text-destructive">{formErrors.confirmPin}</p>}
+                    </div>
+                  </motion.div>
+                )}
+
+                {pinAction === 'reset' && (
+                  <motion.div 
+                    key="fields-reset" 
+                    variants={fieldVariants} 
+                    initial="initial" 
+                    animate="animate" 
+                    exit="exit"
+                    className="space-y-4 p-4 bg-white border rounded-xl shadow-sm"
+                  >
+                    <h4 className="text-sm font-semibold text-gray-700">Reset PIN Details</h4>
+                    <div className="space-y-2">
+                      <Label>Reason for Reset</Label>
+                      <Select value={resetReason} onValueChange={setResetReason}>
+                        <SelectTrigger className={formErrors.resetReason ? "border-destructive" : ""}>
+                          <SelectValue placeholder="Select reason" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="forgotten">Forgotten PIN</SelectItem>
+                          <SelectItem value="compromised">PIN Compromised</SelectItem>
+                          <SelectItem value="expired">PIN Expired</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {formErrors.resetReason && <p className="text-xs text-destructive">{formErrors.resetReason}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Delivery Method</Label>
+                      <Select value={deliveryMethod} onValueChange={setDeliveryMethod}>
+                        <SelectTrigger className={formErrors.deliveryMethod ? "border-destructive" : ""}>
+                          <SelectValue placeholder="Select delivery" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sms">SMS</SelectItem>
+                          <SelectItem value="email">Email</SelectItem>
+                          <SelectItem value="branch">Branch Pickup</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {formErrors.deliveryMethod && <p className="text-xs text-destructive">{formErrors.deliveryMethod}</p>}
+                    </div>
+                  </motion.div>
+                )}
+
+                {pinAction === 'unblock' && (
+                  <motion.div 
+                    key="fields-unblock" 
+                    variants={fieldVariants} 
+                    initial="initial" 
+                    animate="animate" 
+                    exit="exit"
+                    className="space-y-4 p-4 bg-white border rounded-xl shadow-sm"
+                  >
+                    <h4 className="text-sm font-semibold text-gray-700">Unblock PIN Details</h4>
+                    <div className="space-y-2">
+                      <Label htmlFor="unblockReason">Reason for Unblock</Label>
+                      <Textarea 
+                        id="unblockReason" 
+                        value={unblockReason} 
+                        onChange={(e) => setUnblockReason(e.target.value)} 
+                        placeholder="Customer verified identity via..." 
+                        className={formErrors.unblockReason ? "border-destructive" : ""}
+                      />
+                      {formErrors.unblockReason && <p className="text-xs text-destructive">{formErrors.unblockReason}</p>}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <Button onClick={handleSubmit} className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" disabled={loading}>
                 {loading ? "Processing..." : "Submit Request"}
@@ -233,16 +371,47 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
               <div className="rounded-xl border bg-white p-5 space-y-3 shadow-sm">
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Request Summary</h4>
                 <div className="space-y-0">
-                  {[
-                    { l: "Card", v: `•••• ${pinCard}` },
-                    { l: "Action", v: actionLabel[pinAction] },
-                    { l: "Status", v: "Card Active" },
-                  ].map((row) => (
-                    <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
-                      <span className="text-sm text-gray-500">{row.l}</span>
-                      <span className="text-sm font-medium text-gray-800">{row.v}</span>
+                  <div className="flex justify-between py-2 border-b border-dashed">
+                    <span className="text-sm text-gray-500">Card</span>
+                    <span className="text-sm font-medium text-gray-800">•••• {pinCard}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-dashed">
+                    <span className="text-sm text-gray-500">Action</span>
+                    <span className="text-sm font-medium text-gray-800">{actionLabel[pinAction]}</span>
+                  </div>
+                  
+                  {/* Dynamic Details in Review */}
+                  {pinAction === 'set-new' && (
+                    <div className="flex justify-between py-2 border-b border-dashed">
+                      <span className="text-sm text-gray-500">New PIN</span>
+                      <span className="text-sm font-medium text-gray-800 font-mono">****</span>
                     </div>
-                  ))}
+                  )}
+                  
+                  {pinAction === 'reset' && (
+                    <>
+                      <div className="flex justify-between py-2 border-b border-dashed">
+                        <span className="text-sm text-gray-500">Reason</span>
+                        <span className="text-sm font-medium text-gray-800 capitalize">{resetReason}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b border-dashed">
+                        <span className="text-sm text-gray-500">Delivery</span>
+                        <span className="text-sm font-medium text-gray-800 capitalize">{deliveryMethod}</span>
+                      </div>
+                    </>
+                  )}
+
+                  {pinAction === 'unblock' && (
+                    <div className="py-2 border-b border-dashed">
+                      <span className="text-sm text-gray-500 block mb-1">Reason</span>
+                      <span className="text-sm font-medium text-gray-800">{unblockReason}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between py-2">
+                    <span className="text-sm text-gray-500">Status</span>
+                    <span className="text-sm font-medium text-gray-800">Card Active</span>
+                  </div>
                 </div>
               </div>
 

@@ -5,7 +5,6 @@ import {
   ArrowLeft, Check, AlertCircle, Shield, Eye, ThumbsUp, Zap, Star
 } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
-
 import { DashboardHeader } from "@/components/banking/DashboardHeader";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
