@@ -177,19 +177,19 @@ export const BuyForeignCurrency = ({
     setIsSubmitting(true);
     try {
       // Post the foreign currency purchase transaction
-      const response = await fetch("http://127.0.0.1:8000/api/foreign-currency-purchases/", {
+      const response = await fetch("http://127.0.0.1:8000/api/fx-buy/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           account_number: selectedAccount.account_number,
-          kes_amount: Number(amount),
+          amount: Number(amount),
           source_currency: "KES",
           target_currency: selectedCurrency.code,
           exchange_rate: exchangeRate, // This is the buy_rate (KES per 1 foreign currency)
           exchange_rate_type: "buy_rate",
-          foreign_currency_amount: Number(convertedAmount),
+          kes_equivalent: Number(convertedAmount),
           reference,
           narration,
         }),

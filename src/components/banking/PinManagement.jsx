@@ -17,7 +17,7 @@ import { DashboardHeader } from "@/components/banking/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input"; // Added Input component
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -36,15 +36,25 @@ const STEPS = [
   { id: 6, name: "Authorization" },
 ];
 
-/* MOCK CARDS HELPER */
-function getCustomerCards(customer, sessionUser) {
-  const accounts = customer?.accounts || sessionUser?.account || [];
-  const active = accounts.filter((a) => a?.status === "ACTIVE");
-  if (active.length === 0) return [];
-  return [
-    { last4: "4521", type: "Visa Debit" },
-    { last4: "8832", type: "Mastercard" },
-  ];
+/* FUNCTION TO FETCH CARDS FROM API */
+async function fetchCustomerCards(accountNumber) {
+  try {
+    const response = await fetch(
+      `http://127.0.0.1:8000/api/cards/?account=${accountNumber}`
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch cards");
+    }
+
+    const data = await response.json();
+    console.log("Fetched Cards for PIN Management:", data);
+    return data || [];
+
+  } catch (error) {
+    console.error("Error fetching cards:", error);
+    return [];
+  }
 }
 
 export default function PinManagement({ customer: propCustomer, onBack }) {
@@ -63,6 +73,9 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
   const [customer, setCustomer] = useState(null);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [cards, setCards] = useState([]);
+  const [fetchingCards, setFetchingCards] = useState(false);
+  const [selectedCardDetails, setSelectedCardDetails] = useState(null);
 
   /* FORM STATE */
   const [pinCard, setPinCard] = useState("");
@@ -80,17 +93,39 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
   const [officerNotes, setOfficerNotes] = useState("");
 
   /* DERIVED DATA */
-  const existingCards = useMemo(() => getCustomerCards(customer, sessionUser), [customer, sessionUser]);
+  const accounts = sessionUser?.account || [];
+  const primaryAccount = accounts.find(acc => acc.status === "ACTIVE") || accounts[0];
+  const accountNumber = primaryAccount?.accountNumber || primaryAccount?.account_number;
+
+  /* FETCH CARDS WHEN ACCOUNT IS AVAILABLE */
+  useEffect(() => {
+    async function loadCards() {
+      if (accountNumber) {
+        setFetchingCards(true);
+        const fetchedCards = await fetchCustomerCards(accountNumber);
+        setCards(fetchedCards);
+        setFetchingCards(false);
+      }
+    }
+    loadCards();
+  }, [accountNumber]);
 
   /* INIT */
   useEffect(() => {
-    if (propCustomer) { setCustomer(propCustomer); return; }
-    const c = sessionStorage.getItem("customer");
-    if (c) setCustomer(JSON.parse(c));
-  }, [propCustomer]);
+    if (propCustomer) { 
+      setCustomer(propCustomer); 
+      return; 
+    }
+    const sessionCustomer = sessionStorage.getItem("customer");
+    if (sessionCustomer) setCustomer(JSON.parse(sessionCustomer));
+    else if (sessionUser) setCustomer(sessionUser);
+  }, [propCustomer, sessionUser]);
 
   useEffect(() => {
-    if (step === 2) { const t = setTimeout(() => setStep(3), 1500); return () => clearTimeout(t); }
+    if (step === 2) { 
+      const t = setTimeout(() => setStep(3), 1500); 
+      return () => clearTimeout(t); 
+    }
   }, [step]);
 
   /* HANDLERS */
@@ -110,6 +145,10 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
     if (pinAction === 'reset') {
       if (!resetReason) e.resetReason = "Select a reason";
       if (!deliveryMethod) e.deliveryMethod = "Select delivery method";
+      if (!newPin) e.newPin = "Enter new PIN";
+      else if (newPin.length !== 4) e.newPin = "PIN must be 4 digits";
+      if (!confirmPin) e.confirmPin = "Confirm your PIN";
+      else if (newPin !== confirmPin) e.confirmPin = "PINs do not match";
     }
 
     if (pinAction === 'unblock') {
@@ -120,12 +159,102 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
     return Object.keys(e).length === 0;
   };
 
+  const handleCardSelect = (card) => {
+    setPinCard(card.card_number || card.last4);
+    setSelectedCardDetails(card);
+  };
+
   const handleSubmit = async () => {
     if (!validate()) return;
+    
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
-    setLoading(false);
-    setStep(2);
+    
+    try {
+      // Prepare the request payload based on the action type
+      let payload = {
+        account_number: accountNumber,
+        card_number: selectedCardDetails?.card_number || pinCard,
+        action: pinAction,
+        officer_notes: officerNotes,
+      };
+
+      // Add action-specific fields
+      switch (pinAction) {
+        case 'set-new':
+          payload = {
+            ...payload,
+            new_pin: newPin,
+            pin_hash: confirmPin,
+            reason: 'Set new PIN',
+          };
+          break;
+
+        case 'reset':
+          payload = {
+            ...payload,
+            new_pin: newPin,
+            pin_hash: confirmPin,
+            reason: resetReason,
+            delivery_method: deliveryMethod,
+          };
+          break;
+
+        case 'unblock':
+          payload = {
+            ...payload,
+            reason: unblockReason,
+            unblock_reason: unblockReason,
+          };
+          break;
+
+        default:
+          break;
+      }
+
+      console.log("Sending PIN management request:", payload);
+
+      const response = await fetch("http://127.0.0.1:8000/api/card-pins/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      // Get the response data
+      const responseData = await response.json();
+      console.log("API Response:", responseData);
+
+      if (!response.ok) {
+        // Check for different error formats
+        let errorMessage = "Failed to submit PIN management request";
+        
+        if (responseData.message) {
+          errorMessage = responseData.message;
+        } else if (responseData.error) {
+          errorMessage = responseData.error;
+        } else if (responseData.detail) {
+          errorMessage = responseData.detail;
+        } else if (typeof responseData === 'string') {
+          errorMessage = responseData;
+        } else if (responseData.errors) {
+          // Handle validation errors
+          const errors = Object.values(responseData.errors).flat();
+          errorMessage = errors.join(', ');
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      console.log("PIN Management Request Created:", responseData);
+      setStep(2); // move to validation step
+    } catch (error) {
+      console.error("Error:", error);
+      // Display the actual error message from API
+      alert(error.message || "Failed to submit request");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFinalComplete = async () => {
@@ -136,8 +265,17 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
     if (onBack) onBack();
   };
 
-  const pageVariants = { initial: { opacity: 0, x: 20 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 } };
-  const fieldVariants = { initial: { opacity: 0, y: -10 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -10 } };
+  const pageVariants = { 
+    initial: { opacity: 0, x: 20 }, 
+    animate: { opacity: 1, x: 0 }, 
+    exit: { opacity: 0, x: -20 } 
+  };
+  
+  const fieldVariants = { 
+    initial: { opacity: 0, y: -10 }, 
+    animate: { opacity: 1, y: 0 }, 
+    exit: { opacity: 0, y: -10 } 
+  };
   
   const actionLabel = {
     'set-new': 'Set New PIN',
@@ -150,7 +288,7 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <DashboardHeader
-        customerName={customer?.fullName || sessionUser?.first_name}
+        customerName={customer?.fullName || customer?.first_name || sessionUser?.first_name || "Customer"}
         isDropdownOpen={navDropdownOpen}
         setIsDropdownOpen={setNavDropdownOpen}
         onLogout={() => { localStorage.removeItem("customer"); navigate("/"); }}
@@ -189,34 +327,61 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
             <motion.div key="step1" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6 max-w-lg mx-auto">
               <div className="flex items-center gap-3 rounded-xl border p-4 bg-white shadow-sm">
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
-                  {(customer?.fullName || sessionUser?.first_name || "C").split(" ").map(n => n[0]).join("").slice(0, 2)}
+                  {(customer?.fullName || customer?.first_name || sessionUser?.first_name || "C").split(" ").map(n => n[0]).join("").slice(0, 2)}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-semibold">{customer?.fullName || sessionUser?.first_name}</p>
-                  <p className="text-xs text-muted-foreground">{customer?.customerId || sessionUser?.user_id}</p>
+                  <p className="text-sm font-semibold">{customer?.fullName || customer?.first_name || sessionUser?.first_name}</p>
+                  <p className="text-xs text-muted-foreground">Account: {accountNumber || 'N/A'}</p>
                 </div>
               </div>
 
-              {/* Card Selection */}
+              {/* Card Selection - Now from API */}
               <div className="space-y-2">
-                <Label>Select Card</Label>
-                <div className="space-y-2">
-                  {existingCards.map(card => (
-                    <button
-                      key={card.last4}
-                      type="button"
-                      onClick={() => setPinCard(card.last4)}
-                      className={`border rounded-lg p-4 w-full flex justify-between items-center transition-all ${pinCard === card.last4 ? "border-primary bg-primary/10" : "border-border bg-white hover:bg-gray-50"}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <KeyRound className="h-5 w-5 text-gray-500" />
-                        <span className="font-mono">•••• {card.last4}</span>
-                        <span className="text-xs text-gray-500">{card.type}</span>
+                <Label>Select Card {fetchingCards && <span className="text-xs text-gray-500">(Loading...)</span>}</Label>
+                
+                {fetchingCards ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {cards.length > 0 ? (
+                      cards.map((card) => (
+                        <button
+                          key={card.id || card.card_number || card.last4}
+                          type="button"
+                          onClick={() => handleCardSelect(card)}
+                          className={`border rounded-lg p-4 w-full flex justify-between items-center transition-all ${
+                            pinCard === (card.card_number || card.last4) 
+                              ? "border-primary bg-primary/10" 
+                              : "border-border bg-white hover:bg-gray-50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <KeyRound className="h-5 w-5 text-gray-500" />
+                            <div className="text-left">
+                              <span className="font-mono block">
+                                •••• {card.last4 || card.card_number?.slice(-4) || 'N/A'}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {card.card_type || card.type || 'Debit Card'}
+                              </span>
+                            </div>
+                          </div>
+                          {pinCard === (card.card_number || card.last4) && (
+                            <Check className="h-5 w-5 text-primary" />
+                          )}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-gray-500 border rounded-lg">
+                        <KeyRound className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                        <p>No cards found for this account</p>
                       </div>
-                      {pinCard === card.last4 && <Check className="h-5 w-5 text-primary" />}
-                    </button>
-                  ))}
-                </div>
+                    )}
+                  </div>
+                )}
+                {formErrors.card && <p className="text-xs text-destructive">{formErrors.card}</p>}
               </div>
 
               {/* Action Selection */}
@@ -315,7 +480,7 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
                       </Select>
                       {formErrors.deliveryMethod && <p className="text-xs text-destructive">{formErrors.deliveryMethod}</p>}
                     </div>
-                       <div className="space-y-2">
+                    <div className="space-y-2">
                       <Label htmlFor="newPin">New PIN (4 digits)</Label>
                       <Input 
                         id="newPin" 
@@ -369,7 +534,11 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
                 )}
               </AnimatePresence>
 
-              <Button onClick={handleSubmit} className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" disabled={loading}>
+              <Button 
+                onClick={handleSubmit} 
+                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" 
+                disabled={loading || fetchingCards || !pinAction}
+              >
                 {loading ? "Processing..." : "Submit Request"}
               </Button>
             </motion.div>
@@ -399,7 +568,15 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
                 <div className="space-y-0">
                   <div className="flex justify-between py-2 border-b border-dashed">
                     <span className="text-sm text-gray-500">Card</span>
-                    <span className="text-sm font-medium text-gray-800">•••• {pinCard}</span>
+                    <span className="text-sm font-medium text-gray-800">
+                      •••• {selectedCardDetails?.last4 || pinCard?.slice(-4) || pinCard}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-dashed">
+                    <span className="text-sm text-gray-500">Card Type</span>
+                    <span className="text-sm font-medium text-gray-800">
+                      {selectedCardDetails?.card_type || selectedCardDetails?.type || 'Debit Card'}
+                    </span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-dashed">
                     <span className="text-sm text-gray-500">Action</span>
@@ -407,7 +584,7 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
                   </div>
                   
                   {/* Dynamic Details in Review */}
-                  {pinAction === 'set-new' && (
+                  {(pinAction === 'set-new' || pinAction === 'reset') && (
                     <div className="flex justify-between py-2 border-b border-dashed">
                       <span className="text-sm text-gray-500">New PIN</span>
                       <span className="text-sm font-medium text-gray-800 font-mono">****</span>
@@ -435,8 +612,8 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
                   )}
 
                   <div className="flex justify-between py-2">
-                    <span className="text-sm text-gray-500">Status</span>
-                    <span className="text-sm font-medium text-gray-800">Card Active</span>
+                    <span className="text-sm text-gray-500">Card Status</span>
+                    <span className="text-sm font-medium text-gray-800">{selectedCardDetails?.status || 'ACTIVE'}</span>
                   </div>
                 </div>
               </div>
@@ -530,4 +707,4 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
       </div>
     </div>
   );
-}    
+}

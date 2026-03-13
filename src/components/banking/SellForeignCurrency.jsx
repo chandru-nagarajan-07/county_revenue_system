@@ -172,18 +172,18 @@ export const SellForeignCurrency = ({
     setIsSubmitting(true);
     try {
       // Post the foreign currency sale transaction
-      const response = await fetch("http://127.0.0.1:8000/api/foreign-currency-sales/", {
+      const response = await fetch("http://127.0.0.1:8000/api/fx-sell/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           account_number: selectedAccount.account_number,
-          foreign_currency_amount: Number(amount),
+          amount: Number(amount),
           foreign_currency: selectedCurrency.code,
           exchange_rate: exchangeRate, // This is the sell_rate
           exchange_rate_type: "sell_rate",
-          kes_amount: Number(convertedAmount), // Amount in KES received
+          kes_equivalent: Number(convertedAmount), // Amount in KES received
           reference,
           narration,
         }),
