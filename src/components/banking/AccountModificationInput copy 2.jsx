@@ -12,10 +12,6 @@ import {
   Calendar,
   Globe,
   ChevronRight,
-  Receipt,
-  Zap,
-  Star,
-  TrendingUp,
 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
@@ -65,40 +61,30 @@ const MODIFICATION_ACTIONS = [
     label: "Set Transaction Limit",
     description: "Configure daily or per-transaction limits",
     icon: ShieldAlert,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50",
   },
   {
     id: "block-unblock",
     label: "Block / Unblock Account",
     description: "Restrict or restore account access",
     icon: Lock,
-    color: "text-red-600",
-    bgColor: "bg-red-50",
   },
   {
     id: "set-standing-order",
     label: "Set Standing Order",
     description: "Create recurring payment",
     icon: Calendar,
-    color: "text-amber-600",
-    bgColor: "bg-amber-50",
   },
   {
     id: "change-currency",
     label: "Change Account Currency",
     description: "Convert account currency",
     icon: Globe,
-    color: "text-purple-600",
-    bgColor: "bg-purple-50",
   },
   {
     id: "activate-dormant",
     label: "Activate / Set Dormant",
     description: "Change account status",
     icon: Moon,
-    color: "text-indigo-600",
-    bgColor: "bg-indigo-50",
   },
 ];
 
@@ -142,7 +128,6 @@ const FREQUENCIES = [
 export function AccountModificationInput({ customer, onBack }) {
 
   const navigate = useNavigate();
-  const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
   const [step, setStep] = useState(1);
 
@@ -366,71 +351,11 @@ Details: ${JSON.stringify(details)}
     <div className="min-h-screen bg-gray-50 flex flex-col">
 
       <DashboardHeader
-        customerName={customer?.first_name || sessionUser?.first_name || "Customer"}
-        isDropdownOpen={navDropdownOpen}
-        setIsDropdownOpen={setNavDropdownOpen}
-        onLogout={() => {
-          localStorage.removeItem("customer");
-          navigate("/");
-        }}
+        customerName={customer?.first_name || "Customer"}
+        onLogout={() => navigate("/")}
       />
 
-      {/* Sticky Header with Back Button & Stepper */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-20 px-4 sm:px-6 py-3 shadow-sm">
-        <div className="flex items-center gap-4 mb-3">
-          <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-lg font-bold text-gray-900 tracking-tight">
-              Account Modification
-            </h1>
-            <p className="text-xs text-gray-500">
-              Step {step} of 6: {STEPS[step - 1].name}
-            </p>
-          </div>
-        </div>
-
-        {/* STEPPER UI */}
-        <div className="flex items-center w-full mt-2 px-1">
-          {STEPS.map((s, index) => {
-            const isCompleted = s.id < step;
-            const isCurrent = s.id === step;
-
-            return (
-              <div key={s.id} className="flex items-center flex-1 last:flex-none">
-                <div className="relative flex flex-col items-center">
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
-                      isCompleted
-                        ? "bg-primary border-primary text-primary-foreground"
-                        : isCurrent
-                        ? "bg-accent border-accent text-accent-foreground scale-110 shadow-sm"
-                        : "bg-white border-gray-200 text-muted-foreground"
-                    }`}
-                  >
-                    {isCompleted ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <span className="text-[10px] font-bold">{s.id}</span>
-                    )}
-                  </div>
-                </div>
-
-                {index < STEPS.length - 1 && (
-                  <div
-                    className={`flex-1 h-[2px] mx-1 transition-colors duration-300 ${
-                      isCompleted ? "bg-primary" : "bg-gray-200"
-                    }`}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4 md:p-6">
+      <div className="flex-1 p-6">
 
         <AnimatePresence mode="wait">
 
@@ -447,28 +372,11 @@ Details: ${JSON.stringify(details)}
               className="space-y-6 max-w-lg mx-auto"
             >
 
-              {/* Customer Banner */}
-              <div className="flex items-center gap-3 rounded-xl border p-4 bg-white shadow-sm">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
-                  {(customer?.first_name || sessionUser?.first_name || "C")
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2)}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">{customer?.first_name || sessionUser?.first_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {customer?.user_id || sessionUser?.user_id}
-                  </p>
-                </div>
-              </div>
-
               {!selectedActionId && (
 
                 <div className="space-y-3">
 
-                  <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Select Action</Label>
+                  <Label>Select Action</Label>
 
                   {MODIFICATION_ACTIONS.map((action) => {
 
@@ -478,16 +386,20 @@ Details: ${JSON.stringify(details)}
                       <button
                         key={action.id}
                         onClick={() => setSelectedActionId(action.id)}
-                        className="w-full flex items-center gap-4 border rounded-xl p-4 bg-white hover:bg-gray-50 transition-all text-left group"
+                        className="w-full border p-4 rounded-xl flex items-center gap-3 bg-white"
                       >
-                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${action.bgColor} ${action.color}`}>
-                          <Icon className="h-5 w-5" />
+
+                        <Icon className="h-5 w-5" />
+
+                        <div className="flex-1 text-left">
+                          <h4 className="font-semibold">{action.label}</h4>
+                          <p className="text-xs text-gray-500">
+                            {action.description}
+                          </p>
                         </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm font-semibold text-gray-800">{action.label}</h4>
-                          <p className="text-xs text-gray-500">{action.description}</p>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
+
+                        <ChevronRight className="h-4 w-4" />
+
                       </button>
                     );
 
@@ -502,27 +414,12 @@ Details: ${JSON.stringify(details)}
 
                   <Button
                     variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedActionId(null);
-                      setDetails({});
-                    }}
-                    className="text-xs text-gray-500 px-2"
+                    onClick={() => setSelectedActionId(null)}
                   >
-                    <ArrowLeft className="h-3 w-3 mr-1" /> Change Action
+                    ← Change Action
                   </Button>
 
-                  <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
-
-                    {/* Action Header */}
-                    <div className="flex items-center gap-2 pb-2 border-b">
-                      <div className={`p-1.5 rounded ${selectedActionObj?.bgColor}`}>
-                        {selectedActionObj && (
-                          <selectedActionObj.icon className={`h-4 w-4 ${selectedActionObj.color}`} />
-                        )}
-                      </div>
-                      <h3 className="font-semibold text-sm">{selectedActionObj?.label}</h3>
-                    </div>
+                  <div className="bg-white p-5 rounded-xl border space-y-4">
 
                     <Label>Select Account</Label>
 
@@ -542,8 +439,7 @@ Details: ${JSON.stringify(details)}
                       <SelectContent>
                         {activeAccounts.map((acc) => (
                           <SelectItem key={acc.id} value={acc.id.toString()}>
-                            {acc.account_number} • {acc.currency || "KES"}{" "}
-                            {acc.balance?.toLocaleString()}
+                            {acc.account_number}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -770,7 +666,7 @@ Details: ${JSON.stringify(details)}
 )}
                   </div>
 
-                  <Button onClick={handleStepOneSubmit} className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold">
+                  <Button onClick={handleStepOneSubmit}>
                     Validate Request
                   </Button>
 
@@ -782,263 +678,105 @@ Details: ${JSON.stringify(details)}
 
           )}
 
-          {/* STEP 2: VALIDATION */}
-          {step === 2 && (
-            <motion.div
-              key="step2"
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="flex flex-col items-center justify-center py-20 gap-4"
-            >
-              <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center animate-pulse">
-                <Shield className="h-8 w-8 text-blue-600" />
-              </div>
-              <h3 className="font-semibold text-lg">Validating Request...</h3>
-              <p className="text-sm text-muted-foreground">Checking account status and compliance</p>
-            </motion.div>
-          )}
+          {/* REVIEW */}
 
-          {/* STEP 3: REVIEW */}
           {step === 3 && (
-            <motion.div
-              key="step3"
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="space-y-6 max-w-lg mx-auto"
-            >
-              <div className="flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
-                <Check className="h-5 w-5" />
-                <span className="text-sm font-medium">Validation Passed</span>
-              </div>
 
-              <div className="rounded-xl border bg-white p-5 space-y-3 shadow-sm">
-                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Request Summary
-                </h4>
+            <div className="max-w-lg mx-auto space-y-4">
 
-                <div className="space-y-0">
-                  {[
-                    { l: "Customer Name", v: customer?.first_name || sessionUser?.first_name || "N/A" },
-                    { l: "Action", v: selectedActionObj?.label },
-                    { l: "Account", v: selectedAccount?.account_number },
-                    { l: "Details", v: Object.values(details).join(" / ") || "N/A" },
-                  ].map((row) => (
-                    <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
-                      <span className="text-sm text-gray-500">{row.l}</span>
-                      <span className="text-sm font-medium text-gray-800 text-right">{row.v}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <h3 className="font-semibold">Review Request</h3>
 
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
-                  Back
-                </Button>
-                <Button
-                  onClick={() => setStep(4)}
-                  className="flex-1 gold-gradient text-accent-foreground font-semibold shadow-gold"
-                >
-                  Proceed
-                </Button>
-              </div>
-            </motion.div>
+              <p>Action: {selectedActionObj?.label}</p>
+              <p>Account: {selectedAccount?.account_number}</p>
+
+              <Button onClick={() => setStep(4)}>
+                Proceed
+              </Button>
+
+            </div>
+
           )}
 
-          {/* STEP 4: PROCESSING */}
+          {/* PROCESSING */}
+
           {step === 4 && (
-            <motion.div
-              key="step4"
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="space-y-6 max-w-lg mx-auto"
-            >
-              <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-3 rounded-lg mb-2">
-                <Zap className="h-5 w-5" />
-                <span className="text-sm font-medium">Officer Review</span>
-              </div>
 
-              <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-[10px] text-gray-500 uppercase">Action</p>
-                    <p className="font-bold text-xs truncate">{selectedActionObj?.label}</p>
-                  </div>
-                  <div className="bg-blue-50 p-3 rounded-lg">
-                    <p className="text-[10px] text-blue-600 uppercase font-semibold">Account</p>
-                    <p className="font-bold text-blue-700 text-xs">
-                      {selectedAccount?.account_number?.slice(-4)}
-                    </p>
-                  </div>
-                  <div className="bg-green-50 p-3 rounded-lg">
-                    <p className="text-[10px] text-gray-500 uppercase">Status</p>
-                    <p className="font-bold text-green-700 text-xs">Pending</p>
-                  </div>
-                </div>
+            <div className="max-w-lg mx-auto space-y-4">
 
-                <div className="space-y-3">
-                  <Label className="text-xs font-medium">Priority Level</Label>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-400">Low</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={priorityLevel}
-                      onChange={(e) => setPriorityLevel(e.target.value)}
-                      className="flex-1"
-                    />
-                    <span className="text-xs text-gray-400">High</span>
-                  </div>
-                </div>
-              </div>
+              <Label>Priority</Label>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-medium">Officer Notes</Label>
-                <Textarea
-                  placeholder="Optional notes for the next approver..."
-                  value={officerNotes}
-                  onChange={(e) => setOfficerNotes(e.target.value)}
-                />
-              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={priorityLevel}
+                onChange={(e) => setPriorityLevel(e.target.value)}
+              />
 
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
-                  Back
-                </Button>
-                <Button
-                  onClick={() => setStep(5)}
-                  className="flex-1 gold-gradient text-accent-foreground font-semibold shadow-gold"
-                >
-                  Confirm Details
-                </Button>
-              </div>
-            </motion.div>
+              <Textarea
+                placeholder="Officer notes"
+                value={officerNotes}
+                onChange={(e) => setOfficerNotes(e.target.value)}
+              />
+
+              <Button onClick={() => setStep(5)}>
+                Confirm Details
+              </Button>
+
+            </div>
+
           )}
 
-          {/* STEP 5: VERIFICATION */}
+          {/* SUBMIT */}
+
           {step === 5 && (
-            <motion.div
-              key="step5"
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="space-y-6 max-w-lg mx-auto"
-            >
-              <div className="flex items-center gap-2 text-blue-600 bg-blue-50 p-3 rounded-lg">
-                <Eye className="h-5 w-5" />
-                <span className="text-sm font-medium">Final Verification</span>
-              </div>
 
-              <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
-                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Request Details
-                </h4>
+            <div className="max-w-lg mx-auto space-y-4">
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-gray-500">Action Type</p>
-                    <p className="font-semibold">{selectedActionObj?.label}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Account</p>
-                    <p className="font-semibold">{selectedAccount?.account_number}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Value</p>
-                    <p className="font-bold text-primary">
-                      {Object.values(details).join(", ") || "Status Change"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Priority</p>
-                    <p className="font-bold text-lg">{priorityLevel}%</p>
-                  </div>
-                </div>
+              <Button
+                disabled={loading}
+                onClick={async () => {
 
-                {priorityLevel > 80 && (
-                  <div className="flex items-center gap-2 bg-amber-50 text-amber-800 text-xs p-2 rounded border border-amber-200 mt-2">
-                    <Star className="h-3.5 w-3.5" />
-                    <span>Flagged as high priority transaction</span>
-                  </div>
-                )}
-              </div>
+                  const success = await submitModificationRequest();
 
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(4)} className="flex-1">
-                  Request Change
-                </Button>
-                <Button
-                  disabled={loading}
-                  onClick={async () => {
-                    const success = await submitModificationRequest();
-                    if (success) {
-                      setStep(6);
-                    }
-                  }}
-                  className="flex-1 gold-gradient text-accent-foreground font-semibold shadow-gold"
-                >
-                  {loading ? "Submitting..." : "Confirm & Verify"}
-                </Button>
-              </div>
-            </motion.div>
+                  if (success) {
+                    setStep(6);
+                  }
+
+                }}
+              >
+
+                {loading ? "Submitting..." : "Confirm & Verify"}
+
+              </Button>
+
+            </div>
+
           )}
 
-          {/* STEP 6: AUTHORIZATION */}
+          {/* DONE */}
+
           {step === 6 && (
-            <motion.div
-              key="step6"
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="space-y-6 max-w-lg mx-auto text-center py-10"
-            >
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
-              </div>
 
-              <h3 className="text-xl font-semibold">Awaiting Authorization</h3>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                This modification request requires supervisor approval to be completed.
-              </p>
+            <div className="text-center space-y-4 py-10">
 
-              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Request ID</span>
-                  <span className="font-mono text-xs">MOD-{Date.now().toString().slice(-8)}</span>
-                </div>
+              <ThumbsUp className="mx-auto" />
 
-                {priorityLevel > 80 ? (
-                  <div className="flex items-center gap-2 rounded bg-amber-100 p-3 text-amber-900 text-xs">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>High Priority request requires immediate approval</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 rounded bg-green-100 p-3 text-green-900 text-xs">
-                    <Check className="h-4 w-4" />
-                    <span>Standard approval workflow</span>
-                  </div>
-                )}
-              </div>
+              <h3 className="font-semibold">
+                Awaiting Authorization
+              </h3>
 
               <Button
                 onClick={() => {
-                  alert("Request Authorized Successfully!");
+                  alert("Request Submitted");
                   onBack();
                 }}
-                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
               >
-                Authorize Request
+                Finish
               </Button>
-            </motion.div>
+
+            </div>
+
           )}
 
         </AnimatePresence>
