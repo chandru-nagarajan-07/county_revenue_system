@@ -19,13 +19,9 @@ import {
 import {
   ArrowLeft,
   Check,
-  AlertCircle,
   Shield,
   Eye,
   ThumbsUp,
-  Receipt,
-  Loader2,
-  RefreshCw,
   Info,
   ArrowRightLeft,
 } from "lucide-react";
@@ -38,6 +34,9 @@ const STEPS = [
   { id: 5, name: "Verification" },
   { id: 6, name: "Complete" },
 ];
+
+// API Base URL - hardcoded to fix the process is not defined error
+const API_BASE_URL = "http://127.0.0.1:8000";
 
 export const FxTransfer = ({
   customer: propCustomer,
@@ -53,9 +52,9 @@ export const FxTransfer = ({
 
   // Account and basic fields
   const [fromAccount, setFromAccount] = useState(null);
-  const [toAccountNumber, setToAccountNumber] = useState(""); // Text field for external account
-  const [toAccountName, setToAccountName] = useState(""); // Optional beneficiary name
-  const [toBankName, setToBankName] = useState(""); // Optional bank name
+  const [toAccountNumber, setToAccountNumber] = useState("");
+  const [toAccountName, setToAccountName] = useState("");
+  const [toBankName, setToBankName] = useState("");
   const [reference, setReference] = useState("");
   const [narration, setNarration] = useState("");
 
@@ -77,10 +76,32 @@ export const FxTransfer = ({
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [transactionId, setTransactionId] = useState(null);
+  const [apiError, setApiError] = useState(null);
 
   /* SESSION USER */
-  const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
-  const accounts = sessionUser?.account || [];
+  const sessionUserRaw = sessionStorage.getItem("userData1");
+  const sessionUser = JSON.parse(sessionUserRaw || "{}");
+  console.log("Session User:", sessionUser);
+
+  // Process accounts - SIMPLE: just use as is
+  const accounts = useMemo(() => {
+    if (!sessionUser?.account) return [];
+    return sessionUser.account;
+  }, [sessionUser]);
+
+  // Helper to get currency display
+  const getCurrencyDisplay = (currencyId) => {
+    const currencyMap = {
+      1: "KES",
+      2: "USD",
+      3: "EUR",
+      4: "GBP",
+      5: "UGX",
+      6: "TZS"
+    };
+    return currencyMap[currencyId] || `ID: ${currencyId}`;
+  };
 
   /* INIT CUSTOMER */
   useEffect(() => {
@@ -98,7 +119,7 @@ export const FxTransfer = ({
     setCurrencyError(null);
     
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/currencies/", {
+      const response = await fetch(`${API_BASE_URL}/api/currencies/`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -106,13 +127,13 @@ export const FxTransfer = ({
       });
 
       const data = await response.json();
-      console.log("Fetched Currencies:", data);
       
       if (!response.ok) {
         throw new Error(data.message || "Failed to fetch currencies");
       }
 
-      setCurrencies(data);
+      const currenciesData = Array.isArray(data) ? data : data.results || [];
+      setCurrencies(currenciesData);
       
     } catch (error) {
       console.error("Error fetching currencies:", error);
@@ -122,64 +143,57 @@ export const FxTransfer = ({
     }
   };
 
-  // Fetch currencies when component mounts
   useEffect(() => {
     fetchCurrencies();
   }, []);
 
+  /* ELIGIBLE ACCOUNTS - NO CURRENCY FILTER */
+  const eligibleAccounts = useMemo(() => {
+    console.log("All accounts:", accounts);
+    const filtered = accounts.filter((acc) => acc?.status === "ACTIVE");
+    console.log("Active accounts:", filtered);
+    return filtered;
+  }, [accounts]);
+
   // Calculate exchange rate when both currencies are selected
   useEffect(() => {
     if (fromCurrency && toCurrency && fromCurrency !== toCurrency) {
-      // Find the target currency
       const targetCurrency = currencies.find(c => c.code === toCurrency);
       
       if (targetCurrency) {
         const numAmount = Number(amount) || 0;
         
-        // For KES to Foreign Currency (Buy)
         if (fromCurrency === "KES") {
           const rate = Number(targetCurrency.buy_rate) || 0;
           setExchangeRate(rate);
-          
-          // FX Charge (example: 1% of amount)
           const charge = numAmount * 0.01;
           setFxCharge(charge);
-          
-          // Calculate converted amount (KES to Foreign)
           const converted = rate > 0 ? numAmount / rate : 0;
           setConvertedAmount(converted);
-          
-          // Total Debit = Amount + FX Charge
           setTotalDebit(numAmount + charge);
         }
-        // For Foreign Currency to KES (Sell)
         else if (toCurrency === "KES") {
           const rate = Number(targetCurrency.sell_rate) || 0;
           setExchangeRate(rate);
-          
-          // FX Charge (example: 1% of amount)
           const charge = numAmount * 0.01;
           setFxCharge(charge);
-          
-          // Calculate converted amount (Foreign to KES)
           const converted = numAmount * rate;
           setConvertedAmount(converted);
-          
-          // Total Debit = Amount (foreign is debited separately)
           setTotalDebit(numAmount);
         }
-        // For Foreign to Foreign (cross currency)
         else {
-          // This would need cross rate calculation
-          // For now, using a placeholder
-          const rate = 1.5;
-          setExchangeRate(rate);
+          const fromCurrencyData = currencies.find(c => c.code === fromCurrency);
+          const toCurrencyData = currencies.find(c => c.code === toCurrency);
           
-          const charge = numAmount * 0.015;
-          setFxCharge(charge);
-          
-          setConvertedAmount(numAmount * rate);
-          setTotalDebit(numAmount + charge);
+          if (fromCurrencyData && toCurrencyData) {
+            const rate = (toCurrencyData.sell_rate / fromCurrencyData.buy_rate) || 1.5;
+            setExchangeRate(rate);
+            const charge = numAmount * 0.015;
+            setFxCharge(charge);
+            const converted = numAmount * rate;
+            setConvertedAmount(converted);
+            setTotalDebit(numAmount + charge);
+          }
         }
       }
     } else {
@@ -189,18 +203,6 @@ export const FxTransfer = ({
       setTotalDebit(0);
     }
   }, [fromCurrency, toCurrency, amount, currencies]);
-
-  /* ELIGIBLE ACCOUNTS */
-  const eligibleAccounts = useMemo(() => {
-    return accounts.filter((acc) => acc?.status === "ACTIVE");
-  }, [accounts]);
-
-  // Filter accounts based on from currency
-  const fromCurrencyAccounts = useMemo(() => {
-    return eligibleAccounts.filter(acc => 
-      acc.currency === fromCurrency || (fromCurrency === "KES" && !acc.currency)
-    );
-  }, [eligibleAccounts, fromCurrency]);
 
   /* VALIDATION */
   const validate = () => {
@@ -214,20 +216,6 @@ export const FxTransfer = ({
     const num = Number(amount);
     if (isNaN(num) || num <= 0) errs.amount = "Enter valid amount";
     
-    // Check if from account has sufficient balance
-    if (fromAccount) {
-      const balance = Number(fromAccount.balance) || 0;
-      if (fromCurrency === "KES") {
-        if (balance < totalDebit) {
-          errs.amount = `Insufficient balance. Required: ${fromCurrency} ${totalDebit.toFixed(2)}`;
-        }
-      } else {
-        if (balance < num) {
-          errs.amount = `Insufficient balance. Required: ${fromCurrency} ${num.toFixed(2)}`;
-        }
-      }
-    }
-    
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -237,12 +225,39 @@ export const FxTransfer = ({
     if (!validate()) return;
 
     setIsSubmitting(true);
+    setApiError(null);
+    
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/fx-transfers/", {
+      const payload = {
+        account_number: fromAccount.account_number,
+        beneficiary_account_number: toAccountNumber,
+        beneficiary_name: toAccountName || null,
+        beneficiary_bank: toBankName || null,
+        from_currency: fromCurrency,
+        to_currency: toCurrency,
+        amount: Number(amount),
+        exchange_rate: exchangeRate,
+        fx_charge: fxCharge,
+        converted_amount: convertedAmount,
+        total_debit: totalDebit,
+        reference: reference || null,
+        narration: narration || null,
+        // Add customer/user info if needed by backend
+        customer_id: customer?.id || sessionUser?.id,
+        user_id: sessionUser?.user_id,
+      };
+      
+      console.log("Submitting FX Transfer:", payload);
+
+      // Using the singular endpoint as requested
+      const response = await fetch(`${API_BASE_URL}/api/fx-transfer/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          // Add authorization header if your API requires it
+          // "Authorization": `Bearer ${sessionStorage.getItem("token")}`,
         },
+
         body: JSON.stringify({
           from_account_number: fromAccount.account_number,
           to_account_number: toAccountNumber,
@@ -260,26 +275,50 @@ export const FxTransfer = ({
           user_id: customer?.user_id || sessionUser?.user_id,
           service_amount: serviceFee,
         }),
+
       });
 
       const data = await response.json();
+      console.log("FX Transfer Response:", data);
 
       if (!response.ok) {
-        alert(data.message || "Transaction failed");
+        // Handle different error status codes
+        if (response.status === 400) {
+          // Validation errors
+          const errorMessage = data.message || data.error || "Please check your input";
+          setApiError(errorMessage);
+          alert(errorMessage);
+        } else if (response.status === 401) {
+          // Unauthorized
+          alert("Session expired. Please login again");
+          navigate("/");
+        } else if (response.status === 404) {
+          // Endpoint not found
+          alert("API endpoint not found. Please check the URL configuration.");
+        } else {
+          alert(data.message || data.error || "Transaction failed");
+        }
         setIsSubmitting(false);
         return;
       }
 
-      setStep(2); // Move to validation loading step
+      // Store transaction ID from response if available
+      if (data.id || data.transaction_id) {
+        setTransactionId(data.id || data.transaction_id);
+      }
+
+      // Move to validation step
+      setStep(2);
     } catch (error) {
-      console.error(error);
-      alert("Server error");
+      console.error("Error submitting FX transfer:", error);
+      setApiError(error.message);
+      alert("Server error: " + error.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Auto-advance Step 2 -> 3
+  // Auto-advance from validation to review
   useEffect(() => {
     if (step === 2) {
       const timer = setTimeout(() => setStep(3), 1500);
@@ -289,25 +328,31 @@ export const FxTransfer = ({
 
   const handleFinish = async () => {
     setIsSubmitting(true);
+    
     // Simulate final processing
     await new Promise((r) => setTimeout(r, 1000));
+    
     setIsSubmitting(false);
     alert("FX Transfer Successful");
-    if (onComplete) onComplete();
+    
+    if (onComplete) {
+      onComplete({
+        transactionId,
+        fromAccount: fromAccount?.account_number,
+        toAccount: toAccountNumber,
+        amount,
+        fromCurrency,
+        toCurrency,
+        convertedAmount,
+      });
+    }
   };
 
-  // Get available target currencies (exclude fromCurrency)
-  const availableTargetCurrencies = useMemo(() => {
-    return currencies.filter(c => c.code !== fromCurrency);
-  }, [currencies, fromCurrency]);
-
-  // Safe toFixed function to handle null/undefined
   const safeToFixed = (value, digits = 2) => {
     if (value === null || value === undefined || isNaN(value)) return "0.00";
     return Number(value).toFixed(digits);
   };
 
-  /* ANIMATION VARIANTS */
   const pageVariants = {
     initial: { opacity: 0, x: 20 },
     animate: { opacity: 1, x: 0 },
@@ -334,7 +379,7 @@ export const FxTransfer = ({
         }}
       />
 
-      {/* Sticky Header with Back Button & Stepper */}
+      {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-20 px-4 sm:px-6 py-3 shadow-sm">
         <div className="flex items-center gap-4 mb-3">
           <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9">
@@ -350,7 +395,7 @@ export const FxTransfer = ({
           </div>
         </div>
 
-        {/* ========== ROUND STEPPER UI ========== */}
+        {/* Stepper */}
         <div className="flex items-center w-full mt-2 px-1">
           {STEPS.map((s, index) => {
             const isCompleted = s.id < step;
@@ -358,27 +403,24 @@ export const FxTransfer = ({
 
             return (
               <div key={s.id} className="flex items-center flex-1 last:flex-none">
-                <div className="relative flex flex-col items-center">
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
-                      isCompleted
-                        ? "bg-primary border-primary text-primary-foreground"
-                        : isCurrent
-                        ? "bg-accent border-accent text-accent-foreground scale-110 shadow-sm"
-                        : "bg-white border-gray-200 text-muted-foreground"
-                    }`}
-                  >
-                    {isCompleted ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <span className="text-[10px] font-bold">{s.id}</span>
-                    )}
-                  </div>
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-all ${
+                    isCompleted
+                      ? "bg-primary border-primary text-primary-foreground"
+                      : isCurrent
+                      ? "bg-accent border-accent text-accent-foreground scale-110 shadow-sm"
+                      : "bg-white border-gray-200 text-muted-foreground"
+                  }`}
+                >
+                  {isCompleted ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <span className="text-[10px] font-bold">{s.id}</span>
+                  )}
                 </div>
-
                 {index < STEPS.length - 1 && (
                   <div
-                    className={`flex-1 h-[2px] mx-1 transition-colors duration-300 ${
+                    className={`flex-1 h-[2px] mx-1 transition-colors ${
                       isCompleted ? "bg-primary" : "bg-gray-200"
                     }`}
                   />
@@ -387,13 +429,12 @@ export const FxTransfer = ({
             );
           })}
         </div>
-        {/* ========== END ROUND STEPPER UI ========== */}
       </div>
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6">
         <AnimatePresence mode="wait">
-          {/* ========== STEP 1: INPUT ========== */}
+          {/* STEP 1: INPUT */}
           {step === 1 && (
             <motion.div
               key="step1"
@@ -417,52 +458,48 @@ export const FxTransfer = ({
                     {customer?.fullName || sessionUser?.first_name}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {customer?.user_id || sessionUser?.user_id} • {customer?.phone || sessionUser?.phone}
+                    {customer?.user_id || sessionUser?.user_id}
                   </p>
                 </div>
               </div>
 
+              {/* API Error Display */}
+              {apiError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  <p className="font-medium">Error: {apiError}</p>
+                </div>
+              )}
+
               {/* Form Card */}
               <div className="rounded-xl border bg-white p-6 shadow-sm space-y-5">
-                {/* From Account Selection (Dropdown) */}
+                {/* From Account Selection - ALL ACCOUNTS SHOWN */}
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
-                    <span>From Account (Source) *</span>
-                    {fromCurrency && (
-                      <span className="text-xs text-muted-foreground">
-                        ({fromCurrency} accounts)
-                      </span>
-                    )}
-                  </Label>
+                  <Label>From Account (Source) *</Label>
                   <Select
                     value={fromAccount?.account_number || ""}
                     onValueChange={(val) => {
                       const acc = eligibleAccounts.find((a) => a.account_number === val);
                       setFromAccount(acc);
-                      // Auto-set from currency based on account currency
-                      if (acc) {
-                        setFromCurrency(acc.currency || "KES");
-                      }
                     }}
                   >
                     <SelectTrigger className={errors.fromAccount ? "border-destructive" : ""}>
                       <SelectValue placeholder="Choose source account" />
                     </SelectTrigger>
                     <SelectContent>
-                      {fromCurrencyAccounts.length > 0 ? (
-                        fromCurrencyAccounts.map((acc) => (
+                      {eligibleAccounts.length > 0 ? (
+                        eligibleAccounts.map((acc) => (
                           <SelectItem key={acc.account_number} value={acc.account_number}>
                             <div className="flex flex-col">
                               <span>{acc.account_number}</span>
                               <span className="text-xs text-muted-foreground">
-                                Balance: {acc.currency || "KES"} {acc.balance?.toLocaleString()}
+                                Balance: {getCurrencyDisplay(acc.currency)} {Number(acc.balance).toLocaleString()}
                               </span>
                             </div>
                           </SelectItem>
                         ))
                       ) : (
                         <div className="p-2 text-sm text-muted-foreground text-center">
-                          No {fromCurrency} accounts available
+                          No active accounts found
                         </div>
                       )}
                     </SelectContent>
@@ -470,12 +507,12 @@ export const FxTransfer = ({
                   {errors.fromAccount && <p className="text-xs text-destructive">{errors.fromAccount}</p>}
                 </div>
 
-                {/* Arrow indicating transfer direction */}
+                {/* Arrow */}
                 <div className="flex justify-center">
                   <ArrowRightLeft className="h-5 w-5 text-muted-foreground" />
                 </div>
 
-                {/* To Account (Text Field for external account) */}
+                {/* To Account Details */}
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>To Account Number (Beneficiary) *</Label>
@@ -516,7 +553,6 @@ export const FxTransfer = ({
                     <Select
                       value={fromCurrency}
                       onValueChange={setFromCurrency}
-                      disabled={fromAccount} // Disable if account selected
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -542,7 +578,7 @@ export const FxTransfer = ({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableTargetCurrencies.map((currency) => (
+                        {currencies.filter(c => c.code !== fromCurrency).map((currency) => (
                           <SelectItem key={currency.code} value={currency.code}>
                             {currency.code} - {currency.name}
                           </SelectItem>
@@ -560,7 +596,7 @@ export const FxTransfer = ({
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    placeholder={`Enter amount in ${fromCurrency}`}
+                    placeholder={`Enter amount`}
                     className={errors.amount ? "border-destructive" : ""}
                   />
                   {errors.amount && <p className="text-xs text-destructive">{errors.amount}</p>}
@@ -632,7 +668,7 @@ export const FxTransfer = ({
             </motion.div>
           )}
 
-          {/* ========== STEP 2: VALIDATION ========== */}
+          {/* STEP 2: VALIDATION */}
           {step === 2 && (
             <motion.div
               key="step2"
@@ -650,7 +686,7 @@ export const FxTransfer = ({
             </motion.div>
           )}
 
-          {/* ========== STEP 3: REVIEW ========== */}
+          {/* STEP 3: REVIEW */}
           {step === 3 && (
             <motion.div
               key="step3"
@@ -664,6 +700,12 @@ export const FxTransfer = ({
                 <Check className="h-5 w-5" />
                 <span className="text-sm font-medium">Validation Passed</span>
               </div>
+
+              {transactionId && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-lg text-sm">
+                  Transaction ID: <span className="font-mono font-medium">{transactionId}</span>
+                </div>
+              )}
 
               <div className="rounded-xl border bg-white p-5 space-y-3 shadow-sm">
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -704,7 +746,7 @@ export const FxTransfer = ({
             </motion.div>
           )}
 
-          {/* ========== STEP 4: PROCESSING (Verification Prompt) ========== */}
+          {/* STEP 4: PROCESSING */}
           {step === 4 && (
             <motion.div
               key="step4"
@@ -739,7 +781,7 @@ export const FxTransfer = ({
             </motion.div>
           )}
 
-          {/* ========== STEP 5: VERIFICATION (Authorization) ========== */}
+          {/* STEP 5: VERIFICATION */}
           {step === 5 && (
             <motion.div
               key="step5"
@@ -761,7 +803,9 @@ export const FxTransfer = ({
               <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Transaction ID</span>
-                  <span className="font-mono text-xs">FX-{Date.now().toString().slice(-8)}</span>
+                  <span className="font-mono text-xs">
+                    {transactionId || `FX-${Date.now().toString().slice(-8)}`}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-2 rounded bg-green-100 p-3 text-green-900 text-xs">
@@ -779,7 +823,7 @@ export const FxTransfer = ({
             </motion.div>
           )}
 
-          {/* ========== STEP 6: COMPLETE ========== */}
+          {/* STEP 6: COMPLETE */}
           {step === 6 && (
             <motion.div
               key="step6"
@@ -829,6 +873,12 @@ export const FxTransfer = ({
                   <span className="text-gray-500">FX Charge</span>
                   <span className="font-medium text-amber-600">{fromCurrency} {safeToFixed(fxCharge)}</span>
                 </div>
+                {transactionId && (
+                  <div className="flex justify-between text-sm border-t pt-2">
+                    <span className="text-gray-500">Transaction ID</span>
+                    <span className="font-mono text-xs font-medium">{transactionId}</span>
+                  </div>
+                )}
               </div>
 
               <Button
