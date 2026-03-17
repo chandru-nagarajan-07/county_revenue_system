@@ -45,6 +45,7 @@ export const CashWithdrawalWorkflow = ({
   customer: propCustomer,
   onBack,
   onComplete,
+  formFields=[],
 }) => {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
@@ -63,7 +64,9 @@ export const CashWithdrawalWorkflow = ({
   /* PROCESSING STATE */
   const [officerNotes, setOfficerNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const serviceFee = useMemo(() => {
+    return formFields?.[0]?.service_type?.service_fee || 0;
+  }, [formFields]);
   /* SESSION USER */
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
@@ -112,7 +115,8 @@ export const CashWithdrawalWorkflow = ({
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
-
+ console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee);
   const handleStepOneSubmit = async () => {
     if (!validateForm()) return;
 
@@ -126,6 +130,8 @@ export const CashWithdrawalWorkflow = ({
           amount: withdrawalAmount,
           reference,
           narration,
+          user_id: customer?.user_id || sessionUser?.user_id,
+          service_amount: serviceFee,
         }),
       });
 

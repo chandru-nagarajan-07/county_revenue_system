@@ -39,7 +39,7 @@ const STEPS = [
   { id: 6, name: "Authorization" },
 ];
 
-export default function CardIssuance({ customer: propCustomer, onBack }) {
+export default function CardIssuance({ customer: propCustomer, onBack, formFields }) {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -68,7 +68,9 @@ export default function CardIssuance({ customer: propCustomer, onBack }) {
   const [dailyPosLimit, setDailyPosLimit] = useState("200000");
   const [dailyAtmLimit, setDailyAtmLimit] = useState("100000");
   const [formErrors, setFormErrors] = useState({});
-
+ const serviceFee = useMemo(() => {
+    return formFields?.[0]?.service_type?.service_fee || 0;
+  }, [formFields]);
   /* PROCESSING STATE */
   const [officerNotes, setOfficerNotes] = useState("");
 
@@ -131,7 +133,8 @@ export default function CardIssuance({ customer: propCustomer, onBack }) {
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
-
+ console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee);
 const handleSubmit = async () => {
 
   if (!validate()) return;
@@ -164,7 +167,8 @@ const handleSubmit = async () => {
 
           officer_notes: officerNotes,
 
-          user_id: customer?.user_id || sessionUser?.user_id
+          user_id: customer?.user_id || sessionUser?.user_id,
+          service_amount: serviceFee,
 
         }),
       }

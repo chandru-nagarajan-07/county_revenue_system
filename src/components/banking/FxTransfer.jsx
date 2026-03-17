@@ -43,6 +43,7 @@ export const FxTransfer = ({
   customer: propCustomer,
   onBack,
   onComplete,
+  formFields,
 }) => {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
@@ -66,7 +67,9 @@ export const FxTransfer = ({
   const [fxCharge, setFxCharge] = useState(0);
   const [convertedAmount, setConvertedAmount] = useState(0);
   const [totalDebit, setTotalDebit] = useState(0);
-
+   const serviceFee = useMemo(() => {
+    return formFields?.[0]?.service_type?.service_fee || 0;
+  }, [formFields]);
   // Currency data from API
   const [currencies, setCurrencies] = useState([]);
   const [loadingCurrencies, setLoadingCurrencies] = useState(false);
@@ -228,7 +231,8 @@ export const FxTransfer = ({
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
-
+ console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee);
   const handleSubmit = async () => {
     if (!validate()) return;
 
@@ -253,6 +257,8 @@ export const FxTransfer = ({
           total_debit: totalDebit,
           reference,
           narration,
+          user_id: customer?.user_id || sessionUser?.user_id,
+          service_amount: serviceFee,
         }),
       });
 

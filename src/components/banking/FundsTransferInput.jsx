@@ -53,7 +53,7 @@ const ICON_MAP = {
   Smartphone: <Smartphone className="h-4 w-4" />
 };
 
-export function FundsTransferInput({ customer: propCustomer, onBack }) {
+export function FundsTransferInput({ customer: propCustomer, onBack ,formFields=[]}) {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -85,7 +85,9 @@ export function FundsTransferInput({ customer: propCustomer, onBack }) {
   const [reference, setReference] = useState("");
   const [selectedChannelId, setSelectedChannelId] = useState(null);
   const [formErrors, setFormErrors] = useState({});
-
+  const serviceFee = useMemo(() => {
+    return formFields?.[0]?.service_type?.service_fee || 0;
+  }, [formFields]);
   /* PROCESSING STATE */
   const [officerNotes, setOfficerNotes] = useState("");
 
@@ -138,7 +140,8 @@ export function FundsTransferInput({ customer: propCustomer, onBack }) {
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
-
+ console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee);
 const handleStepOneSubmit = async () => {
 
   if (!validate()) return;
@@ -153,6 +156,10 @@ const handleStepOneSubmit = async () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+           body: JSON.stringify({
+            user_id: customer?.user_id || sessionUser?.user_id,
+            service_amount: serviceFee,
+        }),
         },
 
         body: JSON.stringify({

@@ -139,7 +139,7 @@ const FREQUENCIES = [
   { value: "Annually", label: "Annually" },
 ];
 
-export function AccountModificationInput({ customer, onBack }) {
+export function AccountModificationInput({ customer, onBack ,formFields }) {
 
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
@@ -154,7 +154,9 @@ export function AccountModificationInput({ customer, onBack }) {
   const [officerNotes, setOfficerNotes] = useState("");
 
   const [loading, setLoading] = useState(false);
-
+  const serviceFee = useMemo(() => {
+    return formFields?.[0]?.service_type?.service_fee || 0;
+  }, [formFields]);
   const [currencyDetails, setCurrencyDetails] = useState({
   // old_currency: "",      // can prefill with account currency
   new_currency: "",
@@ -190,7 +192,8 @@ export function AccountModificationInput({ customer, onBack }) {
       [key]: value,
     }));
   };
-
+console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee);
   /* ---------- VALIDATION ---------- */
 
   const handleStepOneSubmit = () => {
@@ -329,6 +332,8 @@ Details: ${JSON.stringify(details)}
             "Content-Type": "application/json",
           },
           body: JSON.stringify(payload),
+            user_id: customer?.user_id || sessionUser?.user_id,
+            service_amount: serviceFee, 
         }
       );
 

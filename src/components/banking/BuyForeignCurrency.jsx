@@ -41,13 +41,16 @@ export const BuyForeignCurrency = ({
   customer: propCustomer,
   onBack,
   onComplete,
+  formFields,
 }) => {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
   const [customer, setCustomer] = useState(null);
 
   const [step, setStep] = useState(1);
-
+   const serviceFee = useMemo(() => {
+    return formFields?.[0]?.service_type?.service_fee || 0;
+  }, [formFields]);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
@@ -170,7 +173,8 @@ export const BuyForeignCurrency = ({
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
-
+ console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee);
   const handleSubmit = async () => {
     if (!validate()) return;
 
@@ -192,6 +196,8 @@ export const BuyForeignCurrency = ({
           foreign_currency_amount: Number(convertedAmount),
           reference,
           narration,
+          user_id: customer?.user_id || sessionUser?.user_id,
+          service_amount: serviceFee,
         }),
       });
 

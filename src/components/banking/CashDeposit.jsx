@@ -40,6 +40,7 @@ export const CashDepositWorkflow = ({
   customer: propCustomer,
   onBack,
   onComplete,
+  formFields,
 }) => {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
@@ -51,10 +52,12 @@ export const CashDepositWorkflow = ({
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [narration, setNarration] = useState("");
-
+  const serviceFee = useMemo(() => {
+    return formFields?.[0]?.service_type?.service_fee || 0;
+  }, [formFields]);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  
   /* SESSION USER */
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
@@ -83,7 +86,9 @@ export const CashDepositWorkflow = ({
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
-
+ console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee);
+          
   const handleSubmit = async () => {
     if (!validate()) return;
 
@@ -99,6 +104,8 @@ export const CashDepositWorkflow = ({
           amount: Number(amount),
           reference,
           narration,
+          user_id: customer?.user_id || sessionUser?.user_id,
+          service_amount: serviceFee,
         }),
       });
 
