@@ -12,6 +12,7 @@ import {
   Hash,
   Building2,
   Clock,
+  Mail,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,6 +30,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+// API Base URL
+const API_BASE_URL = "http://127.0.0.1:8000";
 
 /* CONSTANTS */
 const STEPS = [
@@ -51,33 +55,63 @@ const SERIES_PREFS = [
   { value: "new", label: "New series" },
 ];
 
-const BRANCHES = [
-  "Head Office", "Westlands", "Mombasa Road", "Kisumu", "Nakuru", "Eldoret", "Thika", "Nyeri",
+const DELIVERY_OPTIONS = [
+  { value: "post", label: "Collect by Post" },
+  { value: "branch", label: "Nearby Branch" },
 ];
+
+// Helper function to get currency symbol
+const getCurrencySymbol = (currencyId) => {
+  const currencyMap = {
+    1: "KES",
+    2: "USD",
+    3: "EUR",
+    4: "GBP",
+    5: "UGX",
+    6: "TZS"
+  };
+  return currencyMap[currencyId] || "KES";
+};
 
 export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
   /* SESSION USER */
-  let sessionUser = {};
-  try {
-    sessionUser = JSON.parse(sessionStorage.getItem("userData1")) || {};
-  } catch {
-    sessionUser = {};
-  }
-  const accounts = sessionUser?.account || [];
+  const [sessionUser, setSessionUser] = useState({});
+  const [accounts, setAccounts] = useState([]);
+  
+  useEffect(() => {
+    try {
+      const userData = sessionStorage.getItem("userData1");
+      
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        setSessionUser(parsed);
+        
+        if (parsed.account && Array.isArray(parsed.account)) {
+          setAccounts(parsed.account);
+        }
+      }
+    } catch (error) {
+      console.error("Error parsing session user:", error);
+      setSessionUser({});
+      setAccounts([]);
+    }
+  }, []);
 
   /* STATE */
   const [customer, setCustomer] = useState(null);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
+  const [requestId, setRequestId] = useState(null);
 
   /* FORM STATE */
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [chequeLeaves, setChequeLeaves] = useState("50");
   const [seriesPref, setSeriesPref] = useState("continue");
-  const [chqBranch, setChqBranch] = useState("");
+  const [deliveryOption, setDeliveryOption] = useState("post");
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [smsNotify, setSmsNotify] = useState(true);
@@ -88,25 +122,35 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
   const [officerNotes, setOfficerNotes] = useState("");
 
   /* DERIVED DATA */
-  // Filter for Current Accounts usually required for Cheque Books
   const eligibleAccounts = useMemo(() => {
-    return accounts.filter((acc) => acc?.status === "ACTIVE" && (acc.type === 'current' || acc.type === 'CURRENT'));
+    if (!accounts || accounts.length === 0) return [];
+    
+    return accounts.filter((acc) => {
+      if (!acc) return false;
+      const status = acc.status || acc.STATUS || acc.account_status;
+      return status === "ACTIVE" || status === "Active" || status === "active";
+    });
   }, [accounts]);
 
   /* INIT CUSTOMER */
   useEffect(() => {
     if (propCustomer) {
       setCustomer(propCustomer);
-      setContactPhone(propCustomer.phone || "");
-      setContactEmail(propCustomer.email || "");
+      setContactPhone(propCustomer.phone || propCustomer.Phone || "");
+      setContactEmail(propCustomer.email || propCustomer.Email || "");
       return;
     }
+    
     const sessionCustomer = sessionStorage.getItem("customer");
     if (sessionCustomer) {
+      try {
         const c = JSON.parse(sessionCustomer);
         setCustomer(c);
-        setContactPhone(c.phone || "");
-        setContactEmail(c.email || "");
+        setContactPhone(c.phone || c.Phone || "");
+        setContactEmail(c.email || c.Email || "");
+      } catch (error) {
+        console.error("Error parsing session customer:", error);
+      }
     }
   }, [propCustomer]);
 
@@ -121,7 +165,6 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
   const validate = () => {
     const errs = {};
     if (!selectedAccount) errs.account = "Select account";
-    if (!chqBranch) errs.branch = "Select collection branch";
     if (!contactPhone.trim()) errs.phone = "Phone required";
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
@@ -129,18 +172,95 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
 
   const handleSubmit = async () => {
     if (!validate()) return;
+    
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    setStep(2);
+    setApiError(null);
+    
+    try {
+      const getAccountField = (field) => {
+        const fieldMappings = {
+          account_number: ['account_number', 'AccountNumber'],
+          id: ['id', 'ID', 'account_id'],
+        };
+        
+        const possibleNames = fieldMappings[field] || [field];
+        for (const name of possibleNames) {
+          if (selectedAccount[name] !== undefined) {
+            return selectedAccount[name];
+          }
+        }
+        return null;
+      };
+
+      const payload = {
+        account_number: getAccountField('account_number'),
+        account_id: getAccountField('id'),
+        customer_id: customer?.id || customer?.ID || customer?.customerId || sessionUser?.id,
+        user_id: sessionUser?.user_id || sessionUser?.userId || sessionUser?.id,
+        cheque_leaves: parseInt(chequeLeaves),
+        series_preference: seriesPref,
+        delivery_method: deliveryOption,
+        contact_phone: contactPhone,
+        contact_email: contactEmail || null,
+        sms_notification: smsNotify,
+        reason: chqReason || null,
+        status: "PENDING",
+        request_date: new Date().toISOString(),
+      };
+      
+      console.log("Submitting Cheque Book Request:", payload);
+
+      const response = await fetch(`${API_BASE_URL}/api/cheque-book-requests/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const errorMessage = data.message || data.error || "Request failed";
+        setApiError(errorMessage);
+        alert(errorMessage);
+        setLoading(false);
+        return;
+      }
+
+      if (data.id || data.request_id) {
+        setRequestId(data.id || data.request_id);
+      }
+
+      setStep(2);
+    } catch (error) {
+      console.error("Error submitting cheque book request:", error);
+      setApiError(error.message);
+      alert("Server error: " + error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFinalComplete = async () => {
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    alert("Cheque Book Request Submitted Successfully");
-    if (onBack) onBack();
+    
+    try {
+      if (requestId) {
+        await fetch(`${API_BASE_URL}/api/cheque-book-requests/${requestId}/complete/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error completing request:", error);
+    } finally {
+      setLoading(false);
+      alert("Cheque Book Request Submitted Successfully");
+      if (onBack) onBack();
+    }
   };
 
   const pageVariants = {
@@ -149,15 +269,21 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
     exit: { opacity: 0, x: -20 },
   };
 
-  if (!customer && !sessionUser) return <div className="min-h-screen flex items-center justify-center">Customer not found</div>;
+  if (!customer && !sessionUser) {
+    return <div className="min-h-screen flex items-center justify-center">Customer not found</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <DashboardHeader
-        customerName={customer?.fullName || sessionUser?.first_name || "Customer"}
+        customerName={customer?.fullName || customer?.FullName || sessionUser?.first_name || "Customer"}
         isDropdownOpen={navDropdownOpen}
         setIsDropdownOpen={setNavDropdownOpen}
-        onLogout={() => { localStorage.removeItem("customer"); navigate("/"); }}
+        onLogout={() => { 
+          localStorage.removeItem("customer"); 
+          sessionStorage.removeItem("userData1");
+          navigate("/"); 
+        }}
       />
 
       {/* Sticky Header */}
@@ -203,13 +329,29 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
               {/* Customer Banner */}
               <div className="flex items-center gap-3 rounded-xl border p-4 bg-white shadow-sm">
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
-                  {(customer?.fullName || sessionUser?.first_name || "C").split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                  {(customer?.fullName || customer?.FullName || sessionUser?.first_name || "C")
+                    .split(" ")
+                    .map((n) => n?.[0] || "")
+                    .join("")
+                    .slice(0, 2)}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-semibold">{customer?.fullName || sessionUser?.first_name}</p>
-                  <p className="text-xs text-muted-foreground">{customer?.customerId || sessionUser?.user_id}</p>
+                  <p className="text-sm font-semibold">
+                    {customer?.fullName || customer?.FullName || sessionUser?.first_name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {customer?.customerId || customer?.id || sessionUser?.user_id || sessionUser?.id}
+                  </p>
                 </div>
               </div>
+
+              {/* API Error Display */}
+              {apiError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                  <p className="font-medium">{apiError}</p>
+                </div>
+              )}
 
               {/* Service Header */}
               <div className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 p-4">
@@ -225,24 +367,37 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
               {/* Account Select */}
               <div className="space-y-2">
                 <Label>Select Account *</Label>
-                <Select
-                  value={selectedAccount?.account_number || ""}
-                  onValueChange={(val) => {
-                    setSelectedAccount(eligibleAccounts.find(a => a.account_number === val));
-                    setFormErrors(prev => ({...prev, account: ""}));
-                  }}
-                >
-                  <SelectTrigger className={formErrors.account ? "border-destructive" : ""}>
-                    <SelectValue placeholder="Choose current account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {eligibleAccounts.map((acc) => (
-                      <SelectItem key={acc.account_number} value={acc.account_number}>
-                        {acc.account_number} • {acc.currency || "KES"} {acc.balance?.toLocaleString()}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {eligibleAccounts.length === 0 ? (
+                  <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                    No eligible accounts found
+                  </div>
+                ) : (
+                  <Select
+                    value={selectedAccount?.account_number || ""}
+                    onValueChange={(val) => {
+                      const acc = eligibleAccounts.find(a => a.account_number === val);
+                      setSelectedAccount(acc);
+                      setFormErrors(prev => ({...prev, account: ""}));
+                    }}
+                  >
+                    <SelectTrigger className={formErrors.account ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Choose account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {eligibleAccounts.map((acc) => {
+                        const currencyId = acc.currency || 2;
+                        const currency = getCurrencySymbol(currencyId);
+                        const balance = acc.balance || "0.00";
+                        
+                        return (
+                          <SelectItem key={acc.account_number} value={acc.account_number}>
+                            {acc.account_number} • {currency} {Number(balance).toLocaleString()}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                )}
                 {formErrors.account && <p className="text-xs text-destructive">{formErrors.account}</p>}
               </div>
 
@@ -276,26 +431,36 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
                 </Select>
               </div>
 
-              {/* Branch */}
+              {/* Delivery Option - Just a simple dropdown */}
               <div className="space-y-2">
-                <Label className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Collection Branch *</Label>
-                <Select value={chqBranch} onValueChange={(v) => { setChqBranch(v); setFormErrors(p => ({...p, branch: ""})); }}>
-                  <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
-                    <SelectValue placeholder="Select branch" />
+                <Label>Delivery Method *</Label>
+                <Select value={deliveryOption} onValueChange={setDeliveryOption}>
+                  <SelectTrigger>
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {BRANCHES.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                    {DELIVERY_OPTIONS.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        <div className="flex items-center gap-2">
+                          {opt.value === "post" ? <Mail className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
+                          {opt.label}
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                {formErrors.branch && <p className="text-xs text-destructive">{formErrors.branch}</p>}
               </div>
 
               {/* ETA Info */}
               <div className="flex items-start gap-2.5 rounded-lg bg-muted/40 border p-3">
                 <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-medium text-foreground">Estimated Processing Time</p>
-                  <p className="text-xs text-muted-foreground">3-5 business days.</p>
+                  <p className="text-xs font-medium text-foreground">Estimated Delivery Time</p>
+                  <p className="text-xs text-muted-foreground">
+                    {deliveryOption === "branch" 
+                      ? "2-3 business days for branch collection" 
+                      : "5-7 business days for postal delivery"}
+                  </p>
                 </div>
               </div>
 
@@ -303,11 +468,22 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Phone *</Label>
-                  <Input value={contactPhone} onChange={e => setContactPhone(e.target.value)} className={formErrors.phone ? "border-destructive" : ""} />
+                  <Input 
+                    value={contactPhone} 
+                    onChange={e => setContactPhone(e.target.value)} 
+                    className={formErrors.phone ? "border-destructive" : ""} 
+                    placeholder="Enter phone number"
+                  />
+                  {formErrors.phone && <p className="text-xs text-destructive">{formErrors.phone}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label>Email</Label>
-                  <Input value={contactEmail} onChange={e => setContactEmail(e.target.value)} />
+                  <Input 
+                    value={contactEmail} 
+                    onChange={e => setContactEmail(e.target.value)} 
+                    placeholder="Enter email (optional)"
+                    type="email"
+                  />
                 </div>
               </div>
 
@@ -323,10 +499,19 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
               {/* Reason */}
               <div className="space-y-2">
                 <Label>Reason / Notes</Label>
-                <Textarea placeholder="Optional..." value={chqReason} onChange={e => setChqReason(e.target.value)} />
+                <Textarea 
+                  placeholder="Optional notes or reason for request..." 
+                  value={chqReason} 
+                  onChange={e => setChqReason(e.target.value)} 
+                  rows={3}
+                />
               </div>
 
-              <Button onClick={handleSubmit} className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" disabled={loading}>
+              <Button 
+                onClick={handleSubmit} 
+                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" 
+                disabled={loading || eligibleAccounts.length === 0}
+              >
                 {loading ? "Processing..." : "Submit Request"}
               </Button>
             </motion.div>
@@ -348,14 +533,28 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
               <div className="flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
                 <Check className="h-5 w-5" /> <span className="text-sm font-medium">Validation Passed</span>
               </div>
+              
+              {requestId && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-lg text-sm">
+                  Request ID: <span className="font-mono font-medium">{requestId}</span>
+                </div>
+              )}
+
               <div className="rounded-xl border bg-white p-5 space-y-3 shadow-sm">
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Request Summary</h4>
                 <div className="space-y-0">
                   {[
                     { l: "Account", v: selectedAccount?.account_number },
                     { l: "Leaves", v: CHEQUE_LEAVES.find(l => l.value === chequeLeaves)?.label },
-                    { l: "Collection", v: chqBranch },
-                    { l: "Contact", v: contactPhone },
+                    { l: "Series", v: SERIES_PREFS.find(s => s.value === seriesPref)?.label },
+                    { 
+                      l: "Delivery", 
+                      v: deliveryOption === "post" ? "Collect by Post" : "Nearby Branch" 
+                    },
+                    { l: "Contact Phone", v: contactPhone },
+                    { l: "Contact Email", v: contactEmail || "-" },
+                    { l: "SMS Notifications", v: smsNotify ? "Yes" : "No" },
+                    ...(chqReason ? [{ l: "Notes", v: chqReason }] : []),
                   ].map((row) => (
                     <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
                       <span className="text-sm text-gray-500">{row.l}</span>
@@ -377,10 +576,12 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
               <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-3 rounded-lg mb-2">
                 <Zap className="h-5 w-5" /> <span className="text-sm font-medium">Processing</span>
               </div>
+              
               <div className="space-y-2">
                 <Label className="text-xs font-medium">Officer Notes</Label>
                 <Textarea placeholder="Optional notes..." value={officerNotes} onChange={e => setOfficerNotes(e.target.value)} />
               </div>
+              
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(3)} className="flex-1">Back</Button>
                 <Button onClick={() => setStep(5)} className="flex-1 gold-gradient text-accent-foreground font-semibold shadow-gold">Confirm</Button>
@@ -395,9 +596,19 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
                 <Eye className="h-5 w-5" /> <span className="text-sm font-medium">Customer Verification</span>
               </div>
               <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
-                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Customer ID</p>
+                    <p className="font-medium">{customer?.id || customer?.customerId || sessionUser?.id || "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Delivery</p>
+                    <p className="font-medium">{deliveryOption === "post" ? "Post" : "Branch"}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />
-                  <span>Details verified and ready for printing queue</span>
+                  <span>Details verified</span>
                 </div>
               </div>
               <div className="flex gap-3">
@@ -414,7 +625,15 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
                 <ThumbsUp className="h-8 w-8 text-accent" />
               </div>
               <h3 className="text-xl font-semibold">Request Authorized</h3>
-              <Button onClick={handleFinalComplete} className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" disabled={loading}>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                Your cheque book request has been authorized.
+              </p>
+              
+              <Button 
+                onClick={handleFinalComplete} 
+                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" 
+                disabled={loading}
+              >
                 {loading ? "Processing..." : "Finish"}
               </Button>
             </motion.div>
