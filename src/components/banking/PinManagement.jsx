@@ -57,7 +57,7 @@ async function fetchCustomerCards(accountNumber) {
   }
 }
 
-export default function PinManagement({ customer: propCustomer, onBack }) {
+export default function PinManagement({ customer: propCustomer, onBack, formFields }) {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -76,6 +76,9 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
   const [cards, setCards] = useState([]);
   const [fetchingCards, setFetchingCards] = useState(false);
   const [selectedCardDetails, setSelectedCardDetails] = useState(null);
+   const serviceFee = useMemo(() => {
+    return formFields?.[0]?.service_type?.service_fee || 0;
+  }, [formFields]);
 
   /* FORM STATE */
   const [pinCard, setPinCard] = useState("");
@@ -163,7 +166,8 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
     setPinCard(card.card_number || card.last4);
     setSelectedCardDetails(card);
   };
-
+ console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee);
   const handleSubmit = async () => {
     if (!validate()) return;
     
@@ -219,6 +223,8 @@ export default function PinManagement({ customer: propCustomer, onBack }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
+          user_id: customer?.user_id || sessionUser?.user_id,
+          service_amount: serviceFee,
       });
 
       // Get the response data
