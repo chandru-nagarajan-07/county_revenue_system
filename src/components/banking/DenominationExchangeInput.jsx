@@ -45,7 +45,7 @@ const STEPS = [
   { id: 6, name: "Authorization" },
 ];
 
-export default function DenominationExchange({ customer, onBack }) {
+export default function DenominationExchange({ customer, onBack ,formFields }) {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -101,8 +101,7 @@ export default function DenominationExchange({ customer, onBack }) {
   const systemOfferedRate = midRate + midRate * spread;
   const finalRate = adjustedRate || systemOfferedRate;
   const kesTotal = fcyNum * finalRate;
-
-  // Corridor for slider (Step 4)
+ 
   const corridor = {
     min: midRate * 0.98,
     max: midRate * 1.02,
@@ -123,6 +122,12 @@ export default function DenominationExchange({ customer, onBack }) {
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
+   const serviceFee = useMemo(() => {
+    return formFields?.[0]?.service_type?.service_fee || 0;
+  }, [formFields]);
+
+  console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee);
 
   const handleStepOneSubmit = async () => {
     if (!validateForm()) return;
@@ -131,6 +136,7 @@ export default function DenominationExchange({ customer, onBack }) {
     try {
       const response = await fetch(
         "http://127.0.0.1:8000/api/denomination-exchange/",
+
         {
           method: "POST",
           headers: {
@@ -146,6 +152,8 @@ export default function DenominationExchange({ customer, onBack }) {
             system_rate: systemOfferedRate,
             final_rate: finalRate,
             kes_total: kesTotal,
+            user_id: customer?.user_id || sessionUser?.user_id,
+            service_amount: serviceFee, // Add optional chaining
           }),
         }
       );

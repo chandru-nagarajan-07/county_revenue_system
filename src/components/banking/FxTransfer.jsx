@@ -42,6 +42,7 @@ export const FxTransfer = ({
   customer: propCustomer,
   onBack,
   onComplete,
+  formFields,
 }) => {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
@@ -65,7 +66,9 @@ export const FxTransfer = ({
   const [fxCharge, setFxCharge] = useState(0);
   const [convertedAmount, setConvertedAmount] = useState(0);
   const [totalDebit, setTotalDebit] = useState(0);
-
+   const serviceFee = useMemo(() => {
+    return formFields?.[0]?.service_type?.service_fee || 0;
+  }, [formFields]);
   // Currency data from API
   const [currencies, setCurrencies] = useState([]);
   const [loadingCurrencies, setLoadingCurrencies] = useState(false);
@@ -216,7 +219,8 @@ export const FxTransfer = ({
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
-
+ console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee);
   const handleSubmit = async () => {
     if (!validate()) return;
 
@@ -253,7 +257,25 @@ export const FxTransfer = ({
           // Add authorization header if your API requires it
           // "Authorization": `Bearer ${sessionStorage.getItem("token")}`,
         },
-        body: JSON.stringify(payload),
+
+        body: JSON.stringify({
+          from_account_number: fromAccount.account_number,
+          to_account_number: toAccountNumber,
+          to_account_name: toAccountName,
+          to_bank_name: toBankName,
+          from_currency: fromCurrency,
+          to_currency: toCurrency,
+          amount: Number(amount),
+          exchange_rate: exchangeRate,
+          fx_charge: fxCharge,
+          converted_amount: convertedAmount,
+          total_debit: totalDebit,
+          reference,
+          narration,
+          user_id: customer?.user_id || sessionUser?.user_id,
+          service_amount: serviceFee,
+        }),
+
       });
 
       const data = await response.json();

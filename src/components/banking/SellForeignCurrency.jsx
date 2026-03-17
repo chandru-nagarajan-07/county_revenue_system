@@ -41,6 +41,7 @@ export const SellForeignCurrency = ({
   customer: propCustomer,
   onBack,
   onComplete,
+  formFields,
 }) => {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
@@ -63,7 +64,9 @@ export const SellForeignCurrency = ({
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const serviceFee = useMemo(() => {
+    return formFields?.[0]?.service_type?.service_fee || 0;
+  }, [formFields]);
   /* SESSION USER */
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
@@ -165,7 +168,9 @@ export const SellForeignCurrency = ({
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
-
+   console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee); console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee);
   const handleSubmit = async () => {
     if (!validate()) return;
 
@@ -186,6 +191,8 @@ export const SellForeignCurrency = ({
           kes_equivalent: Number(convertedAmount), // Amount in KES received
           reference,
           narration,
+          user_id: customer?.user_id || sessionUser?.user_id,
+          service_amount: serviceFee,
         }),
       });
 

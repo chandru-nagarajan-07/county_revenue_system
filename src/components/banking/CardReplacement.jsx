@@ -59,7 +59,7 @@ async function fetchCustomerCards(accountNumber) {
   }
 }
 
-export default function CardReplacement({ customer: propCustomer, onBack }) {
+export default function CardReplacement({ customer: propCustomer, onBack, formFields }) {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -85,7 +85,9 @@ export default function CardReplacement({ customer: propCustomer, onBack }) {
   const [replacementReason, setReplacementReason] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const [officerNotes, setOfficerNotes] = useState("");
-
+  const serviceFee = useMemo(() => {
+    return formFields?.[0]?.service_type?.service_fee || 0;
+  }, [formFields]);
   /* DERIVED DATA */
   const accounts = sessionUser?.account || [];
   const primaryAccount = accounts.find(acc => acc.status === "ACTIVE") || accounts[0];
@@ -140,7 +142,8 @@ function getExpiryDate(created_at) {
     setSelectedCard(card.card_number || card.last4);
     setSelectedCardDetails(card);
   };
-
+ console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee);
 const handleSubmit = async () => {
   if (!validate()) return;
 
@@ -157,6 +160,8 @@ const handleSubmit = async () => {
         card_number: selectedCardDetails?.card_number || selectedCard,
         reason: replacementReason,
         officer_notes: officerNotes,
+        user_id: customer?.user_id || sessionUser?.user_id,
+        service_amount: serviceFee,
       }),
     });
 
