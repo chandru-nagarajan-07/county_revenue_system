@@ -73,10 +73,12 @@ const getCurrencySymbol = (currencyId) => {
   return currencyMap[currencyId] || "KES";
 };
 
-export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
+export default function ChequeBookRequest({ customer: propCustomer, onBack, formFields }) {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
-
+ const serviceFee = useMemo(() => {
+    return formFields?.[0]?.service_type?.service_fee || 0;
+  }, [formFields]);
   /* SESSION USER */
   const [sessionUser, setSessionUser] = useState({});
   const [accounts, setAccounts] = useState([]);
@@ -169,7 +171,8 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
-
+ console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee);
   const handleSubmit = async () => {
     if (!validate()) return;
     
@@ -216,6 +219,8 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
+          user_id: customer?.user_id || sessionUser?.user_id,
+          service_amount: serviceFee,
       });
 
       const data = await response.json();
