@@ -33,6 +33,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import KycArtefactForms from './KycArtefactForms';
+import KycValidationScreen from './KycValidationScreen';
 
 // Remove KycArtefactForms import
 // import KycArtefactForms from './KycArtefactForms';
@@ -49,11 +51,11 @@ const STEPS = [
 ];
 
 const ACTION_META = {
-  add: {
-    label: 'Add',
-    icon: <Plus className="h-3.5 w-3.5" />,
-    color: 'bg-success/10 text-success border-success/30'
-  },
+  // add: {
+  //   label: 'Add',
+  //   icon: <Plus className="h-3.5 w-3.5" />,
+  //   color: 'bg-success/10 text-success border-success/30'
+  // },
   update: {
     label: 'Update',
     icon: <Pencil className="h-3.5 w-3.5" />,
@@ -232,40 +234,25 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit }) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
 
-    // Prepare data for submission
+    // ✅ STORE DATA ONLY (NO API CALL)
     const submissionData = {
-      artefactId: 'legal-id',
-      action: selectedActions.find(s => s.artefactId === 'legal-id')?.action || 'update',
-      formData: {
-        ...formData,
-        // Convert files to base64 or handle as needed
-        frontImageName: formData.frontImage?.name,
-        backImageName: formData.backImage?.name,
-        selfieImageName: formData.selfieImage?.name
-      },
-      metadata: {
-        submittedAt: new Date().toISOString(),
-        submittedBy: 'officer',
-        customerId: customer?.customerId
-      }
+      artefactId: "legal-id",
+      formData: formData
     };
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    onSubmit([submissionData]); // Wrap in array to match expected format
+    console.log("FORM SAVED:", submissionData);
+
+    onSubmit([submissionData]);
+
     setIsSubmitting(false);
   };
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -565,27 +552,78 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
     setWorkflowStep(3);
   };
   
+/* ===================== FINAL STEP (STEP 6) ===================== */
+
   const handleFinalComplete = async () => {
     setLoading(true);
-    
-    const labels = selectedActions.map(s => {
-      const art = artefacts.find(a => a.id === s.artefactId);
-      return `${ACTION_META[s.action].label} ${art?.label}`;
-    });
 
-    // Simulate processing
-    await new Promise(r => setTimeout(r, 1000));
-    
-    onSubmit({
-      actions: selectedActions,
-      artefactLabels: labels,
-      verificationResults: formData
-    });
-    
+    try {
+      const payload = new FormData();
+
+      const data = formData[0]?.formData;
+
+      if (!data) {
+        alert("No form data found");
+        setLoading(false);
+        return;
+      }
+
+      // 🔹 TYPE
+      payload.append("update_type", "LEGAL_ID");
+
+      // 🔹 TEXT FIELDS
+      payload.append("id_type", data.idType);
+      payload.append("id_number", data.idNumber);
+      payload.append("full_name", data.fullName);
+      payload.append("date_of_birth", data.dateOfBirth);
+      payload.append("issue_date", data.issueDate);
+      payload.append("expiry_date", data.expiryDate);
+      payload.append("place_of_issue", data.placeOfIssue);
+
+      // 🔹 FILES
+      if (data.frontImage) payload.append("front_image", data.frontImage);
+      if (data.backImage) payload.append("back_image", data.backImage);
+      if (data.selfieImage) payload.append("selfie_with_id", data.selfieImage);
+
+      console.log("FINAL PAYLOAD:", data);
+
+      // 🔥 FINAL API CALL (ONLY HERE)
+      const response = await fetch("http://127.0.0.1:8000/api/kyc-update-requests/", {
+        method: "POST",
+        body: payload,
+      });
+
+      const res = await response.json();
+
+      if (!response.ok) {
+        console.error(res);
+        alert("Submission failed");
+        return;
+      }
+
+      console.log("FINAL SUCCESS:", res);
+
+      const labels = selectedActions.map(s => {
+        const art = artefacts.find(a => a.id === s.artefactId);
+        return `${ACTION_META[s.action].label} ${art?.label}`;
+      });
+
+      onSubmit({
+        actions: selectedActions,
+        artefactLabels: labels,
+        verificationResults: formData,
+        apiResponse: res
+      });
+
+      if (onBack) onBack();
+
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong");
+    }
+
     setLoading(false);
-    if(onBack) onBack();
   };
-
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <DashboardHeader
@@ -720,7 +758,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
                           
                           {/* Action Buttons */}
                           <div className="flex gap-2 mt-3 border-t border-dashed pt-3">
-                            {['add', 'update', 'delete'].map(action => (
+                            {[ 'update', 'delete'].map(action => (
                               <button
                                 key={action}
                                 onClick={() => toggleAction(art.id, action)}
@@ -907,11 +945,11 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
                     <p className="font-semibold">{selectedActions.length} Artefact(s)</p>
                   </div>
                 </div>
-
+{/* 
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />
                   <span>Customer consent verified</span>
-                </div>
+                </div> */}
               </div>
 
               <div className="flex gap-3">
