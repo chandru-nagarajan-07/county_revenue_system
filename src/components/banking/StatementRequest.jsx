@@ -183,7 +183,7 @@ export default function StatementRequest({ customer: propCustomer, onBack,formFi
         account_number: getAccountField('account_number'),
         account_id: getAccountField('id'),
         customer_id: customer?.id || customer?.ID || customer?.customerId || sessionUser?.id,
-        user_id: sessionUser?.user_id || sessionUser?.userId || sessionUser?.id,
+        users_id: sessionUser?.user_id || sessionUser?.userId || sessionUser?.id,
         statement_type: stmtType,
         output_format: stmtFormat,
         delivery_method: stmtDelivery,
@@ -204,7 +204,7 @@ export default function StatementRequest({ customer: propCustomer, onBack,formFi
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-          user_id: customer?.user_id || sessionUser?.user_id,
+          users_id: customer?.user_id || sessionUser?.user_id,
           service_amount: serviceFee,
       });
 
