@@ -165,7 +165,8 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, 
     placeOfIssue: '',
     frontImage: null,
     backImage: null,
-    selfieImage: null
+    selfieImage: null,
+  
   });
 
   const [errors, setErrors] = useState({});
@@ -1148,6 +1149,8 @@ function AccountMandatesForm({ customer, selectedActions, onBack, onSubmit, form
 export function KycUpdateInput({ customer, onSubmit, onBack }) {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
+  const [apiError, setApiError] = useState(null);
+  const [isBackendReachable, setIsBackendReachable] = useState(true);
 
   if (!customer) return null;
 
@@ -1170,6 +1173,25 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
   } catch {
     sessionUser = {};
   }
+
+  /* Check backend connectivity on mount */
+  useState(() => {
+    const checkBackend = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/kyc-update-requests/', {
+          method: 'OPTIONS'
+        });
+        setIsBackendReachable(true);
+        setApiError(null);
+      } catch (error) {
+        console.error('Backend not reachable:', error);
+        setIsBackendReachable(false);
+        setApiError('Cannot connect to backend server. Please ensure it is running at http://127.0.0.1:8000');
+      }
+    };
+    
+    checkBackend();
+  }, []);
 
   /* HANDLERS */
   const toggleAction = (artefactId, action) => {
@@ -1296,18 +1318,30 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
     }
   };
   
-/* ===================== FINAL STEP (STEP 6) ===================== */
-
+  /* ===================== FINAL STEP (STEP 6) ===================== */
   const handleFinalComplete = async () => {
     setLoading(true);
+    setApiError(null);
 
     try {
-      // Submit all forms one by one or as batch
+      // First check if backend is reachable
+      const isReachable = await testBackendConnection();
+      if (!isReachable) {
+        setApiError('Cannot connect to backend server. Please ensure it is running at http://127.0.0.1:8000');
+        setLoading(false);
+        return;
+      }
+
+      // Submit all forms one by one
+      const apiResponses = [];
+      
       for (let i = 0; i < formDataList.length; i++) {
         const formItem = formDataList[i];
         const payload = new FormData();
         const data = formItem.formData;
         const artefactId = formItem.artefactId;
+
+        console.log(`Preparing payload for ${artefactId}:`, data);
 
         // 🔹 TYPE
         payload.append("update_type", artefactId?.toUpperCase().replace('-', '_') || 'LEGAL_ID');
@@ -1320,7 +1354,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
           payload.append("date_of_birth", data.dateOfBirth);
           payload.append("issue_date", data.issueDate);
           payload.append("expiry_date", data.expiryDate);
-          payload.append("place_of_issue", data.placeOfIssue);
+          payload.append("place_of_issue", data.placeOfIssue || '');
           if (data.frontImage) payload.append("front_image", data.frontImage);
           if (data.backImage) payload.append("back_image", data.backImage);
           if (data.selfieImage) payload.append("selfie_with_id", data.selfieImage);
@@ -1329,7 +1363,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
           payload.append("fingerprint_status", data.fingerprintStatus);
           if (data.fingerprintImage) payload.append("fingerprint_data", data.fingerprintImage);
           if (data.photoImage) payload.append("photo_data", data.photoImage);
-          payload.append("capture_device", data.captureDevice);
+          payload.append("capture_device", data.captureDevice || '');
           payload.append("capture_date", data.captureDate);
         }
         else if (artefactId === 'kra-pin') {
@@ -1340,29 +1374,43 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
         else if (artefactId === 'account-mandates') {
           payload.append("mandate_type", data.mandateType);
           payload.append("primary_signatory", data.primarySignatory);
-          payload.append("secondary_signatory", data.secondarySignatory);
+          payload.append("secondary_signatory", data.secondarySignatory || '');
           payload.append("applicable_accounts", JSON.stringify(data.applicableAccounts));
           if (data.signatureCardFile) payload.append("signature_card", data.signatureCardFile);
         }
 
-        console.log(`FINAL PAYLOAD for ${artefactId}:`, data);
+        // Log FormData contents for debugging
+        console.log(`FormData for ${artefactId}:`);
+        for (let pair of payload.entries()) {
+          console.log(pair[0] + ': ' + (pair[1] instanceof File ? pair[1].name : pair[1]));
+        }
 
-        // 🔥 FINAL API CALL (ONLY HERE)
+        // 🔥 FINAL API CALL
+        console.log(`Making API call for ${artefactId} to http://127.0.0.1:8000/api/kyc-update-requests/`);
+        
         const response = await fetch("http://127.0.0.1:8000/api/kyc-update-requests/", {
           method: "POST",
           body: payload,
         });
 
-        const res = await response.json();
+        console.log(`Response status for ${artefactId}:`, response.status);
 
         if (!response.ok) {
-          console.error(res);
-          alert(`Submission failed for ${artefactId}`);
-          setLoading(false);
-          return;
+          let errorText = '';
+          try {
+            const errorData = await response.json();
+            errorText = JSON.stringify(errorData);
+          } catch {
+            errorText = await response.text();
+          }
+          
+          console.error(`Server error response for ${artefactId}:`, errorText);
+          throw new Error(`Server returned ${response.status}: ${errorText.substring(0, 200)}`);
         }
 
-        console.log(`FINAL SUCCESS for ${artefactId}:`, res);
+        const res = await response.json();
+        console.log(`SUCCESS for ${artefactId}:`, res);
+        apiResponses.push(res);
       }
 
       const labels = selectedActions.map(s => {
@@ -1370,21 +1418,79 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
         return `${ACTION_META[s.action].label} ${art?.label}`;
       });
 
-      onSubmit({
+      // Create result object
+      const result = {
         actions: selectedActions,
         artefactLabels: labels,
         verificationResults: formDataList,
-        apiResponse: { success: true }
-      });
+        apiResponses: apiResponses,
+        success: true
+      };
 
-      if (onBack) onBack();
+      console.log('KYC Update completed successfully:', result);
+
+      // ✅ FIX: Check if onSubmit exists and is a function before calling
+      if (onSubmit && typeof onSubmit === 'function') {
+        onSubmit(result);
+      } else {
+        console.warn('onSubmit prop is not a function or is undefined');
+        // Show success message and navigate back or to a default route
+        alert('KYC Update completed successfully!');
+        
+        // Use onBack if available, otherwise navigate manually
+        if (onBack && typeof onBack === 'function') {
+          onBack();
+        } else {
+          // Default navigation - go back in history
+          navigate(-1);
+        }
+      }
 
     } catch (err) {
-      console.error(err);
-      alert("Something went wrong");
+      console.error("Full error object:", err);
+      console.error("Error message:", err.message);
+      console.error("Error stack:", err.stack);
+      
+      // Check for specific error types
+      if (err.message.includes('Failed to fetch')) {
+        setApiError('Network error: Cannot connect to the server. Please check if the backend is running at http://127.0.0.1:8000 and CORS is configured.');
+      } else if (err.message.includes('401')) {
+        setApiError('Authentication error: Please check your login session.');
+      } else if (err.message.includes('403')) {
+        setApiError('Permission denied: You may not have access to this resource.');
+      } else if (err.message.includes('404')) {
+        setApiError('API endpoint not found. Please check the URL.');
+      } else if (err.message.includes('500')) {
+        setApiError('Server error: Please check the backend logs for details.');
+      } else {
+        setApiError(`Submission failed: ${err.message}`);
+      }
+    } finally {
+      setLoading(false);
     }
+  };
 
-    setLoading(false);
+  // Helper function to test backend connection
+  const testBackendConnection = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/kyc-update-requests/', {
+        method: 'OPTIONS'
+      });
+      console.log('Backend reachable, status:', response.status);
+      return true;
+    } catch (error) {
+      console.error('Cannot reach backend:', error);
+      return false;
+    }
+  };
+
+  // Safe back handler
+  const handleBack = () => {
+    if (onBack && typeof onBack === 'function') {
+      onBack();
+    } else {
+      navigate(-1);
+    }
   };
 
   return (
@@ -1399,10 +1505,28 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
         }}
       />
 
+      {/* Error Banner */}
+      {apiError && (
+        <div className="bg-destructive/10 border-b border-destructive/30 p-3">
+          <div className="max-w-lg mx-auto flex items-start gap-2 text-destructive">
+            <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">{apiError}</p>
+              <button 
+                onClick={() => testBackendConnection()} 
+                className="text-xs underline mt-1"
+              >
+                Retry connection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sticky Header with Back Button & Stepper */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-20 px-4 sm:px-6 py-3 shadow-sm">
         <div className="flex items-center gap-4 mb-3">
-          <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9">
+          <Button variant="ghost" size="icon" onClick={handleBack} className="h-9 w-9">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
@@ -1748,7 +1872,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
               <Button 
                 onClick={handleFinalComplete} 
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
-                disabled={loading}
+                disabled={loading || !isBackendReachable}
               >
                 {loading ? "Processing..." : "Finish & Submit"}
               </Button>
@@ -1760,3 +1884,17 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
     </div>
   );
 }
+
+// Default props to prevent errors if onSubmit/onBack are not provided
+KycUpdateInput.defaultProps = {
+  onSubmit: (data) => {
+    console.log('Default onSubmit handler - KYC Update completed:', data);
+    // You can add default behavior here, like navigation
+    alert('KYC Update completed successfully!');
+  },
+  onBack: () => {
+    console.log('Default onBack handler');
+    // Default back behavior - go back in history
+    window.history.back();
+  }
+};
