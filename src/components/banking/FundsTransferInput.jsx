@@ -156,10 +156,7 @@ const handleStepOneSubmit = async () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-           body: JSON.stringify({
-            user_id: customer?.user_id || sessionUser?.user_id,
-            service_amount: serviceFee,
-        }),
+         
         },
 
         body: JSON.stringify({
@@ -180,7 +177,8 @@ const handleStepOneSubmit = async () => {
 
           officer_notes: officerNotes,
 
-          user_id: customer?.user_id
+          user_id: customer?.user_id || sessionUser?.user_id,
+          service_amount: serviceFee,
 
         }),
       }
