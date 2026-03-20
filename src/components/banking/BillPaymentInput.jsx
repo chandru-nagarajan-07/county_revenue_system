@@ -113,40 +113,27 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete,fo
   setLoading(true);
 
   try {
+const response = await fetch(
+  "http://127.0.0.1:8000/api/bill-payments/",
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      user_id: customer?.user_id || sessionUser?.user_id,
+      service_amount: serviceFee,
 
-    const response = await fetch(
-      "http://127.0.0.1:8000/api/bill-payments/",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          body: JSON.stringify({
-            user_id: customer?.user_id || sessionUser?.user_id,
-            service_amount: serviceFee,
-        }),
-        },
-
-        body: JSON.stringify({
-
-          biller: selectedBiller?.id,
-
-          biller_name: selectedBiller?.name,
-
-          biller_account_number: accountNumber,
-
-          amount: Number(amount),
-
-          source_account: selectedAccount?.account_number,
-
-          currency: selectedAccount?.currency || "KES",
-
-          officer_notes: officerNotes,
-
-          user_id: customer?.user_id || sessionUser?.user_id
-
-        }),
-      }
-    );
+      biller: selectedBiller?.id,
+      biller_name: selectedBiller?.name,
+      biller_account_number: accountNumber,
+      amount: Number(amount),
+      source_account: selectedAccount?.account_number,
+      currency: selectedAccount?.currency || "KES",
+      officer_notes: officerNotes,
+    }),
+  }
+);
 
     const data = await response.json();
 

@@ -260,9 +260,9 @@ export const FxTransfer = ({
 
         body: JSON.stringify({
           from_account_number: fromAccount.account_number,
-          to_account_number: toAccountNumber,
-          to_account_name: toAccountName,
-          to_bank_name: toBankName,
+          beneficiary_account_number: toAccountNumber,
+          beneficiary_name: toAccountName,
+          beneficiary_bank: toBankName,
           from_currency: fromCurrency,
           to_currency: toCurrency,
           amount: Number(amount),

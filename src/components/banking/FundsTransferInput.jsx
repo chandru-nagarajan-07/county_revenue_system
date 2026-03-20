@@ -150,41 +150,27 @@ const handleStepOneSubmit = async () => {
 
   try {
 
-    const response = await fetch(
-      "http://127.0.0.1:8000/api/fund-transfer/",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-           body: JSON.stringify({
-            user_id: customer?.user_id || sessionUser?.user_id,
-            service_amount: serviceFee,
-        }),
-        },
-
-        body: JSON.stringify({
-
-          source_account: selectedAccount?.accountNumber || selectedAccount?.account_number,
-
-          beneficiary_account: beneficiaryAccount,
-
-          beneficiary_name: beneficiaryName,
-
-          amount: numAmount,
-
-          destination: destination,
-
-          channel_id: effectiveChannelId,
-
-          reference: reference,
-
-          officer_notes: officerNotes,
-
-          user_id: customer?.user_id
-
-        }),
-      }
-    );
+const response = await fetch(
+  "http://127.0.0.1:8000/api/fund-transfer/",
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      user_id: customer?.user_id || sessionUser?.user_id,
+      service_amount: serviceFee,
+      source_account: selectedAccount?.accountNumber || selectedAccount?.account_number,
+      beneficiary_account: beneficiaryAccount,
+      beneficiary_name: beneficiaryName,
+      amount: numAmount,
+      destination: destination,
+      channel_id: effectiveChannelId,
+      reference: reference,
+      officer_notes: officerNotes,
+    }),
+  }
+);
 
     const data = await response.json();
 
