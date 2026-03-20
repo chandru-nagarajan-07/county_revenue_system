@@ -38,6 +38,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+// Remove KycArtefactForms import
+// import KycArtefactForms from './KycArtefactForms';
+import KycValidationScreen from './KycValidationScreen';
+
 /* CONSTANTS (keep all your existing constants) */
 const STEPS = [
   { id: 1, name: "Input" },
