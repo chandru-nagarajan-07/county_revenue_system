@@ -13,20 +13,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { KycBiometricScanner } from './KycBiometricScanner';
 
-// ✅ ADD HERE
-function dataURLtoFile(dataurl, filename) {
-  const arr = dataurl.split(',');
-  const mime = arr[0].match(/:(.*?);/)[1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-
-  return new File([u8arr], filename, { type: mime });
-}
 /* CONSTANTS */
 const STEPS = [
   { id: 1, name: "Input" },
@@ -265,58 +251,25 @@ export default function KycArtefactWorkflow({ customer, selectedActions, onBack,
     }
   };
 
-
   const handleFinalComplete = async () => {
     setLoading(true);
-
-    try {
-      for (const sa of selectedActions) {
-        const data = formDataMap[sa.artefactId];
-
-        // 🔹 KRA PIN
-        if (sa.artefactId === "kra-pin") {
-          const formData = new FormData();
-
-          formData.append("update_type", "KRA_PIN");
-          formData.append("kra_pin", data.fields.kraPin);
-          formData.append("full_name", data.fields.fullName);
-
-          if (data.images?.length > 0) {
-            const file = dataURLtoFile(data.images[0].dataUrl, "kra.png");
-            formData.append("certificate_image", file);
-          }
-
-          await fetch("http://127.0.0.1:8000/kyc-update-requests/", {
-            method: "POST",
-            body: formData
-          });
-        }
-
-        // 🔹 BIOMETRIC (already handled but included for completeness)
-        if (sa.artefactId === "biometric") {
-          const formData = new FormData();
-
-          formData.append("update_type", "BIOMETRIC");
-          formData.append("fingerprint_data", data.biometricData?.fingerprint_data);
-          formData.append("photo_data", data.biometricData?.photo);
-
-          await fetch("http://127.0.0.1:8000/kyc-update-requests/", {
-            method: "POST",
-            body: formData
-          });
-        }
-      }
-
-      alert("KYC Update Successful");
-
-      if (onBack) onBack();
-
-    } catch (err) {
-      console.error("ERROR:", err);
-    }
-
+    const result = selectedActions.map(sa => ({
+      artefactId: sa.artefactId,
+      action: sa.action,
+      fields: formDataMap[sa.artefactId].fields,
+      images: formDataMap[sa.artefactId].images,
+      biometricData: formDataMap[sa.artefactId].biometricData,
+    }));
+    
+    // Simulate final processing
+    await new Promise(r => setTimeout(r, 1000));
+    
+    onSubmit(result);
     setLoading(false);
+    alert("KYC Update Successful");
+    if (onBack) onBack();
   };
+
   const pageVariants = {
     initial: { opacity: 0, x: 20 },
     animate: { opacity: 1, x: 0 },
