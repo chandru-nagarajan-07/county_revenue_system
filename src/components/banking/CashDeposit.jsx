@@ -36,15 +36,6 @@ const STEPS = [
   { id: 5, name: "Verification" },
 ];
 
-// Branch options for Kenya
-const BRANCH_OPTIONS = [
-  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
-  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
-  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
-  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
-  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
-  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
-];
 
 export const CashDepositWorkflow = ({
   customer: propCustomer,
@@ -53,6 +44,19 @@ export const CashDepositWorkflow = ({
   formFields,
 }) => {
   const navigate = useNavigate();
+  /* SESSION USER */
+  const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
+  const accounts = sessionUser?.account || [];
+  const branches = sessionUser?.branch || [];
+
+  /* FORMAT BRANCHES */
+  const BRANCH_OPTIONS = useMemo(() => {
+    return branches.map((b) => ({
+      value: b.branch_id,
+      label: b.branch_name,
+    }));
+  }, [branches]);
+
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
   const [customer, setCustomer] = useState(null);
 
@@ -71,9 +75,15 @@ export const CashDepositWorkflow = ({
   const [loading, setLoading] = useState(false);
   
   /* SESSION USER */
+<<<<<<< HEAD
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
   const [depositData, setDepositData] = useState(null);
+=======
+  // const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
+  // const accounts = sessionUser?.account || [];
+
+>>>>>>> d9a5c5bad74cc51b1bac4e607a591ca1c42baea9
   /* INIT CUSTOMER */
   useEffect(() => { 
     if (propCustomer) {
@@ -309,19 +319,17 @@ export const CashDepositWorkflow = ({
                     value={selectedBranch} 
                     onValueChange={(value) => {
                       setSelectedBranch(value);
-                      setErrors(prev => ({...prev, branch: ""}));
+                      setErrors(prev => ({ ...prev, branch: "" }));
                     }}
                   >
                     <SelectTrigger className={errors.branch ? "border-destructive" : ""}>
                       <SelectValue placeholder="Choose a branch for this deposit" />
                     </SelectTrigger>
+
                     <SelectContent>
                       {BRANCH_OPTIONS.map((branch) => (
                         <SelectItem key={branch.value} value={branch.value}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{branch.label}</span>
-                            <span className="text-xs text-muted-foreground">{branch.location}</span>
-                          </div>
+                          {branch.label}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -34,6 +34,7 @@ export const TransactionWorkflow = ({
     sessionUser = {};
   }
   const accounts = sessionUser?.account || [];
+  const branch = sessionUser?.branch || [];
 
   // Initialize customer from props, session storage, or session user
   useEffect(() => {
@@ -84,8 +85,9 @@ export const TransactionWorkflow = ({
       console.log("Customer UID (user_id):", customer.user_id);
       console.log("Resolved customer ID for API:", getCustomerId());
       console.log("Session accounts:", accounts);
+      console.log("Session branch:", branch);
     }
-  }, [customer, accounts]);
+  }, [customer, accounts, branch]);
 
   const [step, setStep] = useState(1);
   const [accountTypes, setAccountTypes] = useState([]);

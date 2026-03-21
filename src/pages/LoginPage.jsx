@@ -23,7 +23,7 @@ const handleLogin = async () => {
     });
 
     const data = await response.json();
-    console.log('gdhgdhasfhsdfhs',data)
+    console.log('gdhgdhasfhsdfhs login',data)
     if (!response.ok) {
       alert(data.error || "Login failed");
       return;
