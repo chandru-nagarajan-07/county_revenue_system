@@ -1323,157 +1323,138 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
   };
   
   /* ===================== FINAL STEP (STEP 6) ===================== */
-  const handleFinalComplete = async () => {
-    setLoading(true);
-    setApiError(null);
+const handleFinalComplete = async () => {
+  setLoading(true);
+  setApiError(null);
 
-    try {
-      // First check if backend is reachable
-      const isReachable = await testBackendConnection();
-      if (!isReachable) {
-        setApiError('Cannot connect to backend server. Please ensure it is running at http://127.0.0.1:8000');
-        setLoading(false);
-        return;
+  try {
+    const isReachable = await testBackendConnection();
+    if (!isReachable) {
+      setApiError(
+        'Cannot connect to backend server. Please ensure it is running at http://127.0.0.1:8000'
+      );
+      setLoading(false);
+      return;
+    }
+
+    const apiResponses = [];
+
+    for (let i = 0; i < formDataList.length; i++) {
+      const formItem = formDataList[i];
+      const payload = new FormData();
+      const data = formItem.formData;
+      const artefactId = formItem.artefactId;
+
+      // 🔹 TYPE
+      payload.append(
+        "update_type",
+        artefactId?.toUpperCase().replace('-', '_') || 'LEGAL_ID'
+      );
+
+      // 🔹 DATA MAPPING
+      if (artefactId === 'legal-id') {
+        payload.append("id_type", data.idType);
+        payload.append("id_number", data.idNumber);
+        payload.append("full_name", data.fullName);
+        payload.append("date_of_birth", data.dateOfBirth);
+        payload.append("issue_date", data.issueDate);
+        payload.append("expiry_date", data.expiryDate);
+        payload.append("place_of_issue", data.placeOfIssue || '');
+
+        if (data.frontImage) payload.append("front_image", data.frontImage);
+        if (data.backImage) payload.append("back_image", data.backImage);
+        if (data.selfieImage) payload.append("selfie_with_id", data.selfieImage);
       }
 
-      // Submit all forms one by one
-      const apiResponses = [];
-      
-      for (let i = 0; i < formDataList.length; i++) {
-        const formItem = formDataList[i];
-        const payload = new FormData();
-        const data = formItem.formData;
-        const artefactId = formItem.artefactId;
+      else if (artefactId === 'biometric') {
+        payload.append("fingerprint_status", data.fingerprintStatus);
+        if (data.fingerprintImage) payload.append("fingerprint_data", data.fingerprintImage);
+        if (data.photoImage) payload.append("photo_data", data.photoImage);
+        payload.append("capture_device", data.captureDevice || '');
+        payload.append("capture_date", data.captureDate);
+      }
 
-        console.log(`Preparing payload for ${artefactId}:`, data);
+      else if (artefactId === 'kra-pin') {
+        payload.append("kra_pin", data.kraPin);
+        payload.append("full_name_on_certificate", data.fullNameOnCertificate);
+        if (data.certificateFile) payload.append("certificate", data.certificateFile);
+      }
 
-        // 🔹 TYPE
-        payload.append("update_type", artefactId?.toUpperCase().replace('-', '_') || 'LEGAL_ID');
+      else if (artefactId === 'account-mandates') {
+        payload.append("mandate_type", data.mandateType);
+        payload.append("primary_signatory", data.primarySignatory);
+        payload.append("secondary_signatory", data.secondarySignatory || '');
+        payload.append("applicable_accounts", JSON.stringify(data.applicableAccounts));
+        if (data.signatureCardFile) payload.append("signature_card", data.signatureCardFile);
+      }
 
-        // 🔹 TEXT FIELDS (based on artefact type)
-        if (artefactId === 'legal-id') {
-          payload.append("id_type", data.idType);
-          payload.append("id_number", data.idNumber);
-          payload.append("full_name", data.fullName);
-          payload.append("date_of_birth", data.dateOfBirth);
-          payload.append("issue_date", data.issueDate);
-          payload.append("expiry_date", data.expiryDate);
-          payload.append("place_of_issue", data.placeOfIssue || '');
-          if (data.frontImage) payload.append("front_image", data.frontImage);
-          if (data.backImage) payload.append("back_image", data.backImage);
-          if (data.selfieImage) payload.append("selfie_with_id", data.selfieImage);
-        }
-        else if (artefactId === 'biometric') {
-          payload.append("fingerprint_status", data.fingerprintStatus);
-          if (data.fingerprintImage) payload.append("fingerprint_data", data.fingerprintImage);
-          if (data.photoImage) payload.append("photo_data", data.photoImage);
-          payload.append("capture_device", data.captureDevice || '');
-          payload.append("capture_date", data.captureDate);
-        }
-        else if (artefactId === 'kra-pin') {
-          payload.append("kra_pin", data.kraPin);
-          payload.append("full_name_on_certificate", data.fullNameOnCertificate);
-          if (data.certificateFile) payload.append("certificate", data.certificateFile);
-        }
-        else if (artefactId === 'account-mandates') {
-          payload.append("mandate_type", data.mandateType);
-          payload.append("primary_signatory", data.primarySignatory);
-          payload.append("secondary_signatory", data.secondarySignatory || '');
-          payload.append("applicable_accounts", JSON.stringify(data.applicableAccounts));
-          if (data.signatureCardFile) payload.append("signature_card", data.signatureCardFile);
-        }
-
-        // Log FormData contents for debugging
-        console.log(`FormData for ${artefactId}:`);
-        for (let pair of payload.entries()) {
-          console.log(pair[0] + ': ' + (pair[1] instanceof File ? pair[1].name : pair[1]));
-        }
-
-        // 🔥 FINAL API CALL
-        console.log(`Making API call for ${artefactId} to http://127.0.0.1:8000/api/kyc-update-requests/`);
-        
-        const response = await fetch("http://127.0.0.1:8000/api/kyc-update-requests/", {
+      // 🔥 API CALL
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/kyc-update-requests/",
+        {
           method: "POST",
           body: payload,
-        });
-
-        console.log(`Response status for ${artefactId}:`, response.status);
-
-        if (!response.ok) {
-          let errorText = '';
-          try {
-            const errorData = await response.json();
-            errorText = JSON.stringify(errorData);
-          } catch {
-            errorText = await response.text();
-          }
-          
-          console.error(`Server error response for ${artefactId}:`, errorText);
-          throw new Error(`Server returned ${response.status}: ${errorText.substring(0, 200)}`);
         }
+      );
 
-        const res = await response.json();
-        console.log(`SUCCESS for ${artefactId}:`, res);
-        apiResponses.push(res);
-      }
-
-      const labels = selectedActions.map(s => {
-        const art = artefacts.find(a => a.id === s.artefactId);
-        return `${ACTION_META[s.action].label} ${art?.label}`;
-      });
-
-      // Create result object
-      const result = {
-        actions: selectedActions,
-        artefactLabels: labels,
-        verificationResults: formDataList,
-        apiResponses: apiResponses,
-        success: true
-      };
-
-      console.log('KYC Update completed successfully:', result);
-
-      // ✅ FIX: Check if onSubmit exists and is a function before calling
-      if (onSubmit && typeof onSubmit === 'function') {
-        onSubmit(result);
-      } else {
-        console.warn('onSubmit prop is not a function or is undefined');
-        // Show success message and navigate back or to a default route
-        alert('KYC Update completed successfully!');
-        
-        // Use onBack if available, otherwise navigate manually
-        if (onBack && typeof onBack === 'function') {
-          onBack();
-        } else {
-          // Default navigation - go back in history
-          navigate(-1);
+      if (!response.ok) {
+        let errorText = '';
+        try {
+          const errorData = await response.json();
+          errorText = JSON.stringify(errorData);
+        } catch {
+          errorText = await response.text();
         }
+        throw new Error(`Server returned ${response.status}: ${errorText}`);
       }
 
-    } catch (err) {
-      console.error("Full error object:", err);
-      console.error("Error message:", err.message);
-      console.error("Error stack:", err.stack);
-      
-      // Check for specific error types
-      if (err.message.includes('Failed to fetch')) {
-        setApiError('Network error: Cannot connect to the server. Please check if the backend is running at http://127.0.0.1:8000 and CORS is configured.');
-      } else if (err.message.includes('401')) {
-        setApiError('Authentication error: Please check your login session.');
-      } else if (err.message.includes('403')) {
-        setApiError('Permission denied: You may not have access to this resource.');
-      } else if (err.message.includes('404')) {
-        setApiError('API endpoint not found. Please check the URL.');
-      } else if (err.message.includes('500')) {
-        setApiError('Server error: Please check the backend logs for details.');
-      } else {
-        setApiError(`Submission failed: ${err.message}`);
-      }
-    } finally {
-      setLoading(false);
+      const res = await response.json();
+      apiResponses.push(res);
     }
-  };
 
+    // 🔹 BUILD RESULT
+    const labels = selectedActions.map(s => {
+      const art = artefacts.find(a => a.id === s.artefactId);
+      return `${ACTION_META[s.action].label} ${art?.label}`;
+    });
+
+    const result = {
+      actions: selectedActions,
+      artefactLabels: labels,
+      verificationResults: formDataList,
+      apiResponses: apiResponses,
+      success: true
+    };
+
+    console.log('KYC Update completed:', result);
+
+    // ✅ STEP 1: call parent
+    if (onSubmit && typeof onSubmit === 'function') {
+      onSubmit(result);
+    }
+
+    // ✅ STEP 2: show success
+    alert('KYC Update completed successfully!');
+
+    // ✅ STEP 3: navigate AFTER alert OK
+    if (onBack && typeof onBack === 'function') {
+      onBack();
+    } else {
+      navigate(-1);
+    }
+
+  } catch (err) {
+    console.error("Error:", err);
+
+    if (err.message.includes('Failed to fetch')) {
+      setApiError('Network error: Cannot connect to backend.');
+    } else {
+      setApiError(`Submission failed: ${err.message}`);
+    }
+  } finally {
+    setLoading(false);
+  }
+};
   // Helper function to test backend connection
   const testBackendConnection = async () => {
     try {
@@ -1500,7 +1481,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <DashboardHeader
-        customerName={customer?.fullName || sessionUser?.first_name || "Customer"}
+        customerName={customer?.first_name || sessionUser?.first_name || "Customer"}
         isDropdownOpen={navDropdownOpen}
         setIsDropdownOpen={setNavDropdownOpen}
         onLogout={() => {
@@ -1607,11 +1588,11 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
                   {/* Customer Info */}
                   <div className="flex items-center gap-3 rounded-xl border bg-muted/30 p-4">
                     <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                      {customer.fullName?.split(' ').map(n => n[0]).join('').slice(0,2)}
+                      {customer?.first_name?.split(' ').map(n => n[0]).join('').slice(0,2)}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold">{customer.fullName}</p>
-                      <p className="text-xs text-muted-foreground">{customer.customerId} • {customer.phone}</p>
+                      <p className="text-sm font-semibold">{customer?.first_name}</p>
+                      <p className="text-xs text-muted-foreground">{customer?.user_id} • {customer?.phone}</p>
                     </div>
                   </div>
 
@@ -1738,11 +1719,11 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
                   })}
                   <div className="flex justify-between py-2 border-b border-dashed last:border-0">
                     <span className="text-sm text-gray-500">Customer</span>
-                    <span className="text-sm font-medium text-gray-800">{customer.fullName}</span>
+                    <span className="text-sm font-medium text-gray-800">{customer?.first_name}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-dashed last:border-0">
                     <span className="text-sm text-gray-500">ID</span>
-                    <span className="text-sm font-medium text-gray-800">{customer.customerId}</span>
+                    <span className="text-sm font-medium text-gray-800">{customer?.user_id}</span>
                   </div>
                 </div>
               </div>
@@ -1775,7 +1756,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs text-gray-500">Customer</p>
-                    <p className="font-semibold">{customer.fullName}</p>
+                    <p className="font-semibold">{customer?.first_name}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Items Updated</p>
