@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-
+import qr from '@/assets/qr.png';
 import { DashboardHeader } from "@/components/banking/DashboardHeader";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import {
   Receipt,
   Zap,
   Star,
+  MapPin,
 } from "lucide-react";
 
 import { inferSegment, SEGMENT_LABELS, computeCharges } from "@/data/serviceCharges";
@@ -38,7 +39,16 @@ const STEPS = [
   { id: 3, name: "Review" },
   { id: 4, name: "Processing" },
   { id: 5, name: "Verification" },
-  { id: 6, name: "Authorization" },
+];
+
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
 ];
 
 export const CashWithdrawalWorkflow = ({
@@ -59,14 +69,17 @@ export const CashWithdrawalWorkflow = ({
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [narration, setNarration] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   
   /* PROCESSING STATE */
   const [officerNotes, setOfficerNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
+  
   /* SESSION USER */
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
@@ -105,6 +118,7 @@ export const CashWithdrawalWorkflow = ({
   const validateForm = () => {
     const errs = {};
     if (!selectedAccount) errs.account = "Select an account";
+    if (!selectedBranch) errs.branch = "Please select a branch";
     if (!amount || withdrawalAmount <= 0) errs.amount = "Enter valid amount";
     
     // Check sufficient funds (basic client-side check)
@@ -115,8 +129,10 @@ export const CashWithdrawalWorkflow = ({
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
- console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee);
+  
+  console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee, "branch", selectedBranch);
+          
   const handleStepOneSubmit = async () => {
     if (!validateForm()) return;
 
@@ -128,6 +144,7 @@ export const CashWithdrawalWorkflow = ({
         body: JSON.stringify({
           account_number: selectedAccount.account_number,
           amount: withdrawalAmount,
+          branch: selectedBranch,
           reference,
           narration,
           user_id: customer?.user_id || sessionUser?.user_id,
@@ -159,10 +176,10 @@ export const CashWithdrawalWorkflow = ({
   }, [step]);
 
   const handleFinish = async () => {
-    setIsSubmitting(true);
+    setLoading(true);
     await new Promise((r) => setTimeout(r, 1000));
-    setIsSubmitting(false);
-    alert("Withdrawal Authorized & Completed!");
+    setLoading(false);
+    alert("Withdrawal Completed Successfully!");
     if (onComplete) onComplete();
     else onBack();
   };
@@ -205,7 +222,7 @@ export const CashWithdrawalWorkflow = ({
               Cash Withdrawal
             </h1>
             <p className="text-xs text-gray-500">
-              Step {step} of 6: {STEPS[step - 1].name}
+              Step {step} of {STEPS.length}: {STEPS[step - 1].name}
             </p>
           </div>
         </div>
@@ -307,6 +324,49 @@ export const CashWithdrawalWorkflow = ({
                   {formErrors.account && <p className="text-xs text-destructive">{formErrors.account}</p>}
                 </div>
 
+                {/* Branch Selection - Always visible */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5" /> Select Branch *
+                  </Label>
+                  <Select 
+                    value={selectedBranch} 
+                    onValueChange={(value) => {
+                      setSelectedBranch(value);
+                      setFormErrors(prev => ({...prev, branch: ""}));
+                    }}
+                  >
+                    <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Choose a branch for this withdrawal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BRANCH_OPTIONS.map((branch) => (
+                        <SelectItem key={branch.value} value={branch.value}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{branch.label}</span>
+                            <span className="text-xs text-muted-foreground">{branch.location}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.branch && (
+                    <p className="text-xs text-destructive">{formErrors.branch}</p>
+                  )}
+                </div>
+
+                {/* Info Box */}
+                <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
+                  <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-xs font-medium text-blue-800">Withdrawal Branch Information</p>
+                    <p className="text-xs text-blue-700">
+                      This cash withdrawal will be processed at the selected branch.
+                      The branch will be responsible for cash disbursement and reconciliation.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label>Amount (KES)</Label>
                   <Input
@@ -391,6 +451,7 @@ export const CashWithdrawalWorkflow = ({
                     { l: "Transaction Time", v: new Date().toLocaleString() },
                     { l: "Debit Account", v: selectedAccount?.account_number },
                     { l: "Amount", v: `KES ${withdrawalAmount.toLocaleString()}` },
+                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Reference", v: reference || "-" },
                     { l: "Narration", v: narration || "-" },
                   ].map((row) => (
@@ -453,22 +514,25 @@ export const CashWithdrawalWorkflow = ({
                 <Zap className="h-5 w-5" />
                 <span className="text-sm font-medium">Officer Review</span>
               </div>
-   <div className="space-y-0">
-                  {[
-                    { l: "Customer Name", v: customer?.first_name || sessionUser?.first_name || "N/A" },
-                    { l: "Customer ID", v: customer?.user_id || sessionUser?.user_id || "N/A" },
-                    { l: "Transaction Time", v: new Date().toLocaleString() },
-                    { l: "Debit Account", v: selectedAccount?.account_number },
-                    { l: "Amount", v: `KES ${withdrawalAmount.toLocaleString()}` },
-                    { l: "Reference", v: reference || "-" },
-                    { l: "Narration", v: narration || "-" },
-                  ].map((row) => (
-                    <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
-                      <span className="text-sm text-gray-500">{row.l}</span>
-                      <span className="text-sm font-medium text-gray-800">{row.v}</span>
-                    </div>
-                  ))}
-                </div>
+              
+              <div className="space-y-0 rounded-xl border bg-white p-5">
+                {[
+                  { l: "Customer Name", v: customer?.first_name || sessionUser?.first_name || "N/A" },
+                  { l: "Customer ID", v: customer?.user_id || sessionUser?.user_id || "N/A" },
+                  { l: "Transaction Time", v: new Date().toLocaleString() },
+                  { l: "Debit Account", v: selectedAccount?.account_number },
+                  { l: "Amount", v: `KES ${withdrawalAmount.toLocaleString()}` },
+                  { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
+                  { l: "Reference", v: reference || "-" },
+                  { l: "Narration", v: narration || "-" },
+                ].map((row) => (
+                  <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
+                    <span className="text-sm text-gray-500">{row.l}</span>
+                    <span className="text-sm font-medium text-gray-800">{row.v}</span>
+                  </div>
+                ))}
+              </div>
+              
               <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div className="bg-gray-50 p-3 rounded-lg">
@@ -485,6 +549,10 @@ export const CashWithdrawalWorkflow = ({
                   <div className="flex justify-between">
                     <span className="text-gray-500">Account Balance</span>
                     <span className="font-medium">KES {Number(selectedAccount?.balance).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Branch</span>
+                    <span className="font-medium">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</span>
                   </div>
                 </div>
               </div>
@@ -509,7 +577,7 @@ export const CashWithdrawalWorkflow = ({
             </motion.div>
           )}
 
-          {/* ========== STEP 5: VERIFICATION ========== */}
+          {/* ========== STEP 5: VERIFICATION with QR Code ========== */}
           {step === 5 && (
             <motion.div
               key="step5"
@@ -517,84 +585,25 @@ export const CashWithdrawalWorkflow = ({
               initial="initial"
               animate="animate"
               exit="exit"
-              className="space-y-6 max-w-lg mx-auto"
-            >
-              <div className="flex items-center gap-2 text-blue-600 bg-blue-50 p-3 rounded-lg">
-                <Eye className="h-5 w-5" />
-                <span className="text-sm font-medium">Customer Verification</span>
-              </div>
-
-              <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
-                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Final Details</h4>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-gray-500">Account</p>
-                    <p className="font-semibold">{selectedAccount?.account_number}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Amount</p>
-                    <p className="font-semibold">KES {withdrawalAmount.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Total Debit</p>
-                    <p className="font-bold text-red-600">KES {(withdrawalAmount + charges.totalCharges).toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Reference</p>
-                    <p className="font-semibold">{reference || "N/A"}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(4)} className="flex-1">
-                  Request Change
-                </Button>
-                <Button onClick={() => setStep(6)} className="flex-1 gold-gradient text-accent-foreground font-semibold shadow-gold">
-                  Confirm & Verify
-                </Button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ========== STEP 6: AUTHORIZATION ========== */}
-          {step === 6 && (
-            <motion.div
-              key="step6"
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
               className="space-y-6 max-w-lg mx-auto text-center py-10"
             >
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
-              </div>
-              
-              <h3 className="text-xl font-semibold">Awaiting Authorization</h3>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                This transaction requires supervisor approval to be completed.
-              </p>
-
-              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Transaction ID</span>
-                  <span className="font-mono text-xs">WTH-{Date.now().toString().slice(-8)}</span>
-                </div>
-                
-                <div className="flex items-center gap-2 rounded bg-green-100 p-3 text-green-900 text-xs">
-                  <Check className="h-4 w-4" />
-                  <span>Customer verification complete</span>
-                </div>
+              <div className="flex justify-center">
+                <img src={qr} alt="AIDA" className="h-64 w-64 object-cover" />
               </div>
 
-              <Button 
-                onClick={handleFinish} 
-                disabled={isSubmitting}
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">Scan QR Code</h3>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                  Scan this QR code to complete your cash withdrawal.
+                </p>
+              </div>
+
+              <Button
+                onClick={handleFinish}
+                disabled={loading}
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
               >
-                {isSubmitting ? "Authorizing..." : "Authorize Transaction"}
+                {loading ? "Processing..." : "Complete Transaction"}
               </Button>
             </motion.div>
           )}

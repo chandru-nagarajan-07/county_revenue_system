@@ -13,10 +13,11 @@ import {
   Building2,
   Clock,
   Mail,
+  MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-
+import qr from '@/assets/qr.png';
 import { DashboardHeader } from "@/components/banking/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,16 @@ const SERIES_PREFS = [
 const DELIVERY_OPTIONS = [
   { value: "post", label: "Collect by Post" },
   { value: "branch", label: "Nearby Branch" },
+];
+
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
 ];
 
 // Helper function to get currency symbol
@@ -114,6 +125,7 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
   const [chequeLeaves, setChequeLeaves] = useState("50");
   const [seriesPref, setSeriesPref] = useState("continue");
   const [deliveryOption, setDeliveryOption] = useState("post");
+  const [selectedBranch, setSelectedBranch] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [smsNotify, setSmsNotify] = useState(true);
@@ -168,11 +180,12 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
     const errs = {};
     if (!selectedAccount) errs.account = "Select account";
     if (!contactPhone.trim()) errs.phone = "Phone required";
+    if (deliveryOption === "branch" && !selectedBranch) errs.branch = "Please select a branch";
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
  console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee);
+          "service fee", serviceFee,"branch", selectedBranch);
   const handleSubmit = async () => {
     if (!validate()) return;
     
@@ -203,6 +216,7 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
         cheque_leaves: parseInt(chequeLeaves),
         series_preference: seriesPref,
         delivery_method: deliveryOption,
+        branch: deliveryOption === "branch" ? selectedBranch : null,
         contact_phone: contactPhone,
         contact_email: contactEmail || null,
         sms_notification: smsNotify,
@@ -221,6 +235,7 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
         body: JSON.stringify(payload),
           user_id: customer?.user_id || sessionUser?.user_id,
           service_amount: serviceFee,
+          branch: selectedBranch,
       });
 
       const data = await response.json();
@@ -436,10 +451,16 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
                 </Select>
               </div>
 
-              {/* Delivery Option - Just a simple dropdown */}
+              {/* Delivery Option */}
               <div className="space-y-2">
                 <Label>Delivery Method *</Label>
-                <Select value={deliveryOption} onValueChange={setDeliveryOption}>
+                <Select value={deliveryOption} onValueChange={(value) => {
+                  setDeliveryOption(value);
+                  if (value !== "branch") {
+                    setSelectedBranch("");
+                    setFormErrors(prev => ({...prev, branch: ""}));
+                  }
+                }}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -455,6 +476,49 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Branch Selection - Only shows when delivery method is "branch" */}
+              {deliveryOption === "branch" && (
+                <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+                  <Label className="flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5" /> Select Branch *
+                  </Label>
+                  <Select 
+                    value={selectedBranch} 
+                    onValueChange={(value) => {
+                      setSelectedBranch(value);
+                      setFormErrors(prev => ({...prev, branch: ""}));
+                    }}
+                  >
+                    <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Choose a branch for collection" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BRANCH_OPTIONS.map((branch) => (
+                        <SelectItem key={branch.value} value={branch.value}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{branch.label}</span>
+                            <span className="text-xs text-muted-foreground">{branch.location}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.branch && (
+                    <p className="text-xs text-destructive">{formErrors.branch}</p>
+                  )}
+                  <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3 mt-2">
+                    <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-blue-800">Branch Collection Information</p>
+                      <p className="text-xs text-blue-700">
+                        Your cheque book will be available for pickup at the selected branch within 2-3 business days.
+                        Please bring a valid ID for verification.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* ETA Info */}
               <div className="flex items-start gap-2.5 rounded-lg bg-muted/40 border p-3">
@@ -556,6 +620,12 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
                       l: "Delivery", 
                       v: deliveryOption === "post" ? "Collect by Post" : "Nearby Branch" 
                     },
+                    ...(deliveryOption === "branch" && selectedBranch ? [
+                      { 
+                        l: "Branch", 
+                        v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch 
+                      }
+                    ] : []),
                     { l: "Contact Phone", v: contactPhone },
                     { l: "Contact Email", v: contactEmail || "-" },
                     { l: "SMS Notifications", v: smsNotify ? "Yes" : "No" },
@@ -610,6 +680,12 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
                     <p className="text-xs text-muted-foreground">Delivery</p>
                     <p className="font-medium">{deliveryOption === "post" ? "Post" : "Branch"}</p>
                   </div>
+                  {deliveryOption === "branch" && selectedBranch && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-muted-foreground">Collection Branch</p>
+                      <p className="font-medium">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />
@@ -625,23 +701,33 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
 
           {/* STEP 6: AUTHORIZATION */}
           {step === 6 && (
-            <motion.div key="step6" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6 max-w-lg mx-auto text-center py-10">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
-              </div>
-              <h3 className="text-xl font-semibold">Request Authorized</h3>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                Your cheque book request has been authorized.
-              </p>
-              
-              <Button 
-                onClick={handleFinalComplete} 
-                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" 
-                disabled={loading}
-              >
-                {loading ? "Processing..." : "Finish"}
-              </Button>
-            </motion.div>
+          <motion.div
+  key="step6"
+  variants={pageVariants}
+  initial="initial"
+  animate="animate"
+  exit="exit"
+  className="space-y-6 max-w-lg mx-auto text-center py-10"
+>
+  {/* QR Image */}
+  <div className="flex justify-center">
+   
+        <img src={qr} alt="AIDA" className="h-100 w-100 object-cover" />
+    
+  </div>
+
+  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+    Scan this QR code to proceed further.
+  </p>
+
+  <Button
+    onClick={handleFinalComplete}
+    className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+    disabled={loading}
+  >
+    {loading ? "Processing..." : "Finish"}
+  </Button>
+</motion.div>
           )}
         </AnimatePresence>
       </div>

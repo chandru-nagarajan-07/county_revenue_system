@@ -12,6 +12,7 @@ import {
   ArrowLeftRight,
   Clock,
   Smartphone,
+  MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-
+import qr from '@/assets/qr.png';
 import { getEligibleAccounts, ACCOUNT_TYPE_LABELS } from "@/data/demoCustomers";
 import { recommendChannels } from "@/data/paymentChannels";
 import { inferSegment, SEGMENT_LABELS, computeCharges } from "@/data/serviceCharges";
@@ -45,6 +46,16 @@ const STEPS = [
   { id: 6, name: "Authorization" },
 ];
 
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
+];
+
 const ICON_MAP = {
   ArrowLeftRight: <ArrowLeftRight className="h-4 w-4" />,
   Zap: <Zap className="h-4 w-4" />,
@@ -53,7 +64,7 @@ const ICON_MAP = {
   Smartphone: <Smartphone className="h-4 w-4" />
 };
 
-export function FundsTransferInput({ customer: propCustomer, onBack ,formFields=[]}) {
+export function FundsTransferInput({ customer: propCustomer, onBack, formFields=[] }) {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -84,10 +95,12 @@ export function FundsTransferInput({ customer: propCustomer, onBack ,formFields=
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [selectedChannelId, setSelectedChannelId] = useState(null);
+  const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
+  
   /* PROCESSING STATE */
   const [officerNotes, setOfficerNotes] = useState("");
 
@@ -134,67 +147,66 @@ export function FundsTransferInput({ customer: propCustomer, onBack ,formFields=
     if (!beneficiaryAccount.trim()) errs.beneficiaryAccount = "Beneficiary account is required";
     if (!beneficiaryName.trim()) errs.beneficiaryName = "Beneficiary name is required";
     if (numAmount <= 0) errs.amount = "Enter a valid amount";
+    if (!selectedBranch) errs.branch = "Please select a branch";
     if (!effectiveChannelId) errs.channel = "Please select a payment channel";
     if (selectedRec && !selectedRec.eligible) errs.channel = selectedRec.ineligibleReason || "Channel not available";
     
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
- console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee);
-const handleStepOneSubmit = async () => {
+  
+  console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee,
+          "selected branch", selectedBranch);
+          
+  const handleStepOneSubmit = async () => {
+    if (!validate()) return;
 
-  if (!validate()) return;
+    setLoading(true);
 
-  setLoading(true);
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/fund-transfer/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: customer?.user_id || sessionUser?.user_id,
+            service_amount: serviceFee,
+            source_account: selectedAccount?.accountNumber || selectedAccount?.account_number,
+            beneficiary_account: beneficiaryAccount,
+            beneficiary_name: beneficiaryName,
+            amount: numAmount,
+            destination: destination,
+            channel_id: effectiveChannelId,
+            branch: selectedBranch,
+            reference: reference,
+            officer_notes: officerNotes,
+          }),
+        }
+      );
 
-  try {
+      const data = await response.json();
 
-const response = await fetch(
-  "http://127.0.0.1:8000/api/fund-transfer/",
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      user_id: customer?.user_id || sessionUser?.user_id,
-      service_amount: serviceFee,
-      source_account: selectedAccount?.accountNumber || selectedAccount?.account_number,
-      beneficiary_account: beneficiaryAccount,
-      beneficiary_name: beneficiaryName,
-      amount: numAmount,
-      destination: destination,
-      channel_id: effectiveChannelId,
-      reference: reference,
-      officer_notes: officerNotes,
-    }),
-  }
-);
+      console.log("Fund Transfer Response:", data);
 
-    const data = await response.json();
+      if (!response.ok) {
+        alert(data.message || "Transfer failed");
+        setLoading(false);
+        return;
+      }
 
-    console.log("Fund Transfer Response:", data);
-
-    if (!response.ok) {
-      alert(data.message || "Transfer failed");
       setLoading(false);
-      return;
+      setStep(2);
+
+    } catch (error) {
+      console.error("Transfer error:", error);
+      alert("Network error");
+      setLoading(false);
     }
-
-    setLoading(false);
-    setStep(2);
-
-  } catch (error) {
-
-    console.error("Transfer error:", error);
-    alert("Network error");
-
-    setLoading(false);
-
-  }
-
-};
+  };
 
   useEffect(() => {
     if (step === 2) {
@@ -400,6 +412,49 @@ const response = await fetch(
                 </div>
               </div>
 
+              {/* Branch Selection - Always visible */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5" /> Select Branch *
+                </Label>
+                <Select 
+                  value={selectedBranch} 
+                  onValueChange={(value) => {
+                    setSelectedBranch(value);
+                    setFormErrors(prev => ({...prev, branch: ""}));
+                  }}
+                >
+                  <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Choose a branch for this transaction" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BRANCH_OPTIONS.map((branch) => (
+                      <SelectItem key={branch.value} value={branch.value}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{branch.label}</span>
+                          <span className="text-xs text-muted-foreground">{branch.location}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.branch && (
+                  <p className="text-xs text-destructive">{formErrors.branch}</p>
+                )}
+              </div>
+
+              {/* Info Box */}
+              <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
+                <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-blue-800">Transaction Branch Information</p>
+                  <p className="text-xs text-blue-700">
+                    This transaction will be processed under the selected branch. 
+                    Please ensure the branch is correct for authorization purposes.
+                  </p>
+                </div>
+              </div>
+
               {/* Amount */}
               <div className="space-y-2">
                 <Label>Amount *</Label>
@@ -508,6 +563,7 @@ const response = await fetch(
                     { l: "Destination", v: destination.replace('-', ' ') },
                     { l: "Amount", v: `KES ${numAmount.toLocaleString()}` },
                     { l: "Channel", v: selectedRec?.channel?.name || "N/A" },
+                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Reference", v: reference || "-" },
                   ].map((row) => (
                     <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
@@ -582,11 +638,15 @@ const response = await fetch(
                     <p className="text-xs text-gray-500">Estimated Time</p>
                     <p className="font-bold text-lg">{selectedRec?.channel?.sla || 'Immediate'}</p>
                   </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500">Branch</p>
+                    <p className="font-medium">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
+                  </div>
                 </div>
 
                 <div className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-3 rounded-lg flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                  <span>Transaction will be processed via the selected payment rail.</span>
+                  <span>Transaction will be processed via the selected payment rail under the assigned branch.</span>
                 </div>
               </div>
 
@@ -645,6 +705,10 @@ const response = await fetch(
                     <p className="text-xs text-gray-500">Destination</p>
                     <p className="font-medium text-gray-700">{beneficiaryAccount}</p>
                   </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500">Branch</p>
+                    <p className="font-medium text-gray-700">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
@@ -665,44 +729,34 @@ const response = await fetch(
           )}
 
           {/* STEP 6: AUTHORIZATION */}
-          {step === 6 && (
-            <motion.div
-              key="step6"
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="space-y-6 max-w-lg mx-auto text-center py-10"
-            >
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
-              </div>
-            
-              <h3 className="text-xl font-semibold">Awaiting Authorization</h3>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                This transaction requires supervisor approval or final confirmation.
-              </p>
+           {step === 6 && (
+                <motion.div
+  key="step6"
+  variants={pageVariants}
+  initial="initial"
+  animate="animate"
+  exit="exit"
+  className="space-y-6 max-w-lg mx-auto text-center py-10"
+>
+  {/* QR Image */}
+  <div className="flex justify-center">
+   
+        <img src={qr} alt="AIDA" className="h-100 w-100 object-cover" />
+    
+  </div>
 
-              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Transaction ID</span>
-                  <span className="font-mono text-xs">FT-{Date.now().toString().slice(-8)}</span>
-                </div>
-                
-                <div className="flex items-center gap-2 rounded bg-green-100 p-3 text-green-900 text-xs">
-                  <Check className="h-4 w-4" />
-                  <span>All verifications passed</span>
-                </div>
-              </div>
+  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+    Scan this QR code to proceed further.
+  </p>
 
-              <Button 
-                onClick={handleFinalComplete} 
-                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
-                disabled={loading}
-              >
-                {loading ? "Processing..." : "Authorize Transaction"}
-              </Button>
-            </motion.div>
+  <Button
+    onClick={handleFinalComplete}
+    className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+    disabled={loading}
+  >
+    {loading ? "Processing..." : "Finish"}
+  </Button>
+</motion.div>
           )}
 
         </AnimatePresence>
