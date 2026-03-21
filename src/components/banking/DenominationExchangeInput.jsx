@@ -11,6 +11,7 @@ import {
   Receipt,
   Zap,
   Star,
+  MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,7 +29,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { inferSegment, SEGMENT_LABELS, computeCharges } from "@/data/serviceCharges";
-
+import qr from '@/assets/qr.png';
 /* FX PAIRS & HELPERS */
 const FX_PAIRS = [
   { code: "USD", label: "US Dollar", midRate: 129.45 },
@@ -45,7 +46,17 @@ const STEPS = [
   { id: 6, name: "Authorization" },
 ];
 
-export default function DenominationExchange({ customer, onBack ,formFields }) {
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
+];
+
+export default function DenominationExchange({ customer, onBack, formFields }) {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -60,6 +71,7 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
 
   /* WORKFLOW STATE */
   const [step, setStep] = useState(1); // 1 to 6
+  const [transactionId, setTransactionId] = useState(null);
 
   /* FORM STATE (Step 1) */
   const [direction, setDirection] = useState("BUY");
@@ -68,6 +80,7 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
   const [sourceAccNum, setSourceAccNum] = useState("");
   const [settlementAccNum, setSettlementAccNum] = useState("");
   const [settlementMethod, setSettlementMethod] = useState("account-credit");
+  const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -116,18 +129,20 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
   const validateForm = () => {
     const errs = {};
     if (!selectedPair) errs.currency = "Select currency";
+    if (!selectedBranch) errs.branch = "Please select a branch";
     if (!fcyAmount || fcyNum <= 0) errs.amount = "Enter valid amount";
     if (!sourceAccNum) errs.source = "Select source account";
     if (!settlementAccNum) errs.settlement = "Select settlement account";
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
-   const serviceFee = useMemo(() => {
+  
+  const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
 
   console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee);
+          "service fee", serviceFee,          "branch", selectedBranch);
 
   const handleStepOneSubmit = async () => {
     if (!validateForm()) return;
@@ -136,7 +151,6 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
     try {
       const response = await fetch(
         "http://127.0.0.1:8000/api/denomination-exchange/",
-
         {
           method: "POST",
           headers: {
@@ -148,12 +162,13 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
             fcy_amount: Number(fcyAmount),
             source_account: sourceAccNum,
             settlement_account: settlementAccNum,
+            branch: selectedBranch,
             mid_rate: midRate,
             system_rate: systemOfferedRate,
             final_rate: finalRate,
             kes_total: kesTotal,
             user_id: customer?.user_id || sessionUser?.user_id,
-            service_amount: serviceFee, // Add optional chaining
+            service_amount: serviceFee,
           }),
         }
       );
@@ -167,6 +182,7 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
         return;
       }
 
+      setTransactionId(data.transaction_id || data.id);
       setStep(2); // Go to Validation
     } catch (error) {
       console.error("Error:", error);
@@ -188,6 +204,50 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
     const rate = val[0] / 10000; // Slider value logic
     setAdjustedRate(rate);
     setRateImproved(Math.abs(rate - systemOfferedRate) > 0.0001);
+  };
+
+  const handleFinalComplete = async () => {
+    setLoading(true);
+    try {
+      // Update transaction status to completed
+      if (transactionId) {
+        const response = await fetch(
+          `http://127.0.0.1:8000/api/denomination-exchange/${transactionId}/`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              status: "COMPLETED",
+              final_rate: finalRate,
+              kes_total: kesTotal,
+              officer_notes: officerNotes,
+              completed_at: new Date().toISOString(),
+            }),
+          }
+        );
+        
+        if (!response.ok) {
+          console.error("Failed to update transaction status");
+        }
+      }
+      
+      // Show success message
+      alert("Transaction completed successfully!");
+      
+      // Navigate back to dashboard or call onBack
+      if (onBack) {
+        onBack();
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      console.error("Error completing transaction:", error);
+      alert("Error completing transaction. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   /* RENDER HELPERS */
@@ -366,6 +426,49 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
                 </div>
               </div>
 
+              {/* Branch Selection - Always visible */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5" /> Select Branch *
+                </Label>
+                <Select 
+                  value={selectedBranch} 
+                  onValueChange={(value) => {
+                    setSelectedBranch(value);
+                    setFormErrors(prev => ({...prev, branch: ""}));
+                  }}
+                >
+                  <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Choose a branch for this exchange" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BRANCH_OPTIONS.map((branch) => (
+                      <SelectItem key={branch.value} value={branch.value}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{branch.label}</span>
+                          <span className="text-xs text-muted-foreground">{branch.location}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.branch && (
+                  <p className="text-xs text-destructive">{formErrors.branch}</p>
+                )}
+              </div>
+
+              {/* Info Box */}
+              <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
+                <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-blue-800">Exchange Branch Information</p>
+                  <p className="text-xs text-blue-700">
+                    This foreign exchange transaction will be processed under the selected branch.
+                    The branch will be responsible for rate approval and settlement.
+                  </p>
+                </div>
+              </div>
+
               {/* Accounts */}
               <div className="space-y-2">
                 <Label>Source Account</Label>
@@ -447,7 +550,7 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
             </motion.div>
           )}
 
-                  {/* ========== STEP 3: REVIEW ========== */}
+          {/* ========== STEP 3: REVIEW ========== */}
           {step === 3 && (
             <motion.div
               key="step3"
@@ -473,6 +576,7 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
                     { l: "Direction", v: direction },
                     { l: "Currency", v: selectedPair?.label },
                     { l: "Amount", v: `${fcyNum.toLocaleString()} ${selectedPair?.code}` },
+                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Source Acc", v: sourceAccNum },
                     { l: "Settlement Acc", v: settlementAccNum },
                     { l: "Method", v: settlementMethod.replace('-', ' ') },
@@ -521,6 +625,7 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
               </div>
             </motion.div>
           )}
+          
           {/* ========== STEP 4: PROCESSING (Rate Adjustment) ========== */}
           {step === 4 && (
             <motion.div
@@ -577,6 +682,10 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
                     <span className="text-gray-500">KES Equivalent</span>
                     <span className="font-bold text-lg">KES {kesTotal.toLocaleString()}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Branch</span>
+                    <span className="font-medium">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</span>
+                  </div>
                 </div>
               </div>
 
@@ -610,24 +719,6 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
               exit="exit"
               className="space-y-6 max-w-lg mx-auto"
             >
-                 <div className="space-y-0">
-                  {[
-                    { l: "Customer Name", v: customer?.first_name || sessionUser?.first_name || "N/A" },
-                    { l: "Customer ID", v: customer?.user_id || sessionUser?.user_id || "N/A" },
-                    { l: "Transaction Time", v: new Date().toLocaleString() },
-                    { l: "Direction", v: direction },
-                    { l: "Currency", v: selectedPair?.label },
-                    { l: "Amount", v: `${fcyNum.toLocaleString()} ${selectedPair?.code}` },
-                    { l: "Source Acc", v: sourceAccNum },
-                    { l: "Settlement Acc", v: settlementAccNum },
-                    { l: "Method", v: settlementMethod.replace('-', ' ') },
-                  ].map((row) => (
-                    <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
-                      <span className="text-sm text-gray-500">{row.l}</span>
-                      <span className="text-sm font-medium text-gray-800">{row.v}</span>
-                    </div>
-                  ))}
-                </div>
               <div className="flex items-center gap-2 text-blue-600 bg-blue-50 p-3 rounded-lg">
                 <Eye className="h-5 w-5" />
                 <span className="text-sm font-medium">Customer Verification</span>
@@ -637,6 +728,14 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Final Deal Details</h4>
                 
                 <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Customer Name</p>
+                    <p className="font-semibold">{customer?.first_name || sessionUser?.first_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Customer ID</p>
+                    <p className="font-medium text-gray-700">{customer?.user_id || sessionUser?.user_id}</p>
+                  </div>
                   <div>
                     <p className="text-xs text-gray-500">Direction</p>
                     <p className="font-semibold capitalize">{direction}</p>
@@ -652,6 +751,10 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
                   <div>
                     <p className="text-xs text-gray-500">Total (KES)</p>
                     <p className="font-bold text-lg">{kesTotal.toLocaleString()}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500">Branch</p>
+                    <p className="font-medium text-gray-700">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
                   </div>
                 </div>
 
@@ -684,42 +787,21 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
               exit="exit"
               className="space-y-6 max-w-lg mx-auto text-center py-10"
             >
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
+              {/* QR Image */}
+              <div className="flex justify-center">
+                <img src={qr} alt="AIDA" className="h-100 w-100 object-cover" />
               </div>
-            
-              <h3 className="text-xl font-semibold">Awaiting Authorization</h3>
+
               <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                This transaction requires supervisor approval to be completed.
+                Scan this QR code to proceed further.
               </p>
 
-              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Transaction ID</span>
-                  <span className="font-mono text-xs">FX-{Date.now().toString().slice(-8)}</span>
-                </div>
-                
-                {rateImproved ? (
-                  <div className="flex items-center gap-2 rounded bg-amber-100 p-3 text-amber-900 text-xs">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>Rate requires Supervisor override approval</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 rounded bg-green-100 p-3 text-green-900 text-xs">
-                    <Check className="h-4 w-4" />
-                    <span>Within standard limits</span>
-                  </div>
-                )}
-              </div>
-
-              <Button 
-                onClick={() => {
-                  alert("Transaction Authorized & Completed!");
-                  onBack();
-                }} 
+              <Button
+                onClick={handleFinalComplete}
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+                disabled={loading}
               >
-                Authorize Transaction
+                {loading ? "Processing..." : "Finish"}
               </Button>
             </motion.div>
           )}
@@ -727,4 +809,4 @@ export default function DenominationExchange({ customer, onBack ,formFields }) {
       </div>
     </div>
   );
-} 
+}

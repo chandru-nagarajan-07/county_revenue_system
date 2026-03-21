@@ -9,10 +9,11 @@ import {
   Calendar,
   Star,
   Zap,
+  MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-
+import qr from '@/assets/qr.png';
 import { DashboardHeader } from "@/components/banking/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,16 @@ const FREQUENCY_OPTIONS = [
   { value: "Annually", label: "Annually" },
 ];
 
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
+];
+
 export default function StandingOrderWorkflow({ customer: propCustomer, onBack, onComplete, formFields }) {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
@@ -70,10 +81,12 @@ export default function StandingOrderWorkflow({ customer: propCustomer, onBack, 
   const [frequency, setFrequency] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
+  
   /* PROCESSING STATE */
   const [officerNotes, setOfficerNotes] = useState("");
 
@@ -105,83 +118,69 @@ export default function StandingOrderWorkflow({ customer: propCustomer, onBack, 
     const errs = {};
     if (!selectedAccount) errs.account = "Select source account";
     if (!beneficiary.trim()) errs.beneficiary = "Enter beneficiary account";
+    if (!selectedBranch) errs.branch = "Please select a branch";
     if (!amount || Number(amount) <= 0) errs.amount = "Enter valid amount";
     if (!frequency) errs.frequency = "Select frequency";
     if (!startDate) errs.startDate = "Select start date";
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
- console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee);
-const handleSubmit = async () => {
-
-  if (!validate()) return;
-
-  setLoading(true);
-
-  try {
-
-    const response = await fetch(
-      "http://127.0.0.1:8000/api/standing-orders/",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+  
+  console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee,
+          "branch", selectedBranch);
           
-        },
+  const handleSubmit = async () => {
+    if (!validate()) return;
 
-        body: JSON.stringify({
+    setLoading(true);
 
-          source_account: selectedAccount?.account_number,
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/standing-orders/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
 
-          beneficiary_account: beneficiary,
+          body: JSON.stringify({
+            source_account: selectedAccount?.account_number,
+            beneficiary_account: beneficiary,
+            beneficiary_name: beneficiaryName,
+            amount: Number(amount),
+            currency: selectedAccount?.currency || "KES",
+            frequency: frequency,
+            start_date: startDate,
+            end_date: endDate || null,
+            branch: selectedBranch,
+            officer_notes: officerNotes,
+            user_id: customer?.user_id || sessionUser?.user_id,
+            service_amount: serviceFee,
+          }),
+        }
+      );
 
-          beneficiary_name: beneficiaryName,
+      const data = await response.json();
 
-          amount: Number(amount),
+      console.log("Standing Order API Response:", data);
 
-          currency: selectedAccount?.currency || "KES",
-
-          frequency: frequency,
-
-          start_date: startDate,
-
-          end_date: endDate || null,
-
-          officer_notes: officerNotes,
-
-          user_id: customer?.user_id || sessionUser?.user_id,
-          service_amount: serviceFee,
-
-        }),
+      if (!response.ok) {
+        alert(data.message || "Standing order creation failed");
+        setLoading(false);
+        return;
       }
-    );
 
-    const data = await response.json();
+      // Move to Validation Step
+      setStep(2);
 
-    console.log("Standing Order API Response:", data);
-
-    if (!response.ok) {
-      alert(data.message || "Standing order creation failed");
+    } catch (error) {
+      console.error("Standing order error:", error);
+      alert("Server error");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Move to Validation Step
-    setStep(2);
-
-  } catch (error) {
-
-    console.error("Standing order error:", error);
-    alert("Server error");
-
-  } finally {
-
-    setLoading(false);
-
-  }
-
-};
+  };
 
   const handleFinalComplete = async () => {
     setLoading(true);
@@ -277,7 +276,6 @@ const handleSubmit = async () => {
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6">
         <AnimatePresence mode="wait">
-
           {/* ========== STEP 1: INPUT ========== */}
           {step === 1 && (
             <motion.div
@@ -364,6 +362,49 @@ const handleSubmit = async () => {
                   value={beneficiaryName}
                   onChange={(e) => setBeneficiaryName(e.target.value)}
                 />
+              </div>
+
+              {/* Branch Selection - Always visible */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5" /> Select Branch *
+                </Label>
+                <Select 
+                  value={selectedBranch} 
+                  onValueChange={(value) => {
+                    setSelectedBranch(value);
+                    setFormErrors(prev => ({...prev, branch: ""}));
+                  }}
+                >
+                  <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Choose a branch for this standing order" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BRANCH_OPTIONS.map((branch) => (
+                      <SelectItem key={branch.value} value={branch.value}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{branch.label}</span>
+                          <span className="text-xs text-muted-foreground">{branch.location}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.branch && (
+                  <p className="text-xs text-destructive">{formErrors.branch}</p>
+                )}
+              </div>
+
+              {/* Info Box */}
+              <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
+                <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-blue-800">Standing Order Branch Information</p>
+                  <p className="text-xs text-blue-700">
+                    This standing order will be managed under the selected branch. 
+                    All recurring payments will be processed and recorded against this branch.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -481,6 +522,7 @@ const handleSubmit = async () => {
                     { l: "Frequency", v: FREQUENCY_OPTIONS.find(f => f.value === frequency)?.label },
                     { l: "Start Date", v: startDate },
                     { l: "End Date", v: endDate || "Until Cancelled" },
+                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                   ].map((row) => (
                     <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
                       <span className="text-sm text-gray-500">{row.l}</span>
@@ -521,6 +563,9 @@ const handleSubmit = async () => {
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   <span>Please verify the standing order details and schedule.</span>
                 </div>
+                <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600">
+                  <span className="font-medium">Branch:</span> {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -559,6 +604,20 @@ const handleSubmit = async () => {
               </div>
 
               <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Customer Name</p>
+                    <p className="font-semibold">{customer?.fullName || sessionUser?.first_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Customer ID</p>
+                    <p className="font-medium text-gray-700">{customer?.customerId || sessionUser?.user_id}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500">Branch</p>
+                    <p className="font-medium text-gray-700">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />
                   <span>Instruction verified and ready for activation</span>
@@ -586,29 +645,17 @@ const handleSubmit = async () => {
               exit="exit"
               className="space-y-6 max-w-lg mx-auto text-center py-10"
             >
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
+              {/* QR Image */}
+              <div className="flex justify-center">
+                <img src={qr} alt="AIDA" className="h-100 w-100 object-cover" />
               </div>
-            
-              <h3 className="text-xl font-semibold">Authorization Complete</h3>
+
               <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                Standing Order has been created successfully.
+                Scan this QR code to proceed further.
               </p>
 
-              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Instruction ID</span>
-                  <span className="font-mono text-xs">SO-{Date.now().toString().slice(-8)}</span>
-                </div>
-                
-                <div className="flex items-center gap-2 rounded bg-green-100 p-3 text-green-900 text-xs">
-                  <Check className="h-4 w-4" />
-                  <span>Active and Scheduled</span>
-                </div>
-              </div>
-
-              <Button 
-                onClick={handleFinalComplete} 
+              <Button
+                onClick={handleFinalComplete}
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
                 disabled={loading}
               >
@@ -616,7 +663,6 @@ const handleSubmit = async () => {
               </Button>
             </motion.div>
           )}
-
         </AnimatePresence>
       </div>
     </div>

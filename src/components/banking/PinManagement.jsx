@@ -9,10 +9,11 @@ import {
   Zap,
   Star,
   KeyRound,
+  MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-
+import qr from '@/assets/qr.png';   
 import { DashboardHeader } from "@/components/banking/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,16 @@ const STEPS = [
   { id: 4, name: "Processing" },
   { id: 5, name: "Verification" },
   { id: 6, name: "Authorization" },
+];
+
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
 ];
 
 /* FUNCTION TO FETCH CARDS FROM API */
@@ -76,13 +87,14 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
   const [cards, setCards] = useState([]);
   const [fetchingCards, setFetchingCards] = useState(false);
   const [selectedCardDetails, setSelectedCardDetails] = useState(null);
-   const serviceFee = useMemo(() => {
+  const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
 
   /* FORM STATE */
   const [pinCard, setPinCard] = useState("");
   const [pinAction, setPinAction] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   
   /* ACTION SPECIFIC STATE */
@@ -136,6 +148,7 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
     const e = {};
     if (!pinCard) e.card = "Select card";
     if (!pinAction) e.action = "Select action";
+    if (!selectedBranch) e.branch = "Please select a branch";
 
     // Specific validations based on action
     if (pinAction === 'set-new') {
@@ -166,8 +179,11 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
     setPinCard(card.card_number || card.last4);
     setSelectedCardDetails(card);
   };
- console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee);
+  
+  console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee,
+          "branch", selectedBranch);
+          
   const handleSubmit = async () => {
     if (!validate()) return;
     
@@ -179,6 +195,7 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
         account_number: accountNumber,
         card_number: selectedCardDetails?.card_number || pinCard,
         action: pinAction,
+        branch: selectedBranch,
         officer_notes: officerNotes,
       };
 
@@ -225,6 +242,7 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
         body: JSON.stringify(payload),
           user_id: customer?.user_id || sessionUser?.user_id,
           service_amount: serviceFee,
+          branch: selectedBranch,
       });
 
       // Get the response data
@@ -403,6 +421,49 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
                     <SelectItem value="unblock">Unblock PIN</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Branch Selection - Always visible */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5" /> Select Branch *
+                </Label>
+                <Select 
+                  value={selectedBranch} 
+                  onValueChange={(value) => {
+                    setSelectedBranch(value);
+                    setFormErrors(prev => ({...prev, branch: ""}));
+                  }}
+                >
+                  <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Choose a branch for PIN services" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BRANCH_OPTIONS.map((branch) => (
+                      <SelectItem key={branch.value} value={branch.value}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{branch.label}</span>
+                          <span className="text-xs text-muted-foreground">{branch.location}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.branch && (
+                  <p className="text-xs text-destructive">{formErrors.branch}</p>
+                )}
+              </div>
+
+              {/* Info Box */}
+              <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
+                <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-blue-800">PIN Service Information</p>
+                  <p className="text-xs text-blue-700">
+                    For PIN resets, your new PIN will be delivered via your selected method. 
+                    For branch pickup, visit the selected branch with valid ID.
+                  </p>
+                </div>
               </div>
 
               {/* DYNAMIC FIELDS BASED ON ACTION */}
@@ -588,6 +649,12 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
                     <span className="text-sm text-gray-500">Action</span>
                     <span className="text-sm font-medium text-gray-800">{actionLabel[pinAction]}</span>
                   </div>
+                  <div className="flex justify-between py-2 border-b border-dashed">
+                    <span className="text-sm text-gray-500">Branch</span>
+                    <span className="text-sm font-medium text-gray-800">
+                      {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}
+                    </span>
+                  </div>
                   
                   {/* Dynamic Details in Review */}
                   {(pinAction === 'set-new' || pinAction === 'reset') && (
@@ -644,6 +711,9 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   <span>PIN request queued for next step processing.</span>
                 </div>
+                <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600">
+                  <span className="font-medium">Branch:</span> {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -667,6 +737,20 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
               </div>
 
               <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Customer Name</p>
+                    <p className="font-semibold">{customer?.fullName || customer?.first_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Customer ID</p>
+                    <p className="font-medium text-gray-700">{customer?.customerId || customer?.user_id}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500">Branch</p>
+                    <p className="font-medium text-gray-700">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />
                   <span>Customer Identity Verified</span>
@@ -682,32 +766,33 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
 
           {/* STEP 6: AUTHORIZATION */}
           {step === 6 && (
-            <motion.div key="step6" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6 max-w-lg mx-auto text-center py-10">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
-              </div>
-            
-              <h3 className="text-xl font-semibold">Request Authorized</h3>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                PIN management request completed successfully.
-              </p>
+                 <motion.div
+  key="step6"
+  variants={pageVariants}
+  initial="initial"
+  animate="animate"
+  exit="exit"
+  className="space-y-6 max-w-lg mx-auto text-center py-10"
+>
+  {/* QR Image */}
+  <div className="flex justify-center">
+   
+        <img src={qr} alt="AIDA" className="h-100 w-100 object-cover" />
+    
+  </div>
 
-              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Request ID</span>
-                  <span className="font-mono text-xs">PIN-{Date.now().toString().slice(-8)}</span>
-                </div>
-                
-                <div className="flex items-center gap-2 rounded bg-green-100 p-3 text-green-900 text-xs">
-                  <Check className="h-4 w-4" />
-                  <span>Process Complete</span>
-                </div>
-              </div>
+  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+    Scan this QR code to proceed further.
+  </p>
 
-              <Button onClick={handleFinalComplete} className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" disabled={loading}>
-                {loading ? "Processing..." : "Finish"}
-              </Button>
-            </motion.div>
+  <Button
+    onClick={handleFinalComplete}
+    className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+    disabled={loading}
+  >
+    {loading ? "Processing..." : "Finish"}
+  </Button>
+</motion.div>
           )}
         </AnimatePresence>
       </div>

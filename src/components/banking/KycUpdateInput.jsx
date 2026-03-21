@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import qr from '@/assets/qr.jpg';
+
+import qr from '@/assets/qr.png';
+
 import {
   ShieldCheck,
   Fingerprint,
@@ -1432,6 +1434,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
     }
   };
   
+
   /* FINAL STEP */
   const handleFinalComplete = async () => {
     setLoading(true);
@@ -1444,6 +1447,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
         setLoading(false);
         return;
       }
+
 
       const apiResponses = [];
       
@@ -1472,6 +1476,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
           if (data.frontImage) payload.append("front_image", data.frontImage);
           if (data.backImage) payload.append("back_image", data.backImage);
           if (data.selfieImage) payload.append("selfie_with_id", data.selfieImage);
+
         }
         else if (artefactId === 'biometric') {
           payload.append("fingerprint_status", data.fingerprintStatus);
@@ -1492,6 +1497,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
           payload.append("applicable_accounts", JSON.stringify(data.applicableAccounts));
           if (data.signatureCardFile) payload.append("signature_card", data.signatureCardFile);
         }
+
 
         const response = await fetch("http://127.0.0.1:8000/api/kyc-update-requests/", {
           method: "POST",
@@ -1562,6 +1568,9 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
       }
     } finally {
       setLoading(false);
+
+
+  
     }
   };
 
