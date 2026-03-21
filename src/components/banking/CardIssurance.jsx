@@ -9,6 +9,7 @@ import {
   CreditCard,
   Zap,
   Star,
+  MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
+import qr from '@/assets/qr.png';
 import { getEligibleAccounts, ACCOUNT_TYPE_LABELS } from "@/data/demoCustomers";
 
 /* CONSTANTS */
@@ -37,6 +38,16 @@ const STEPS = [
   { id: 4, name: "Processing" },
   { id: 5, name: "Verification" },
   { id: 6, name: "Authorization" },
+];
+
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
 ];
 
 export default function CardIssuance({ customer: propCustomer, onBack, formFields }) {
@@ -67,10 +78,12 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
   const [enableContactless, setEnableContactless] = useState(true);
   const [dailyPosLimit, setDailyPosLimit] = useState("200000");
   const [dailyAtmLimit, setDailyAtmLimit] = useState("100000");
+  const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
- const serviceFee = useMemo(() => {
+  const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
+  
   /* PROCESSING STATE */
   const [officerNotes, setOfficerNotes] = useState("");
 
@@ -82,40 +95,40 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
 
   /* INIT CUSTOMER */
   useEffect(() => {
-  if (propCustomer) {
-    setCustomer(propCustomer);
-
-    if (!nameOnCard) {
-      setNameOnCard(propCustomer?.fullName?.toUpperCase() || "");
-    }
-
-    return;
-  }
-
-  try {
-    const sessionCustomer = sessionStorage.getItem("customer");
-
-    if (sessionCustomer) {
-      const c = JSON.parse(sessionCustomer);
-      setCustomer(c);
+    if (propCustomer) {
+      setCustomer(propCustomer);
 
       if (!nameOnCard) {
-        setNameOnCard(c?.fullName?.toUpperCase() || "");
+        setNameOnCard(propCustomer?.fullName?.toUpperCase() || "");
       }
 
-    } else if (sessionUser) {
-      setCustomer(sessionUser);
-
-      if (!nameOnCard) {
-        setNameOnCard(sessionUser?.first_name?.toUpperCase() || "");
-      }
+      return;
     }
 
-  } catch (error) {
-    console.error("Error parsing customer:", error);
-  }
+    try {
+      const sessionCustomer = sessionStorage.getItem("customer");
 
-}, [propCustomer]);
+      if (sessionCustomer) {
+        const c = JSON.parse(sessionCustomer);
+        setCustomer(c);
+
+        if (!nameOnCard) {
+          setNameOnCard(c?.fullName?.toUpperCase() || "");
+        }
+
+      } else if (sessionUser) {
+        setCustomer(sessionUser);
+
+        if (!nameOnCard) {
+          setNameOnCard(sessionUser?.first_name?.toUpperCase() || "");
+        }
+      }
+
+    } catch (error) {
+      console.error("Error parsing customer:", error);
+    }
+
+  }, [propCustomer]);
 
   useEffect(() => {
     if (step === 2) {
@@ -130,74 +143,64 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
     if (!linkedAccount) errs.linkedAccount = "Select account";
     if (!cardType) errs.cardType = "Select card type";
     if (!nameOnCard) errs.nameOnCard = "Name required";
+    if (!selectedBranch) errs.branch = "Please select a branch";
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
- console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee);
-const handleSubmit = async () => {
+  
+  console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee,
+          "selected branch", selectedBranch);
+          
+  const handleSubmit = async () => {
+    if (!validate()) return;
 
-  if (!validate()) return;
+    setLoading(true);
 
-  setLoading(true);
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/cards/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
 
-  try {
+          body: JSON.stringify({
+            account: linkedAccount,
+            card_type: cardType,
+            name_on_card: nameOnCard,
+            contactless_enabled: enableContactless,
+            daily_pos_limit: Number(dailyPosLimit),
+            daily_atm_limit: Number(dailyAtmLimit),
+            branch: selectedBranch,
+            officer_notes: officerNotes,
+            user_id: customer?.user_id || sessionUser?.user_id,
+            service_amount: serviceFee,
+          }),
+        }
+      );
 
-    const response = await fetch(
-      "http://127.0.0.1:8000/api/cards/",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const data = await response.json();
 
-        body: JSON.stringify({
+      console.log("Card API Response:", data);
 
-          account: linkedAccount,
-
-          card_type: cardType,
-
-          name_on_card: nameOnCard,
-
-          contactless_enabled: enableContactless,
-
-          daily_pos_limit: Number(dailyPosLimit),
-
-          daily_atm_limit: Number(dailyAtmLimit),
-
-          officer_notes: officerNotes,
-
-          user_id: customer?.user_id || sessionUser?.user_id,
-          service_amount: serviceFee,
-
-        }),
+      if (!response.ok) {
+        alert(data.message || "Card request failed");
+        return;
       }
-    );
 
-    const data = await response.json();
+      // move to validation step
+      setStep(2);
 
-    console.log("Card API Response:", data);
-
-    if (!response.ok) {
-      alert(data.message || "Card request failed");
-      return;
+    } catch (error) {
+      console.error("Card API Error:", error);
+      alert("Server error");
+    } finally {
+      setLoading(false);
     }
-
-    // move to validation step
-    setStep(2);
-
-  } catch (error) {
-
-    console.error("Card API Error:", error);
-    alert("Server error");
-
-  } finally {
-
-    setLoading(false);
-
-  }
-
-};
+  };
+  
   const handleFinalComplete = async () => {
     setLoading(true);
     await new Promise((r) => setTimeout(r, 1000));
@@ -281,7 +284,7 @@ const handleSubmit = async () => {
                 </div>
               </div>
 
-              {/* FIXED: Account Dropdown */}
+              {/* Account Dropdown */}
               <div className="space-y-2">
                 <Label>Link Account</Label>
                 <Select value={linkedAccount} onValueChange={setLinkedAccount}>
@@ -308,6 +311,7 @@ const handleSubmit = async () => {
                 {formErrors.linkedAccount && <p className="text-xs text-destructive">{formErrors.linkedAccount}</p>}
               </div>
 
+              {/* Card Type */}
               <div className="space-y-2">
                 <Label>Card Type</Label>
                 <div className="grid grid-cols-2 gap-2">
@@ -325,6 +329,7 @@ const handleSubmit = async () => {
                 {formErrors.cardType && <p className="text-xs text-destructive">{formErrors.cardType}</p>}
               </div>
 
+              {/* Name on Card */}
               <div className="space-y-2">
                 <Label>Name on Card</Label>
                 <Input 
@@ -335,11 +340,44 @@ const handleSubmit = async () => {
                 {formErrors.nameOnCard && <p className="text-xs text-destructive">{formErrors.nameOnCard}</p>}
               </div>
 
+              {/* Branch Selection - Always visible */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5" /> Select Branch *
+                </Label>
+                <Select 
+                  value={selectedBranch} 
+                  onValueChange={(value) => {
+                    setSelectedBranch(value);
+                    setFormErrors(prev => ({...prev, branch: ""}));
+                  }}
+                >
+                  <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Choose a branch for card collection" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BRANCH_OPTIONS.map((branch) => (
+                      <SelectItem key={branch.value} value={branch.value}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{branch.label}</span>
+                          <span className="text-xs text-muted-foreground">{branch.location}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.branch && (
+                  <p className="text-xs text-destructive">{formErrors.branch}</p>
+                )}
+              </div>
+
+              {/* Contactless Switch */}
               <div className="flex items-center justify-between rounded-lg border p-3 bg-gray-50">
                 <Label htmlFor="contactless">Enable Contactless</Label>
                 <Switch id="contactless" checked={enableContactless} onCheckedChange={setEnableContactless} />
               </div>
 
+              {/* Limits */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Daily POS Limit</Label>
@@ -348,6 +386,18 @@ const handleSubmit = async () => {
                 <div className="space-y-2">
                   <Label>Daily ATM Limit</Label>
                   <Input type="number" value={dailyAtmLimit} onChange={(e) => setDailyAtmLimit(e.target.value)} />
+                </div>
+              </div>
+
+              {/* Info Box */}
+              <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
+                <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-blue-800">Card Collection Information</p>
+                  <p className="text-xs text-blue-700">
+                    Your card will be available for pickup at the selected branch within 5-7 business days.
+                    Please bring a valid ID for verification.
+                  </p>
                 </div>
               </div>
 
@@ -383,6 +433,7 @@ const handleSubmit = async () => {
                     { l: "Account", v: linkedAccount },
                     { l: "Card Type", v: cardType },
                     { l: "Name on Card", v: nameOnCard },
+                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Contactless", v: enableContactless ? "Enabled" : "Disabled" },
                     { l: "Limits", v: `POS: KES ${Number(dailyPosLimit).toLocaleString()} / ATM: KES ${Number(dailyAtmLimit).toLocaleString()}` },
                   ].map((row) => (
@@ -413,6 +464,9 @@ const handleSubmit = async () => {
                 <div className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-3 rounded-lg flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   <span>Card request is being prepared for printing queue.</span>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600">
+                  <span className="font-medium">Collection Branch:</span> {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}
                 </div>
               </div>
 
@@ -446,6 +500,10 @@ const handleSubmit = async () => {
                     <p className="text-xs text-gray-500">Customer ID</p>
                     <p className="font-medium text-gray-700">{customer?.customerId || customer?.user_id}</p>
                   </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500">Collection Branch</p>
+                    <p className="font-medium text-gray-700">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />
@@ -462,27 +520,33 @@ const handleSubmit = async () => {
 
           {/* STEP 6: AUTHORIZATION */}
           {step === 6 && (
-            <motion.div key="step6" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6 max-w-lg mx-auto text-center py-10">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
-              </div>
-            
-              <h3 className="text-xl font-semibold">Request Authorized</h3>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                Card issuance has been approved and queued for production.
-              </p>
+                 <motion.div
+  key="step6"
+  variants={pageVariants}
+  initial="initial"
+  animate="animate"
+  exit="exit"
+  className="space-y-6 max-w-lg mx-auto text-center py-10"
+>
+  {/* QR Image */}
+  <div className="flex justify-center">
+   
+        <img src={qr} alt="AIDA" className="h-100 w-100 object-cover" />
+    
+  </div>
 
-              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Request ID</span>
-                  <span className="font-mono text-xs">CARD-{Date.now().toString().slice(-8)}</span>
-                </div>
-              </div>
+  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+    Scan this QR code to proceed further.
+  </p>
 
-              <Button onClick={handleFinalComplete} className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" disabled={loading}>
-                {loading ? "Processing..." : "Finish"}
-              </Button>
-            </motion.div>
+  <Button
+    onClick={handleFinalComplete}
+    className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+    disabled={loading}
+  >
+    {loading ? "Processing..." : "Finish"}
+  </Button>
+</motion.div>
           )}
         </AnimatePresence>
       </div>

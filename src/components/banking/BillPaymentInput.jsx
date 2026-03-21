@@ -13,6 +13,7 @@ import {
   Zap,
   Star,
   CreditCard,
+  MapPin,
 } from "lucide-react";
 
 import { DashboardHeader } from "@/components/banking/DashboardHeader";
@@ -27,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
+import qr from '@/assets/qr.png';
 /* CONSTANTS */
 const STEPS = [
   { id: 1, name: "Input" },
@@ -44,8 +45,18 @@ const BILLERS = [
   { id: "tv", name: "DSTV/GOtv", icon: CreditCard },
 ];
 
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
+];
+
 // defining the component with 'export const' ensures it is a Named Export immediately
-export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete,formFields }) => {
+export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, formFields }) => {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -62,11 +73,13 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete,fo
   const [selectedBiller, setSelectedBiller] = useState(null);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [amount, setAmount] = useState("");
-  const [accountNumber, setAccountNumber] = useState(""); 
+  const [accountNumber, setAccountNumber] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
+  
   /* PROCESSING STATE */
   const [officerNotes, setOfficerNotes] = useState("");
 
@@ -99,67 +112,65 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete,fo
     if (!selectedBiller) errs.biller = "Select a biller";
     if (!selectedAccount) errs.account = "Select payment account";
     if (!accountNumber) errs.accNum = "Enter account number";
+    if (!selectedBranch) errs.branch = "Please select a branch";
     const num = Number(amount);
     if (isNaN(num) || num <= 0) errs.amount = "Enter valid amount";
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
- console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee);
+  
+  console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee,
+          "selected branch", selectedBranch);
+          
   const handleSubmit = async () => {
+    if (!validate()) return;
 
-  if (!validate()) return;
+    setLoading(true);
 
-  setLoading(true);
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/bill-payments/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: customer?.user_id || sessionUser?.user_id,
+            service_amount: serviceFee,
+            biller: selectedBiller?.id,
+            biller_name: selectedBiller?.name,
+            biller_account_number: accountNumber,
+            amount: Number(amount),
+            source_account: selectedAccount?.account_number,
+            currency: selectedAccount?.currency || "KES",
+            branch: selectedBranch,
+            officer_notes: officerNotes,
+          }),
+        }
+      );
 
-  try {
-const response = await fetch(
-  "http://127.0.0.1:8000/api/bill-payments/",
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      user_id: customer?.user_id || sessionUser?.user_id,
-      service_amount: serviceFee,
+      const data = await response.json();
 
-      biller: selectedBiller?.id,
-      biller_name: selectedBiller?.name,
-      biller_account_number: accountNumber,
-      amount: Number(amount),
-      source_account: selectedAccount?.account_number,
-      currency: selectedAccount?.currency || "KES",
-      officer_notes: officerNotes,
-    }),
-  }
-);
+      console.log("Bill Payment API Response:", data);
 
-    const data = await response.json();
+      if (!response.ok) {
+        alert(data.message || "Bill payment failed");
+        setLoading(false);
+        return;
+      }
 
-    console.log("Bill Payment API Response:", data);
+      // go to validation step
+      setStep(2);
 
-    if (!response.ok) {
-      alert(data.message || "Bill payment failed");
+    } catch (error) {
+      console.error("Bill payment error:", error);
+      alert("Server error");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // go to validation step
-    setStep(2);
-
-  } catch (error) {
-
-    console.error("Bill payment error:", error);
-    alert("Server error");
-
-  } finally {
-
-    setLoading(false);
-
-  }
-
-};
+  };
 
   const handleFinalComplete = async () => {
     setLoading(true);
@@ -319,6 +330,49 @@ const response = await fetch(
                 {formErrors.amount && <p className="text-xs text-destructive">{formErrors.amount}</p>}
               </div>
 
+              {/* Branch Selection - Always visible */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5" /> Select Branch *
+                </Label>
+                <Select 
+                  value={selectedBranch} 
+                  onValueChange={(value) => {
+                    setSelectedBranch(value);
+                    setFormErrors(prev => ({...prev, branch: ""}));
+                  }}
+                >
+                  <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Choose a branch for this payment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BRANCH_OPTIONS.map((branch) => (
+                      <SelectItem key={branch.value} value={branch.value}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{branch.label}</span>
+                          <span className="text-xs text-muted-foreground">{branch.location}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.branch && (
+                  <p className="text-xs text-destructive">{formErrors.branch}</p>
+                )}
+              </div>
+
+              {/* Info Box */}
+              <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
+                <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-blue-800">Payment Branch Information</p>
+                  <p className="text-xs text-blue-700">
+                    This bill payment will be processed under the selected branch. 
+                    The branch will be recorded for audit and reconciliation purposes.
+                  </p>
+                </div>
+              </div>
+
               {/* Source Account */}
               <div className="space-y-2">
                 <Label>Pay From *</Label>
@@ -394,6 +448,7 @@ const response = await fetch(
                     { l: "Account No", v: accountNumber },
                     { l: "Amount", v: `KES ${Number(amount).toLocaleString()}` },
                     { l: "Paid From", v: selectedAccount?.account_number },
+                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                   ].map((row) => (
                     <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
                       <span className="text-sm text-gray-500">{row.l}</span>
@@ -435,6 +490,9 @@ const response = await fetch(
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   <span>Payment is being routed to {selectedBiller?.name}.</span>
                 </div>
+                <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600">
+                  <span className="font-medium">Branch:</span> {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -473,6 +531,20 @@ const response = await fetch(
               </div>
 
               <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Customer Name</p>
+                    <p className="font-semibold">{customer?.fullName || sessionUser?.first_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Customer ID</p>
+                    <p className="font-medium text-gray-700">{customer?.user_id || sessionUser?.user_id}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500">Branch</p>
+                    <p className="font-medium text-gray-700">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />
                   <span>Payment verified successfully</span>
@@ -492,31 +564,33 @@ const response = await fetch(
 
           {/* STEP 6: AUTHORIZATION */}
           {step === 6 && (
-            <motion.div
-              key="step6"
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="space-y-6 max-w-lg mx-auto text-center py-10"
-            >
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
-              </div>
-            
-              <h3 className="text-xl font-semibold">Payment Successful</h3>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                Transaction completed.
-              </p>
+                <motion.div
+  key="step6"
+  variants={pageVariants}
+  initial="initial"
+  animate="animate"
+  exit="exit"
+  className="space-y-6 max-w-lg mx-auto text-center py-10"
+>
+  {/* QR Image */}
+  <div className="flex justify-center">
+   
+        <img src={qr} alt="AIDA" className="h-100 w-100 object-cover" />
+    
+  </div>
 
-              <Button 
-                onClick={handleFinalComplete} 
-                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
-                disabled={loading}
-              >
-                {loading ? "Processing..." : "Finish"}
-              </Button>
-            </motion.div>
+  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+    Scan this QR code to proceed further.
+  </p>
+
+  <Button
+    onClick={handleFinalComplete}
+    className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+    disabled={loading}
+  >
+    {loading ? "Processing..." : "Finish"}
+  </Button>
+</motion.div>
           )}
 
         </AnimatePresence>

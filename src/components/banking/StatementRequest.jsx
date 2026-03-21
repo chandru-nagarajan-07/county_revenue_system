@@ -14,10 +14,11 @@ import {
   Mail,
   Building2,
   Clock,
+  MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-
+import qr from '@/assets/qr.png'; 
 import { DashboardHeader } from "@/components/banking/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,12 +64,23 @@ const DELIVERY_METHODS = [
   { value: "printed", label: "Printed" },
 ];
 
-export default function StatementRequest({ customer: propCustomer, onBack,formFields }) {
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
+];
+
+export default function StatementRequest({ customer: propCustomer, onBack, formFields }) {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
- const serviceFee = useMemo(() => {
+  const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
+  
   /* SESSION USER */
   const [sessionUser, setSessionUser] = useState({});
   const [accounts, setAccounts] = useState([]);
@@ -103,6 +115,7 @@ export default function StatementRequest({ customer: propCustomer, onBack,formFi
   const [periodTo, setPeriodTo] = useState("");
   const [stmtFormat, setStmtFormat] = useState("pdf");
   const [stmtDelivery, setStmtDelivery] = useState("email");
+  const [selectedBranch, setSelectedBranch] = useState("");
   const [stmtEmail, setStmtEmail] = useState("");
   const [certified, setCertified] = useState(false);
   const [purpose, setPurpose] = useState("");
@@ -144,6 +157,7 @@ export default function StatementRequest({ customer: propCustomer, onBack,formFi
   const validate = () => {
     const errs = {};
     if (!selectedAccount) errs.account = "Select account";
+    if (!selectedBranch) errs.branch = "Please select a branch";
     if (needsPeriod && !periodFrom) errs.periodFrom = "Start date required";
     if (needsPeriod && !periodTo) errs.periodTo = "End date required";
     if (needsPeriod && periodFrom && periodTo && new Date(periodFrom) > new Date(periodTo)) {
@@ -154,8 +168,11 @@ export default function StatementRequest({ customer: propCustomer, onBack,formFi
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
- console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee);
+  
+  console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee,
+          "selected branch", selectedBranch);
+          
   const handleSubmit = async () => {
     if (!validate()) return;
     
@@ -187,6 +204,7 @@ export default function StatementRequest({ customer: propCustomer, onBack,formFi
         statement_type: stmtType,
         output_format: stmtFormat,
         delivery_method: stmtDelivery,
+        branch: selectedBranch,
         email: stmtDelivery === "email" ? stmtEmail : null,
         date_from: needsPeriod ? periodFrom : null,
         date_to: needsPeriod ? periodTo : null,
@@ -206,6 +224,7 @@ export default function StatementRequest({ customer: propCustomer, onBack,formFi
         body: JSON.stringify(payload),
           users_id: customer?.user_id || sessionUser?.user_id,
           service_amount: serviceFee,
+          branch: selectedBranch,
       });
 
       const data = await response.json();
@@ -449,7 +468,7 @@ export default function StatementRequest({ customer: propCustomer, onBack,formFi
                 </div>
               </div>
 
-              {/* Delivery - Branch option removed */}
+              {/* Delivery */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1"><Mail className="h-3 w-3" /> Delivery</Label>
                 <Select value={stmtDelivery} onValueChange={setStmtDelivery}>
@@ -462,6 +481,37 @@ export default function StatementRequest({ customer: propCustomer, onBack,formFi
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Branch Selection - Always visible */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5" /> Select Branch *
+                </Label>
+                <Select 
+                  value={selectedBranch} 
+                  onValueChange={(value) => {
+                    setSelectedBranch(value);
+                    setFormErrors(prev => ({...prev, branch: ""}));
+                  }}
+                >
+                  <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Choose a branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BRANCH_OPTIONS.map((branch) => (
+                      <SelectItem key={branch.value} value={branch.value}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{branch.label}</span>
+                          <span className="text-xs text-muted-foreground">{branch.location}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.branch && (
+                  <p className="text-xs text-destructive">{formErrors.branch}</p>
+                )}
               </div>
 
               {/* Email field for email delivery */}
@@ -501,7 +551,7 @@ export default function StatementRequest({ customer: propCustomer, onBack,formFi
                 </div>
               )}
 
-              {/* ETA Info */}
+              {/* Info based on delivery and branch */}
               <div className="flex items-start gap-2.5 rounded-lg bg-muted/40 border p-3">
                 <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
@@ -510,6 +560,11 @@ export default function StatementRequest({ customer: propCustomer, onBack,formFi
                     {stmtType === "mini" ? "Instant" : "1-2 business days"}
                     {certified && " (Certified statements may take longer)"}
                   </p>
+                  {selectedBranch && (
+                    <p className="text-xs text-primary mt-1">
+                      Branch: {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -555,6 +610,7 @@ export default function StatementRequest({ customer: propCustomer, onBack,formFi
                     { l: "Period", v: needsPeriod ? `${periodFrom} to ${periodTo}` : "N/A" },
                     { l: "Format", v: STATEMENT_FORMATS.find(f => f.value === stmtFormat)?.label },
                     { l: "Delivery", v: stmtDelivery === "email" ? `Email (${stmtEmail})` : "Printed Copy" },
+                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Certified", v: certified ? `Yes ${purpose ? `- ${purpose}` : ""}` : "No" },
                   ].map((row) => (
                     <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
@@ -595,7 +651,17 @@ export default function StatementRequest({ customer: propCustomer, onBack,formFi
                 <Eye className="h-5 w-5" /> <span className="text-sm font-medium">Verification</span>
               </div>
               <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
-                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Customer ID</p>
+                    <p className="font-medium">{customer?.id || customer?.customerId || sessionUser?.id || "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Branch</p>
+                    <p className="font-medium">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />
                   <span>Statement generation verified</span>
                 </div>
@@ -609,36 +675,67 @@ export default function StatementRequest({ customer: propCustomer, onBack,formFi
 
           {/* STEP 6: AUTHORIZATION */}
           {step === 6 && (
-            <motion.div key="step6" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6 max-w-lg mx-auto text-center py-10">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
-              </div>
-              <h3 className="text-xl font-semibold">Request Complete</h3>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                Your statement request has been processed successfully.
-              </p>
+            // <motion.div key="step6" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6 max-w-lg mx-auto text-center py-10">
+            //   <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
+            //     <ThumbsUp className="h-8 w-8 text-accent" />
+            //   </div>
+            //   <h3 className="text-xl font-semibold">Request Complete</h3>
+            //   <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+            //     Your statement request has been processed successfully.
+            //   </p>
               
-              {requestId && (
-                <div className="rounded-xl border bg-white p-4 shadow-sm text-left">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Request ID</span>
-                    <span className="font-mono text-xs font-medium">{requestId}</span>
-                  </div>
-                  <div className="flex justify-between text-sm mt-2">
-                    <span className="text-gray-500">Delivery</span>
-                    <span className="font-medium">{stmtDelivery === "email" ? "Email" : "Printed"}</span>
-                  </div>
-                </div>
-              )}
+            //   {requestId && (
+            //     <div className="rounded-xl border bg-white p-4 shadow-sm text-left">
+            //       <div className="flex justify-between text-sm">
+            //         <span className="text-gray-500">Request ID</span>
+            //         <span className="font-mono text-xs font-medium">{requestId}</span>
+            //       </div>
+            //       <div className="flex justify-between text-sm mt-2">
+            //         <span className="text-gray-500">Delivery</span>
+            //         <span className="font-medium">{stmtDelivery === "email" ? "Email" : "Printed"}</span>
+            //       </div>
+            //       <div className="flex justify-between text-sm mt-2">
+            //         <span className="text-gray-500">Branch</span>
+            //         <span className="font-medium">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</span>
+            //       </div>
+            //     </div>
+            //   )}
 
-              <Button 
-                onClick={handleFinalComplete} 
-                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" 
-                disabled={loading}
-              >
-                {loading ? "Processing..." : "Finish"}
-              </Button>
-            </motion.div>
+            //   <Button 
+            //     onClick={handleFinalComplete} 
+            //     className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" 
+            //     disabled={loading}
+            //   >
+            //     {loading ? "Processing..." : "Finish"}
+            //   </Button>
+            // </motion.div>
+               <motion.div
+  key="step6"
+  variants={pageVariants}
+  initial="initial"
+  animate="animate"
+  exit="exit"
+  className="space-y-6 max-w-lg mx-auto text-center py-10"
+>
+  {/* QR Image */}
+  <div className="flex justify-center">
+   
+        <img src={qr} alt="AIDA" className="h-100 w-100 object-cover" />
+    
+  </div>
+
+  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+    Scan this QR code to proceed further.
+  </p>
+
+  <Button
+    onClick={handleFinalComplete}
+    className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+    disabled={loading}
+  >
+    {loading ? "Processing..." : "Finish"}
+  </Button>
+</motion.div>
           )}
         </AnimatePresence>
       </div>

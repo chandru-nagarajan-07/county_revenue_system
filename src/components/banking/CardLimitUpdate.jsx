@@ -9,15 +9,23 @@ import {
   Zap,
   Star,
   Settings,
+  MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-
+import qr from '@/assets/qr.png';
 import { DashboardHeader } from "@/components/banking/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 /* CONSTANTS */
 const STEPS = [
@@ -29,7 +37,17 @@ const STEPS = [
   { id: 6, name: "Authorization" },
 ];
 
-export default function CardLimitUpdate({ customer: propCustomer, onBack,formFields }) {
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
+];
+
+export default function CardLimitUpdate({ customer: propCustomer, onBack, formFields }) {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -57,10 +75,12 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack,formFie
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [newPosLimit, setNewPosLimit] = useState("");
   const [newAtmLimit, setNewAtmLimit] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
+  
   /* PROCESSING STATE */
   const [officerNotes, setOfficerNotes] = useState("");
 
@@ -152,58 +172,64 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack,formFie
   const validate = () => {
     const e = {};
     if (!selectedCardId) e.card = "Select card";
+    if (!selectedBranch) e.branch = "Please select a branch";
     if (!newPosLimit || Number(newPosLimit) <= 0) e.pos = "Valid POS limit required";
     if (!newAtmLimit || Number(newAtmLimit) <= 0) e.atm = "Valid ATM limit required";
     setFormErrors(e);
     return Object.keys(e).length === 0;
   };
- console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee);
+  
+  console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee,
+          "selected branch", selectedBranch);
+          
   const handleSubmit = async () => {
-  if (!validate()) return;
+    if (!validate()) return;
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    const payload = {
-      card_number: selectedCardDetails?.card_number,
-      old_pos_limit: selectedCardDetails?.posLimit,
-      new_pos_limit: Number(newPosLimit),
-      old_atm_limit: selectedCardDetails?.atmLimit,
-      new_atm_limit: Number(newAtmLimit),
-    };
+    try {
+      const payload = {
+        card_number: selectedCardDetails?.card_number,
+        old_pos_limit: selectedCardDetails?.posLimit,
+        new_pos_limit: Number(newPosLimit),
+        old_atm_limit: selectedCardDetails?.atmLimit,
+        new_atm_limit: Number(newAtmLimit),
+        branch: selectedBranch,
+      };
 
-    const response = await fetch(
-      "http://127.0.0.1:8000/api/card-limit-updates/",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-          user_id: customer?.user_id || sessionUser?.user_id,
-          service_amount: serviceFee,
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/card-limit-updates/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+            user_id: customer?.user_id || sessionUser?.user_id,
+            service_amount: serviceFee,
+            branch: selectedBranch,
+        }
+      );
+
+      console.log("API Status:", response.status);
+
+      if (!response.ok) {
+        throw new Error("Failed to update card limits");
       }
-    );
 
-    console.log("API Status:", response.status);
+      const data = await response.json();
+      console.log("Limit update response:", data);
 
-    if (!response.ok) {
-      throw new Error("Failed to update card limits");
+      setStep(2);
+
+    } catch (error) {
+      console.error("Error updating limits:", error);
+      alert("Limit update failed");
+    } finally {
+      setLoading(false);
     }
-
-    const data = await response.json();
-    console.log("Limit update response:", data);
-
-    setStep(2);
-
-  } catch (error) {
-    console.error("Error updating limits:", error);
-    alert("Limit update failed");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleFinalComplete = async () => {
     setLoading(true);
@@ -398,6 +424,49 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack,formFie
                 )}
               </div>
 
+              {/* Branch Selection - Always visible */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5" /> Select Branch *
+                </Label>
+                <Select 
+                  value={selectedBranch} 
+                  onValueChange={(value) => {
+                    setSelectedBranch(value);
+                    setFormErrors(prev => ({...prev, branch: ""}));
+                  }}
+                >
+                  <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Choose a branch for limit update" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BRANCH_OPTIONS.map((branch) => (
+                      <SelectItem key={branch.value} value={branch.value}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{branch.label}</span>
+                          <span className="text-xs text-muted-foreground">{branch.location}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.branch && (
+                  <p className="text-xs text-destructive">{formErrors.branch}</p>
+                )}
+              </div>
+
+              {/* Info Box */}
+              <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
+                <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-blue-800">Limit Update Information</p>
+                  <p className="text-xs text-blue-700">
+                    Limit changes will be processed at the selected branch. 
+                    Please bring valid ID for verification.
+                  </p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>New POS Limit (KES)</Label>
@@ -482,6 +551,7 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack,formFie
                     { l: "New POS Limit", v: `KES ${Number(newPosLimit).toLocaleString()}` },
                     { l: "Current ATM Limit", v: `KES ${selectedCardDetails.atmLimit?.toLocaleString()}` },
                     { l: "New ATM Limit", v: `KES ${Number(newAtmLimit).toLocaleString()}` },
+                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                   ].map((row) => (
                     <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
                       <span className="text-sm text-gray-500">{row.l}</span>
@@ -525,6 +595,9 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack,formFie
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   <span>Verify requested limits against customer profile risk.</span>
                 </div>
+                <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600">
+                  <span className="font-medium">Branch:</span> {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -566,6 +639,20 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack,formFie
               </div>
 
               <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Customer Name</p>
+                    <p className="font-semibold">{displayName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Customer ID</p>
+                    <p className="font-medium text-gray-700">{customerId}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500">Branch</p>
+                    <p className="font-medium text-gray-700">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />
                   <span>Customer has authorized limit change</span>
@@ -588,45 +675,33 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack,formFie
 
           {/* STEP 6: AUTHORIZATION */}
           {step === 6 && (
-            <motion.div 
-              key="step6" 
-              variants={pageVariants} 
-              initial="initial" 
-              animate="animate" 
-              exit="exit" 
-              className="space-y-6 max-w-lg mx-auto text-center py-10"
-            >
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
-              </div>
-            
-              <h3 className="text-xl font-semibold">Limits Updated</h3>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                New card limits are now active.
-              </p>
+                <motion.div
+  key="step6"
+  variants={pageVariants}
+  initial="initial"
+  animate="animate"
+  exit="exit"
+  className="space-y-6 max-w-lg mx-auto text-center py-10"
+>
+  {/* QR Image */}
+  <div className="flex justify-center">
+   
+        <img src={qr} alt="AIDA" className="h-100 w-100 object-cover" />
+    
+  </div>
 
-              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Request ID</span>
-                  <span className="font-mono text-xs">
-                    LIM-{Date.now().toString().slice(-8)}
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-2 rounded bg-green-100 p-3 text-green-900 text-xs">
-                  <Check className="h-4 w-4" />
-                  <span>Update Successful</span>
-                </div>
-              </div>
+  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+    Scan this QR code to proceed further.
+  </p>
 
-              <Button 
-                onClick={handleFinalComplete} 
-                className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-white font-semibold shadow-lg" 
-                disabled={loading}
-              >
-                {loading ? "Processing..." : "Finish"}
-              </Button>
-            </motion.div>
+  <Button
+    onClick={handleFinalComplete}
+    className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+    disabled={loading}
+  >
+    {loading ? "Processing..." : "Finish"}
+  </Button>
+</motion.div>
           )}
         </AnimatePresence>
       </div>

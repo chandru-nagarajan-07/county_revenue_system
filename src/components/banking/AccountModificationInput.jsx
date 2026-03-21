@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import qr from '@/assets/qr.png';
 import {
   ArrowLeft,
   Check,
@@ -16,6 +17,7 @@ import {
   Zap,
   Star,
   TrendingUp,
+  MapPin,
 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
@@ -55,6 +57,16 @@ const STEPS = [
   { id: 4, name: "Processing" },
   { id: 5, name: "Verification" },
   { id: 6, name: "Authorization" },
+];
+
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
 ];
 
 /* ---------- ACTION LIST ---------- */
@@ -139,7 +151,7 @@ const FREQUENCIES = [
   { value: "Annually", label: "Annually" },
 ];
 
-export function AccountModificationInput({ customer, onBack ,formFields }) {
+export function AccountModificationInput({ customer, onBack, formFields }) {
 
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
@@ -148,6 +160,7 @@ export function AccountModificationInput({ customer, onBack ,formFields }) {
 
   const [selectedActionId, setSelectedActionId] = useState(null);
   const [selectedAccount, setSelectedAccount] = useState(null);
+  const [selectedBranch, setSelectedBranch] = useState("");
 
   const [details, setDetails] = useState({});
   const [priorityLevel, setPriorityLevel] = useState(50);
@@ -157,15 +170,15 @@ export function AccountModificationInput({ customer, onBack ,formFields }) {
   const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
+  
   const [currencyDetails, setCurrencyDetails] = useState({
-  // old_currency: "",      // can prefill with account currency
-  new_currency: "",
-  // conversion_rate: "",
-  // effective_date: "",
+    new_currency: "",
   });
+  
   const [statusChangeDetails, setStatusChangeDetails] = useState({
-  new_status: "",
+    new_status: "",
   });
+  
   let sessionUser = {};
 
   try {
@@ -192,14 +205,20 @@ export function AccountModificationInput({ customer, onBack ,formFields }) {
       [key]: value,
     }));
   };
-console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee);
+  
+  console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee,"branch", selectedBranch);
+          
   /* ---------- VALIDATION ---------- */
 
   const handleStepOneSubmit = () => {
-
     if (!selectedAccount) {
       alert("Select account");
+      return;
+    }
+    
+    if (!selectedBranch) {
+      alert("Please select a branch");
       return;
     }
 
@@ -218,84 +237,58 @@ console.log("res", customer?.user_id || sessionUser?.user_id,
       return;
     }
     if (selectedActionId === "set-standing-order") {
-    if (
-      !details.amount ||
-      !details.frequency ||
-      !details.beneficairy_name ||
-      !details.beneficiary_account ||
-      !details.start_date
-    ) {
-      alert("Please fill all required standing order fields");
-      return;
+      if (
+        !details.amount ||
+        !details.frequency ||
+        !details.beneficairy_name ||
+        !details.beneficiary_account ||
+        !details.start_date
+      ) {
+        alert("Please fill all required standing order fields");
+        return;
+      }
     }
-  }
-  if (selectedActionId === "change-currency") {
-  if (
-    !currencyDetails.new_currency ||
-    !currencyDetails.conversion_rate ||
-    !currencyDetails.effective_date
-  ) {
-    alert("Please fill all currency change fields");
-    return;
-  }
-}
-  if (selectedActionId === "activate-dormant") {
-  if (!statusChangeDetails.new_status) {
-    alert("Please select a new status");
-    return;
-  }
-  }
+    if (selectedActionId === "change-currency") {
+      if (
+        !currencyDetails.new_currency
+      ) {
+        alert("Please fill all currency change fields");
+        return;
+      }
+    }
+    if (selectedActionId === "activate-dormant") {
+      if (!statusChangeDetails.new_status) {
+        alert("Please select a new status");
+        return;
+      }
+    }
     setStep(2);
   };
 
   /* ---------- AUTO VALIDATION ---------- */
 
   useEffect(() => {
-
     if (step === 2) {
       const timer = setTimeout(() => setStep(3), 1200);
       return () => clearTimeout(timer);
     }
-
   }, [step]);
 
   /* ---------- API CALL ---------- */
 
   const submitModificationRequest = async () => {
-
     try {
-
       setLoading(true);
 
       const payload = {
         account: selectedAccount?.id,
         action_type: ACTION_TYPE_MAP[selectedActionId],
-
-        limit_type:
-          selectedActionId === "set-transaction-limit"
-            ? details.limitType
-            : null,
-
-        limit_amount:
-          selectedActionId === "set-transaction-limit"
-            ? details.limitAmount
-            : null,
-
-        action:
-          selectedActionId === "block-unblock"
-            ? details.action
-            : null,
-
-        target:
-          selectedActionId === "block-unblock"
-            ? details.target
-            : null,
-
-        reason:
-          selectedActionId === "block-unblock"
-            ? details.reason
-            : null,
-              // STANDING ORDER FIELDS
+        branch: selectedBranch,
+        limit_type: selectedActionId === "set-transaction-limit" ? details.limitType : null,
+        limit_amount: selectedActionId === "set-transaction-limit" ? details.limitAmount : null,
+        action: selectedActionId === "block-unblock" ? details.action : null,
+        target: selectedActionId === "block-unblock" ? details.target : null,
+        reason: selectedActionId === "block-unblock" ? details.reason : null,
         standing_order: selectedActionId === "set-standing-order" ? {
           beneficiary_name: details.beneficairy_name,
           beneficiary_account: details.beneficiary_account,
@@ -304,18 +297,12 @@ console.log("res", customer?.user_id || sessionUser?.user_id,
           start_date: details.start_date,
           end_date: details.end_date || null,
         } : null,
-      currency_details:
-      selectedActionId === "change-currency"
-      ? { ...currencyDetails, old_currency: selectedAccount?.currency }
-      : null,
-      
-      account_status_change:
-      selectedActionId === "activate-dormant"
-      ? { new_status: statusChangeDetails.new_status }
-      : null,   
+        currency_details: selectedActionId === "change-currency" ? { ...currencyDetails, old_currency: selectedAccount?.currency } : null,
+        account_status_change: selectedActionId === "activate-dormant" ? { new_status: statusChangeDetails.new_status } : null,   
         remarks: `
 Action: ${selectedActionObj?.label}
 Account: ${selectedAccount?.account_number}
+Branch: ${BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}
 Priority: ${priorityLevel}
 Officer Notes: ${officerNotes}
 Details: ${JSON.stringify(details)}
@@ -332,13 +319,13 @@ Details: ${JSON.stringify(details)}
             "Content-Type": "application/json",
           },
           body: JSON.stringify(payload),
-            user_id: customer?.user_id || sessionUser?.user_id,
-            service_amount: serviceFee, 
+          user_id: customer?.user_id || sessionUser?.user_id,
+          service_amount: serviceFee,
+          branch: selectedBranch,
         }
       );
 
       const data = await res.json();
-
       console.log("Response:", data);
 
       if (!res.ok) {
@@ -349,14 +336,18 @@ Details: ${JSON.stringify(details)}
       return true;
 
     } catch (err) {
-
       console.error("API ERROR:", err);
       alert("Network error");
       return false;
-
     } finally {
       setLoading(false);
     }
+  };
+
+  /* ---------- HANDLE FINAL COMPLETE ---------- */
+  const handleFinalComplete = () => {
+    // Navigate back to dashboard or show success message
+    navigate("/dashboard"); // or wherever you want to navigate after completion
   };
 
   /* ---------- ANIMATION ---------- */
@@ -440,9 +431,7 @@ Details: ${JSON.stringify(details)}
         <AnimatePresence mode="wait">
 
           {/* STEP 1 */}
-
           {step === 1 && (
-
             <motion.div
               key="step1"
               variants={pageVariants}
@@ -470,15 +459,10 @@ Details: ${JSON.stringify(details)}
               </div>
 
               {!selectedActionId && (
-
                 <div className="space-y-3">
-
                   <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Select Action</Label>
-
                   {MODIFICATION_ACTIONS.map((action) => {
-
                     const Icon = action.icon;
-
                     return (
                       <button
                         key={action.id}
@@ -495,16 +479,12 @@ Details: ${JSON.stringify(details)}
                         <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
                       </button>
                     );
-
                   })}
-
                 </div>
               )}
 
               {selectedActionId && (
-
                 <div className="space-y-5">
-
                   <Button
                     variant="ghost"
                     size="sm"
@@ -530,7 +510,6 @@ Details: ${JSON.stringify(details)}
                     </div>
 
                     <Label>Select Account</Label>
-
                     <Select
                       value={selectedAccount?.id?.toString() || ""}
                       onValueChange={(val) => {
@@ -543,7 +522,6 @@ Details: ${JSON.stringify(details)}
                       <SelectTrigger>
                         <SelectValue placeholder="Choose account" />
                       </SelectTrigger>
-
                       <SelectContent>
                         {activeAccounts.map((acc) => (
                           <SelectItem key={acc.id} value={acc.id.toString()}>
@@ -554,21 +532,40 @@ Details: ${JSON.stringify(details)}
                       </SelectContent>
                     </Select>
 
+                    {/* Branch Selection - Always visible */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5" /> Select Branch *
+                      </Label>
+                      <Select 
+                        value={selectedBranch} 
+                        onValueChange={(value) => setSelectedBranch(value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a branch for this modification" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BRANCH_OPTIONS.map((branch) => (
+                            <SelectItem key={branch.value} value={branch.value}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{branch.label}</span>
+                                <span className="text-xs text-muted-foreground">{branch.location}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                  
+
                     {/* TRANSACTION LIMIT */}
-
                     {selectedActionId === "set-transaction-limit" && (
-
                       <div className="space-y-3">
-
-                        <Select
-                          onValueChange={(v) =>
-                            updateDetail("limitType", v)
-                          }
-                        >
+                        <Select onValueChange={(v) => updateDetail("limitType", v)}>
                           <SelectTrigger>
                             <SelectValue placeholder="Select Limit Type" />
                           </SelectTrigger>
-
                           <SelectContent>
                             {LIMIT_TYPES.map((type) => (
                               <SelectItem key={type.value} value={type.value}>
@@ -577,214 +574,162 @@ Details: ${JSON.stringify(details)}
                             ))}
                           </SelectContent>
                         </Select>
-
                         <Input
                           type="number"
                           placeholder="Limit Amount"
-                          onChange={(e) =>
-                            updateDetail("limitAmount", e.target.value)
-                          }
+                          onChange={(e) => updateDetail("limitAmount", e.target.value)}
                         />
-
                       </div>
                     )}
 
                     {/* STANDING ORDER */}
-
-{selectedActionId === "set-standing-order" && (
-
-  <div className="space-y-3">
-
-    <Input
-      type="text"
-      placeholder="Beneficiary Name"
-      onChange={(e) => updateDetail("beneficairy_name", e.target.value)}
-    />
-
-    <Input
-      type="number"
-      placeholder="Beneficiary Account Number"
-      onChange={(e) => updateDetail("beneficiary_account", e.target.value)}
-    />
-
-    <Input
-      type="number"
-      placeholder="Amount"
-      onChange={(e) => updateDetail("amount", e.target.value)}
-    />
-
-    <Select
-      onValueChange={(v) => updateDetail("frequency", v)}
-    >
-      <SelectTrigger>
-        <SelectValue placeholder="Frequency" />
-      </SelectTrigger>
-
-      <SelectContent>
-        {FREQUENCIES.map((f) => (
-          <SelectItem key={f.value} value={f.value}>
-            {f.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-
-    <Input
-      type="date"
-      placeholder="Start Date"
-      onChange={(e) => updateDetail("start_date", e.target.value)}
-    />
-
-    <Input
-      type="date"
-      placeholder="End Date"
-      onChange={(e) => updateDetail("end_date", e.target.value)}
-    />
-
-  </div>
-
-)}
-{/* BLOCK / UNBLOCK */}
-
-{selectedActionId === "block-unblock" && (
-
-  <div className="space-y-3">
-
-    {/* BLOCK OR UNBLOCK */}
-
-    <Select
-      onValueChange={(v) => updateDetail("action", v)}
-    >
-      <SelectTrigger>
-        <SelectValue placeholder="Select Action" />
-      </SelectTrigger>
-
-      <SelectContent>
-        {BLOCK_ACTIONS.map((item) => (
-          <SelectItem key={item.value} value={item.value}>
-            {item.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-
-    {/* TARGET */}
-
-    <Select
-      onValueChange={(v) => updateDetail("target", v)}
-    >
-      <SelectTrigger>
-        <SelectValue placeholder="Select Target" />
-      </SelectTrigger>
-
-      <SelectContent>
-        {BLOCK_TARGETS.map((item) => (
-          <SelectItem key={item.value} value={item.value}>
-            {item.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-
-    {/* REASON */}
-
-    <Textarea
-      placeholder="Reason"
-      onChange={(e) =>
-        updateDetail("reason", e.target.value)
-      }
-    />
-
-  </div>
-
-)}
-{selectedActionId === "activate-dormant" && (
-  <div className="space-y-3 bg-white p-5 rounded-xl border">
-
-    <Label>Select New Status</Label>
-
-    <Select
-      onValueChange={(v) =>
-        setStatusChangeDetails({ new_status: v })
-      }
-      value={statusChangeDetails.new_status}
-    >
-      <SelectTrigger>
-        <SelectValue placeholder="Select Status" />
-      </SelectTrigger>
-
-      <SelectContent>
-        <SelectItem value="ACTIVE">Active</SelectItem>
-        <SelectItem value="DORMANT">Dormant</SelectItem>
-      </SelectContent>
-    </Select>
-  </div>
-)}
-
-{selectedActionId === "change-currency" && (
-  <div className="space-y-3 bg-white p-5 rounded-xl border">
-
-    {/* Old Currency (read-only or pre-filled) */}
-    <Input
-      type="text"
-      value={currencyDetails.old_currency || selectedAccount?.currency || ""}
-      placeholder="Old Currency"
-      readOnly
-    />
-
-    {/* New Currency */}
-    <Select
-      onValueChange={(v) =>
-        setCurrencyDetails((prev) => ({ ...prev, new_currency: v }))
-      }
-    >
-      <SelectTrigger>
-        <SelectValue placeholder="Select New Currency" />
-      </SelectTrigger>
-
-      <SelectContent>
-        {CURRENCIES.map((c) => (
-          <SelectItem key={c} value={c}>
-            {c}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-
-    {/* Conversion Rate */}
-    <Input
-      type="number"
-      step="0.0001"
-      placeholder="Conversion Rate"
-      value={currencyDetails.conversion_rate}
-      onChange={(e) =>
-        setCurrencyDetails((prev) => ({ ...prev, conversion_rate: e.target.value }))
-      }
-    />
-
-    {/* Effective Date */}
-    <Input
-      type="date"
-      placeholder="Effective Date"
-      value={currencyDetails.effective_date}
-      onChange={(e) =>
-        setCurrencyDetails((prev) => ({ ...prev, effective_date: e.target.value }))
-      }
-    />
-  </div>
-)}
+                    {selectedActionId === "set-standing-order" && (
+                      <div className="space-y-3">
+                        <Input
+                          type="text"
+                          placeholder="Beneficiary Name"
+                          onChange={(e) => updateDetail("beneficairy_name", e.target.value)}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Beneficiary Account Number"
+                          onChange={(e) => updateDetail("beneficiary_account", e.target.value)}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Amount"
+                          onChange={(e) => updateDetail("amount", e.target.value)}
+                        />
+                        <Select onValueChange={(v) => updateDetail("frequency", v)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Frequency" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FREQUENCIES.map((f) => (
+                              <SelectItem key={f.value} value={f.value}>
+                                {f.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          type="date"
+                          placeholder="Start Date"
+                          onChange={(e) => updateDetail("start_date", e.target.value)}
+                        />
+                        <Input
+                          type="date"
+                          placeholder="End Date"
+                          onChange={(e) => updateDetail("end_date", e.target.value)}
+                        />
+                      </div>
+                    )}
+                    
+                    {/* BLOCK / UNBLOCK */}
+                    {selectedActionId === "block-unblock" && (
+                      <div className="space-y-3">
+                        <Select onValueChange={(v) => updateDetail("action", v)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Action" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {BLOCK_ACTIONS.map((item) => (
+                              <SelectItem key={item.value} value={item.value}>
+                                {item.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select onValueChange={(v) => updateDetail("target", v)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Target" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {BLOCK_TARGETS.map((item) => (
+                              <SelectItem key={item.value} value={item.value}>
+                                {item.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Textarea
+                          placeholder="Reason"
+                          onChange={(e) => updateDetail("reason", e.target.value)}
+                        />
+                      </div>
+                    )}
+                    
+                    {/* ACTIVATE DORMANT */}
+                    {selectedActionId === "activate-dormant" && (
+                      <div className="space-y-3 bg-white p-5 rounded-xl border">
+                        <Label>Select New Status</Label>
+                        <Select
+                          onValueChange={(v) => setStatusChangeDetails({ new_status: v })}
+                          value={statusChangeDetails.new_status}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ACTIVE">Active</SelectItem>
+                            <SelectItem value="DORMANT">Dormant</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    
+                    {/* CHANGE CURRENCY */}
+                    {selectedActionId === "change-currency" && (
+                      <div className="space-y-3 bg-white p-5 rounded-xl border">
+                        <Input
+                          type="text"
+                          value={currencyDetails.old_currency || selectedAccount?.currency || ""}
+                          placeholder="Old Currency"
+                          readOnly
+                        />
+                        <Select
+                          onValueChange={(v) =>
+                            setCurrencyDetails((prev) => ({ ...prev, new_currency: v }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select New Currency" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CURRENCIES.map((c) => (
+                              <SelectItem key={c} value={c}>
+                                {c}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          type="number"
+                          step="0.0001"
+                          placeholder="Conversion Rate"
+                          value={currencyDetails.conversion_rate}
+                          onChange={(e) =>
+                            setCurrencyDetails((prev) => ({ ...prev, conversion_rate: e.target.value }))
+                          }
+                        />
+                        <Input
+                          type="date"
+                          placeholder="Effective Date"
+                          value={currencyDetails.effective_date}
+                          onChange={(e) =>
+                            setCurrencyDetails((prev) => ({ ...prev, effective_date: e.target.value }))
+                          }
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <Button onClick={handleStepOneSubmit} className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold">
                     Validate Request
                   </Button>
-
                 </div>
-
               )}
-
             </motion.div>
-
           )}
 
           {/* STEP 2: VALIDATION */}
@@ -830,6 +775,7 @@ Details: ${JSON.stringify(details)}
                     { l: "Customer Name", v: customer?.first_name || sessionUser?.first_name || "N/A" },
                     { l: "Action", v: selectedActionObj?.label },
                     { l: "Account", v: selectedAccount?.account_number },
+                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Details", v: Object.values(details).join(" / ") || "N/A" },
                   ].map((row) => (
                     <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
@@ -882,8 +828,10 @@ Details: ${JSON.stringify(details)}
                     </p>
                   </div>
                   <div className="bg-green-50 p-3 rounded-lg">
-                    <p className="text-[10px] text-gray-500 uppercase">Status</p>
-                    <p className="font-bold text-green-700 text-xs">Pending</p>
+                    <p className="text-[10px] text-gray-500 uppercase">Branch</p>
+                    <p className="font-bold text-green-700 text-xs">
+                      {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label?.slice(0, 10) || "N/A"}
+                    </p>
                   </div>
                 </div>
 
@@ -957,14 +905,18 @@ Details: ${JSON.stringify(details)}
                     <p className="font-semibold">{selectedAccount?.account_number}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Value</p>
-                    <p className="font-bold text-primary">
-                      {Object.values(details).join(", ") || "Status Change"}
-                    </p>
+                    <p className="text-xs text-gray-500">Branch</p>
+                    <p className="font-semibold">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Priority</p>
                     <p className="font-bold text-lg">{priorityLevel}%</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500">Value</p>
+                    <p className="font-bold text-primary">
+                      {Object.values(details).join(", ") || "Status Change"}
+                    </p>
                   </div>
                 </div>
 
@@ -1006,42 +958,21 @@ Details: ${JSON.stringify(details)}
               exit="exit"
               className="space-y-6 max-w-lg mx-auto text-center py-10"
             >
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
+              {/* QR Image */}
+              <div className="flex justify-center">
+                <img src={qr} alt="AIDA" className="h-100 w-100 object-cover" />
               </div>
 
-              <h3 className="text-xl font-semibold">Awaiting Authorization</h3>
               <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                This modification request requires supervisor approval to be completed.
+                Scan this QR code to proceed further.
               </p>
 
-              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Request ID</span>
-                  <span className="font-mono text-xs">MOD-{Date.now().toString().slice(-8)}</span>
-                </div>
-
-                {priorityLevel > 80 ? (
-                  <div className="flex items-center gap-2 rounded bg-amber-100 p-3 text-amber-900 text-xs">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>High Priority request requires immediate approval</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 rounded bg-green-100 p-3 text-green-900 text-xs">
-                    <Check className="h-4 w-4" />
-                    <span>Standard approval workflow</span>
-                  </div>
-                )}
-              </div>
-
               <Button
-                onClick={() => {
-                  alert("Request Authorized Successfully!");
-                  onBack();
-                }}
+                onClick={handleFinalComplete}
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+                disabled={loading}
               >
-                Authorize Request
+                {loading ? "Processing..." : "Finish"}
               </Button>
             </motion.div>
           )}

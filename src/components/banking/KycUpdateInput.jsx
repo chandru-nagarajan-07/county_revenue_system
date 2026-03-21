@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import qr from '@/assets/qr.png';
 import {
   ShieldCheck,
   Fingerprint,
@@ -26,7 +27,8 @@ import {
   Camera,
   Download,
   Scan,
-  Image as ImageIcon
+  Image as ImageIcon,
+  MapPin,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -37,12 +39,25 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-// Remove KycArtefactForms import
-// import KycArtefactForms from './KycArtefactForms';
-import KycValidationScreen from './KycValidationScreen';
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
+];
 
-/* CONSTANTS (keep all your existing constants) */
+/* CONSTANTS */
 const STEPS = [
   { id: 1, name: "Input" },
   { id: 2, name: "Validation" },
@@ -72,7 +87,7 @@ const ARTEFACT_META = {
   'account-mandates': { label: 'Account Mandates', icon: <Users className="h-5 w-5" /> },
 };
 
-/* SAFE BUILD FUNCTION (keep your existing buildArtefacts function) */
+/* SAFE BUILD FUNCTION */
 function buildArtefacts(customer = {}) {
   const idNumber = customer?.idNumber || '';
   const accounts = customer?.accounts || [];
@@ -158,7 +173,7 @@ const pageVariants = {
 };
 
 /* LEGAL ID FORM COMPONENT */
-function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, totalForms, isLastForm }) {
+function LegalIdForm({ customer, onBack, onSubmit, formNumber, totalForms, isLastForm, initialBranch }) {
   const [formData, setFormData] = useState({
     idType: 'national_id',
     idNumber: customer?.idNumber || '',
@@ -167,10 +182,10 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, 
     issueDate: '',
     expiryDate: '',
     placeOfIssue: '',
+    branch: initialBranch || '',
     frontImage: null,
     backImage: null,
     selfieImage: null,
-  
   });
 
   const [errors, setErrors] = useState({});
@@ -191,6 +206,13 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, 
     }
   };
 
+  const handleBranchChange = (value) => {
+    setFormData(prev => ({ ...prev, branch: value }));
+    if (errors.branch) {
+      setErrors(prev => ({ ...prev, branch: null }));
+    }
+  };
+
   const handleFileChange = (e, fieldName) => {
     const file = e.target.files[0];
     if (file) {
@@ -204,6 +226,9 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, 
   const validateForm = () => {
     const newErrors = {};
 
+    if (!formData.branch) {
+      newErrors.branch = 'Branch is required';
+    }
     if (!formData.idNumber.trim()) {
       newErrors.idNumber = 'ID number is required';
     }
@@ -244,7 +269,6 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, 
 
     console.log("LEGAL ID FORM SAVED:", submissionData);
     
-    // Simulate API call
     setTimeout(() => {
       setIsSubmitting(false);
       onSubmit(submissionData);
@@ -271,6 +295,32 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, 
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Branch Selection */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" /> Select Branch *
+              </Label>
+              <Select 
+                value={formData.branch} 
+                onValueChange={handleBranchChange}
+              >
+                <SelectTrigger className={errors.branch ? "border-destructive" : ""}>
+                  <SelectValue placeholder="Choose branch for KYC verification" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BRANCH_OPTIONS.map((branch) => (
+                    <SelectItem key={branch.value} value={branch.value}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{branch.label}</span>
+                        <span className="text-xs text-muted-foreground">{branch.location}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.branch && <p className="text-xs text-destructive">{errors.branch}</p>}
+            </div>
+
             {/* ID Type Selection */}
             <div className="space-y-2">
               <Label htmlFor="idType">ID Type <span className="text-destructive">*</span></Label>
@@ -301,9 +351,7 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, 
                   placeholder="Enter ID number"
                 />
               </div>
-              {errors.idNumber && (
-                <p className="text-xs text-destructive">{errors.idNumber}</p>
-              )}
+              {errors.idNumber && <p className="text-xs text-destructive">{errors.idNumber}</p>}
             </div>
 
             {/* Full Name */}
@@ -320,9 +368,7 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, 
                   placeholder="Enter full name as on ID"
                 />
               </div>
-              {errors.fullName && (
-                <p className="text-xs text-destructive">{errors.fullName}</p>
-              )}
+              {errors.fullName && <p className="text-xs text-destructive">{errors.fullName}</p>}
             </div>
 
             {/* Date of Birth */}
@@ -339,9 +385,7 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, 
                   className="pl-9"
                 />
               </div>
-              {errors.dateOfBirth && (
-                <p className="text-xs text-destructive">{errors.dateOfBirth}</p>
-              )}
+              {errors.dateOfBirth && <p className="text-xs text-destructive">{errors.dateOfBirth}</p>}
             </div>
 
             {/* Issue and Expiry Dates */}
@@ -355,9 +399,7 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, 
                   value={formData.issueDate}
                   onChange={handleInputChange}
                 />
-                {errors.issueDate && (
-                  <p className="text-xs text-destructive">{errors.issueDate}</p>
-                )}
+                {errors.issueDate && <p className="text-xs text-destructive">{errors.issueDate}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="expiryDate">Expiry Date <span className="text-destructive">*</span></Label>
@@ -368,9 +410,7 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, 
                   value={formData.expiryDate}
                   onChange={handleInputChange}
                 />
-                {errors.expiryDate && (
-                  <p className="text-xs text-destructive">{errors.expiryDate}</p>
-                )}
+                {errors.expiryDate && <p className="text-xs text-destructive">{errors.expiryDate}</p>}
               </div>
             </div>
 
@@ -392,9 +432,7 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, 
               
               {/* Front Image */}
               <div className="space-y-2">
-                <Label htmlFor="frontImage" className="text-sm text-muted-foreground">
-                  Front Side
-                </Label>
+                <Label htmlFor="frontImage" className="text-sm text-muted-foreground">Front Side</Label>
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
@@ -413,16 +451,12 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, 
                   onChange={(e) => handleFileChange(e, 'frontImage')}
                   className="hidden"
                 />
-                {errors.frontImage && (
-                  <p className="text-xs text-destructive">{errors.frontImage}</p>
-                )}
+                {errors.frontImage && <p className="text-xs text-destructive">{errors.frontImage}</p>}
               </div>
 
               {/* Back Image */}
               <div className="space-y-2">
-                <Label htmlFor="backImage" className="text-sm text-muted-foreground">
-                  Back Side
-                </Label>
+                <Label htmlFor="backImage" className="text-sm text-muted-foreground">Back Side</Label>
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
@@ -441,16 +475,12 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, 
                   onChange={(e) => handleFileChange(e, 'backImage')}
                   className="hidden"
                 />
-                {errors.backImage && (
-                  <p className="text-xs text-destructive">{errors.backImage}</p>
-                )}
+                {errors.backImage && <p className="text-xs text-destructive">{errors.backImage}</p>}
               </div>
 
               {/* Selfie Image (Optional) */}
               <div className="space-y-2">
-                <Label htmlFor="selfieImage" className="text-sm text-muted-foreground">
-                  Selfie with ID (Optional)
-                </Label>
+                <Label htmlFor="selfieImage" className="text-sm text-muted-foreground">Selfie with ID (Optional)</Label>
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
@@ -493,8 +523,9 @@ function LegalIdForm({ customer, selectedActions, onBack, onSubmit, formNumber, 
 }
 
 /* BIOMETRIC FORM COMPONENT */
-function BiometricForm({ customer, selectedActions, onBack, onSubmit, formNumber, totalForms, isLastForm }) {
+function BiometricForm({ customer, onBack, onSubmit, formNumber, totalForms, isLastForm, initialBranch }) {
   const [formData, setFormData] = useState({
+    branch: initialBranch || '',
     fingerprintStatus: 'pending',
     fingerprintImage: null,
     photoStatus: 'pending',
@@ -508,9 +539,15 @@ function BiometricForm({ customer, selectedActions, onBack, onSubmit, formNumber
   const [fingerprintScanning, setFingerprintScanning] = useState(false);
   const [photoCapturing, setPhotoCapturing] = useState(false);
 
+  const handleBranchChange = (value) => {
+    setFormData(prev => ({ ...prev, branch: value }));
+    if (errors.branch) {
+      setErrors(prev => ({ ...prev, branch: null }));
+    }
+  };
+
   const handleFingerprintScan = () => {
     setFingerprintScanning(true);
-    // Simulate fingerprint scan
     setTimeout(() => {
       setFormData(prev => ({
         ...prev,
@@ -523,7 +560,6 @@ function BiometricForm({ customer, selectedActions, onBack, onSubmit, formNumber
 
   const handlePhotoCapture = () => {
     setPhotoCapturing(true);
-    // Simulate photo capture
     setTimeout(() => {
       setFormData(prev => ({
         ...prev,
@@ -537,6 +573,9 @@ function BiometricForm({ customer, selectedActions, onBack, onSubmit, formNumber
   const validateForm = () => {
     const newErrors = {};
 
+    if (!formData.branch) {
+      newErrors.branch = 'Branch is required';
+    }
     if (formData.fingerprintStatus !== 'completed') {
       newErrors.fingerprint = 'Fingerprint scan is required';
     }
@@ -565,7 +604,6 @@ function BiometricForm({ customer, selectedActions, onBack, onSubmit, formNumber
 
     console.log("BIOMETRIC FORM SAVED:", submissionData);
     
-    // Simulate API call
     setTimeout(() => {
       setIsSubmitting(false);
       onSubmit(submissionData);
@@ -592,6 +630,32 @@ function BiometricForm({ customer, selectedActions, onBack, onSubmit, formNumber
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Branch Selection */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" /> Select Branch *
+              </Label>
+              <Select 
+                value={formData.branch} 
+                onValueChange={handleBranchChange}
+              >
+                <SelectTrigger className={errors.branch ? "border-destructive" : ""}>
+                  <SelectValue placeholder="Choose branch for biometric capture" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BRANCH_OPTIONS.map((branch) => (
+                    <SelectItem key={branch.value} value={branch.value}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{branch.label}</span>
+                        <span className="text-xs text-muted-foreground">{branch.location}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.branch && <p className="text-xs text-destructive">{errors.branch}</p>}
+            </div>
+
             {/* Fingerprint Capture */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -640,9 +704,7 @@ function BiometricForm({ customer, selectedActions, onBack, onSubmit, formNumber
                   </div>
                 )}
               </div>
-              {errors.fingerprint && (
-                <p className="text-xs text-destructive">{errors.fingerprint}</p>
-              )}
+              {errors.fingerprint && <p className="text-xs text-destructive">{errors.fingerprint}</p>}
             </div>
 
             {/* Photo Capture */}
@@ -696,9 +758,7 @@ function BiometricForm({ customer, selectedActions, onBack, onSubmit, formNumber
                   </div>
                 )}
               </div>
-              {errors.photo && (
-                <p className="text-xs text-destructive">{errors.photo}</p>
-              )}
+              {errors.photo && <p className="text-xs text-destructive">{errors.photo}</p>}
             </div>
 
             {/* Capture Device */}
@@ -711,9 +771,7 @@ function BiometricForm({ customer, selectedActions, onBack, onSubmit, formNumber
                 onChange={(e) => setFormData(prev => ({ ...prev, captureDevice: e.target.value }))}
                 placeholder="Enter device name or ID"
               />
-              {errors.captureDevice && (
-                <p className="text-xs text-destructive">{errors.captureDevice}</p>
-              )}
+              {errors.captureDevice && <p className="text-xs text-destructive">{errors.captureDevice}</p>}
             </div>
 
             {/* Capture Date (Auto-filled) */}
@@ -748,8 +806,9 @@ function BiometricForm({ customer, selectedActions, onBack, onSubmit, formNumber
 }
 
 /* KRA PIN FORM COMPONENT */
-function KraPinForm({ customer, selectedActions, onBack, onSubmit, formNumber, totalForms, isLastForm }) {
+function KraPinForm({ customer, onBack, onSubmit, formNumber, totalForms, isLastForm, initialBranch }) {
   const [formData, setFormData] = useState({
+    branch: initialBranch || '',
     kraPin: '',
     fullNameOnCertificate: customer?.fullName || '',
     certificateFile: null
@@ -757,6 +816,13 @@ function KraPinForm({ customer, selectedActions, onBack, onSubmit, formNumber, t
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleBranchChange = (value) => {
+    setFormData(prev => ({ ...prev, branch: value }));
+    if (errors.branch) {
+      setErrors(prev => ({ ...prev, branch: null }));
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -779,6 +845,9 @@ function KraPinForm({ customer, selectedActions, onBack, onSubmit, formNumber, t
   const validateForm = () => {
     const newErrors = {};
 
+    if (!formData.branch) {
+      newErrors.branch = 'Branch is required';
+    }
     if (!formData.kraPin.trim()) {
       newErrors.kraPin = 'KRA PIN is required';
     } else if (!/^[A-Z]\d{9}[A-Z]$/.test(formData.kraPin)) {
@@ -809,7 +878,6 @@ function KraPinForm({ customer, selectedActions, onBack, onSubmit, formNumber, t
 
     console.log("KRA PIN FORM SAVED:", submissionData);
     
-    // Simulate API call
     setTimeout(() => {
       setIsSubmitting(false);
       onSubmit(submissionData);
@@ -836,6 +904,32 @@ function KraPinForm({ customer, selectedActions, onBack, onSubmit, formNumber, t
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Branch Selection */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" /> Select Branch *
+              </Label>
+              <Select 
+                value={formData.branch} 
+                onValueChange={handleBranchChange}
+              >
+                <SelectTrigger className={errors.branch ? "border-destructive" : ""}>
+                  <SelectValue placeholder="Choose branch for KRA PIN update" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BRANCH_OPTIONS.map((branch) => (
+                    <SelectItem key={branch.value} value={branch.value}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{branch.label}</span>
+                        <span className="text-xs text-muted-foreground">{branch.location}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.branch && <p className="text-xs text-destructive">{errors.branch}</p>}
+            </div>
+
             {/* KRA PIN Input */}
             <div className="space-y-2">
               <Label htmlFor="kraPin">KRA PIN <span className="text-destructive">*</span></Label>
@@ -847,9 +941,7 @@ function KraPinForm({ customer, selectedActions, onBack, onSubmit, formNumber, t
                 placeholder="e.g. A001234567Z"
                 className="uppercase"
               />
-              {errors.kraPin && (
-                <p className="text-xs text-destructive">{errors.kraPin}</p>
-              )}
+              {errors.kraPin && <p className="text-xs text-destructive">{errors.kraPin}</p>}
             </div>
 
             {/* Full Name on Certificate */}
@@ -862,9 +954,7 @@ function KraPinForm({ customer, selectedActions, onBack, onSubmit, formNumber, t
                 onChange={handleInputChange}
                 placeholder="Enter name as on certificate"
               />
-              {errors.fullNameOnCertificate && (
-                <p className="text-xs text-destructive">{errors.fullNameOnCertificate}</p>
-              )}
+              {errors.fullNameOnCertificate && <p className="text-xs text-destructive">{errors.fullNameOnCertificate}</p>}
             </div>
 
             {/* Certificate Upload */}
@@ -888,9 +978,7 @@ function KraPinForm({ customer, selectedActions, onBack, onSubmit, formNumber, t
                 onChange={handleFileChange}
                 className="hidden"
               />
-              {errors.certificateFile && (
-                <p className="text-xs text-destructive">{errors.certificateFile}</p>
-              )}
+              {errors.certificateFile && <p className="text-xs text-destructive">{errors.certificateFile}</p>}
             </div>
 
             {/* Action Buttons */}
@@ -914,8 +1002,9 @@ function KraPinForm({ customer, selectedActions, onBack, onSubmit, formNumber, t
 }
 
 /* ACCOUNT MANDATES FORM COMPONENT */
-function AccountMandatesForm({ customer, selectedActions, onBack, onSubmit, formNumber, totalForms, isLastForm }) {
+function AccountMandatesForm({ customer, onBack, onSubmit, formNumber, totalForms, isLastForm, initialBranch }) {
   const [formData, setFormData] = useState({
+    branch: initialBranch || '',
     mandateType: '',
     primarySignatory: customer?.fullName || '',
     secondarySignatory: '',
@@ -939,6 +1028,13 @@ function AccountMandatesForm({ customer, selectedActions, onBack, onSubmit, form
     { id: '0011-2345-6791', currency: 'USD' },
     { id: '0011-2345-6792', currency: 'KES' }
   ];
+
+  const handleBranchChange = (value) => {
+    setFormData(prev => ({ ...prev, branch: value }));
+    if (errors.branch) {
+      setErrors(prev => ({ ...prev, branch: null }));
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -973,6 +1069,9 @@ function AccountMandatesForm({ customer, selectedActions, onBack, onSubmit, form
   const validateForm = () => {
     const newErrors = {};
 
+    if (!formData.branch) {
+      newErrors.branch = 'Branch is required';
+    }
     if (!formData.mandateType) {
       newErrors.mandateType = 'Mandate type is required';
     }
@@ -1004,7 +1103,6 @@ function AccountMandatesForm({ customer, selectedActions, onBack, onSubmit, form
 
     console.log("ACCOUNT MANDATES FORM SAVED:", submissionData);
     
-    // Simulate API call
     setTimeout(() => {
       setIsSubmitting(false);
       onSubmit(submissionData);
@@ -1031,6 +1129,32 @@ function AccountMandatesForm({ customer, selectedActions, onBack, onSubmit, form
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Branch Selection */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" /> Select Branch *
+              </Label>
+              <Select 
+                value={formData.branch} 
+                onValueChange={handleBranchChange}
+              >
+                <SelectTrigger className={errors.branch ? "border-destructive" : ""}>
+                  <SelectValue placeholder="Choose branch for mandate update" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BRANCH_OPTIONS.map((branch) => (
+                    <SelectItem key={branch.value} value={branch.value}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{branch.label}</span>
+                        <span className="text-xs text-muted-foreground">{branch.location}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.branch && <p className="text-xs text-destructive">{errors.branch}</p>}
+            </div>
+
             {/* Mandate Type */}
             <div className="space-y-2">
               <Label htmlFor="mandateType">Mandate Type <span className="text-destructive">*</span></Label>
@@ -1046,9 +1170,7 @@ function AccountMandatesForm({ customer, selectedActions, onBack, onSubmit, form
                   <option key={type.value} value={type.value}>{type.label}</option>
                 ))}
               </select>
-              {errors.mandateType && (
-                <p className="text-xs text-destructive">{errors.mandateType}</p>
-              )}
+              {errors.mandateType && <p className="text-xs text-destructive">{errors.mandateType}</p>}
             </div>
 
             {/* Primary Signatory */}
@@ -1061,9 +1183,7 @@ function AccountMandatesForm({ customer, selectedActions, onBack, onSubmit, form
                 onChange={handleInputChange}
                 placeholder="Primary signatory name"
               />
-              {errors.primarySignatory && (
-                <p className="text-xs text-destructive">{errors.primarySignatory}</p>
-              )}
+              {errors.primarySignatory && <p className="text-xs text-destructive">{errors.primarySignatory}</p>}
             </div>
 
             {/* Secondary Signatory (Optional) */}
@@ -1098,9 +1218,7 @@ function AccountMandatesForm({ customer, selectedActions, onBack, onSubmit, form
                   </label>
                 ))}
               </div>
-              {errors.applicableAccounts && (
-                <p className="text-xs text-destructive">{errors.applicableAccounts}</p>
-              )}
+              {errors.applicableAccounts && <p className="text-xs text-destructive">{errors.applicableAccounts}</p>}
             </div>
 
             {/* Signature Card Scan */}
@@ -1124,9 +1242,7 @@ function AccountMandatesForm({ customer, selectedActions, onBack, onSubmit, form
                 onChange={handleFileChange}
                 className="hidden"
               />
-              {errors.signatureCardFile && (
-                <p className="text-xs text-destructive">{errors.signatureCardFile}</p>
-              )}
+              {errors.signatureCardFile && <p className="text-xs text-destructive">{errors.signatureCardFile}</p>}
             </div>
 
             {/* Action Buttons */}
@@ -1163,8 +1279,8 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
 
   /* STATE */
   const [selectedActions, setSelectedActions] = useState([]);
-  const [workflowStep, setWorkflowStep] = useState(1); // 1 to 6
-  const [internalPhase, setInternalPhase] = useState('selection'); // 'selection' | 'forms'
+  const [workflowStep, setWorkflowStep] = useState(1);
+  const [internalPhase, setInternalPhase] = useState('selection');
   const [currentFormIndex, setCurrentFormIndex] = useState(0);
   const [formDataList, setFormDataList] = useState([]);
   const [officerNotes, setOfficerNotes] = useState("");
@@ -1179,7 +1295,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
   }
 
   /* Check backend connectivity on mount */
-  useState(() => {
+  useEffect(() => {
     const checkBackend = async () => {
       try {
         const response = await fetch('http://127.0.0.1:8000/api/kyc-update-requests/', {
@@ -1224,15 +1340,12 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
   const handleFormSubmit = (formData) => {
     console.log("Form submitted:", formData);
     
-    // Add current form data to list
     const updatedList = [...formDataList, formData];
     setFormDataList(updatedList);
 
-    // If there are more forms to fill, go to next one
     if (currentFormIndex < selectedActions.length - 1) {
       setCurrentFormIndex(prev => prev + 1);
     } else {
-      // All forms completed, move to validation
       console.log("All forms completed, moving to validation");
       setFormDataList(updatedList);
       setWorkflowStep(2);
@@ -1241,12 +1354,9 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
 
   const handleBackFromForm = () => {
     if (currentFormIndex > 0) {
-      // Go to previous form
       setCurrentFormIndex(prev => prev - 1);
-      // Remove last form data
       setFormDataList(prev => prev.slice(0, -1));
     } else {
-      // Go back to selection
       setInternalPhase('selection');
       setCurrentFormIndex(0);
       setFormDataList([]);
@@ -1270,12 +1380,12 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
           <LegalIdForm
             key={`legal-id-${currentFormIndex}`}
             customer={customer}
-            selectedActions={selectedActions}
             onBack={handleBackFromForm}
             onSubmit={handleFormSubmit}
             formNumber={formNumber}
             totalForms={totalForms}
             isLastForm={isLastForm}
+            initialBranch=""
           />
         );
       case 'biometric':
@@ -1283,12 +1393,12 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
           <BiometricForm
             key={`biometric-${currentFormIndex}`}
             customer={customer}
-            selectedActions={selectedActions}
             onBack={handleBackFromForm}
             onSubmit={handleFormSubmit}
             formNumber={formNumber}
             totalForms={totalForms}
             isLastForm={isLastForm}
+            initialBranch=""
           />
         );
       case 'kra-pin':
@@ -1296,12 +1406,12 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
           <KraPinForm
             key={`kra-pin-${currentFormIndex}`}
             customer={customer}
-            selectedActions={selectedActions}
             onBack={handleBackFromForm}
             onSubmit={handleFormSubmit}
             formNumber={formNumber}
             totalForms={totalForms}
             isLastForm={isLastForm}
+            initialBranch=""
           />
         );
       case 'account-mandates':
@@ -1309,12 +1419,12 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
           <AccountMandatesForm
             key={`account-mandates-${currentFormIndex}`}
             customer={customer}
-            selectedActions={selectedActions}
             onBack={handleBackFromForm}
             onSubmit={handleFormSubmit}
             formNumber={formNumber}
             totalForms={totalForms}
             isLastForm={isLastForm}
+            initialBranch=""
           />
         );
       default:
@@ -1322,13 +1432,12 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
     }
   };
   
-  /* ===================== FINAL STEP (STEP 6) ===================== */
+  /* FINAL STEP */
   const handleFinalComplete = async () => {
     setLoading(true);
     setApiError(null);
 
     try {
-      // First check if backend is reachable
       const isReachable = await testBackendConnection();
       if (!isReachable) {
         setApiError('Cannot connect to backend server. Please ensure it is running at http://127.0.0.1:8000');
@@ -1336,7 +1445,6 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
         return;
       }
 
-      // Submit all forms one by one
       const apiResponses = [];
       
       for (let i = 0; i < formDataList.length; i++) {
@@ -1347,10 +1455,12 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
 
         console.log(`Preparing payload for ${artefactId}:`, data);
 
-        // 🔹 TYPE
         payload.append("update_type", artefactId?.toUpperCase().replace('-', '_') || 'LEGAL_ID');
+        payload.append("branch", data.branch || '');
+        payload.append("user_id", customer?.user_id || sessionUser?.user_id || '');
+        payload.append("service_amount", "0");
+        payload.append("customer_id", customer?.customerId || '');
 
-        // 🔹 TEXT FIELDS (based on artefact type)
         if (artefactId === 'legal-id') {
           payload.append("id_type", data.idType);
           payload.append("id_number", data.idNumber);
@@ -1383,21 +1493,10 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
           if (data.signatureCardFile) payload.append("signature_card", data.signatureCardFile);
         }
 
-        // Log FormData contents for debugging
-        console.log(`FormData for ${artefactId}:`);
-        for (let pair of payload.entries()) {
-          console.log(pair[0] + ': ' + (pair[1] instanceof File ? pair[1].name : pair[1]));
-        }
-
-        // 🔥 FINAL API CALL
-        console.log(`Making API call for ${artefactId} to http://127.0.0.1:8000/api/kyc-update-requests/`);
-        
         const response = await fetch("http://127.0.0.1:8000/api/kyc-update-requests/", {
           method: "POST",
           body: payload,
         });
-
-        console.log(`Response status for ${artefactId}:`, response.status);
 
         if (!response.ok) {
           let errorText = '';
@@ -1422,7 +1521,6 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
         return `${ACTION_META[s.action].label} ${art?.label}`;
       });
 
-      // Create result object
       const result = {
         actions: selectedActions,
         artefactLabels: labels,
@@ -1433,29 +1531,22 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
 
       console.log('KYC Update completed successfully:', result);
 
-      // ✅ FIX: Check if onSubmit exists and is a function before calling
+      // Show success message
+      alert('KYC Update completed successfully!');
+      
+      // Navigate to dashboard after alert
       if (onSubmit && typeof onSubmit === 'function') {
         onSubmit(result);
-      } else {
-        console.warn('onSubmit prop is not a function or is undefined');
-        // Show success message and navigate back or to a default route
-        alert('KYC Update completed successfully!');
-        
-        // Use onBack if available, otherwise navigate manually
-        if (onBack && typeof onBack === 'function') {
-          onBack();
-        } else {
-          // Default navigation - go back in history
-          navigate(-1);
-        }
       }
+      
+      // Navigate to dashboard page
+      navigate('/dashboard');
 
     } catch (err) {
       console.error("Full error object:", err);
       console.error("Error message:", err.message);
       console.error("Error stack:", err.stack);
       
-      // Check for specific error types
       if (err.message.includes('Failed to fetch')) {
         setApiError('Network error: Cannot connect to the server. Please check if the backend is running at http://127.0.0.1:8000 and CORS is configured.');
       } else if (err.message.includes('401')) {
@@ -1546,7 +1637,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
           </div>
         </div>
 
-        {/* ========== ROUND STEPPER UI ========== */}
+        {/* ROUND STEPPER UI */}
         <div className="flex items-center w-full mt-2 px-1">
           {STEPS.map((s, index) => {
             const isCompleted = s.id < workflowStep;
@@ -1554,7 +1645,6 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
 
             return (
               <div key={s.id} className="flex items-center flex-1 last:flex-none">
-                {/* Circle Container */}
                 <div className="relative flex flex-col items-center">
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
@@ -1573,7 +1663,6 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
                   </div>
                 </div>
 
-                {/* Connector Line */}
                 {index < STEPS.length - 1 && (
                   <div
                     className={`flex-1 h-[2px] mx-1 transition-colors duration-300 ${
@@ -1585,14 +1674,13 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
             );
           })}
         </div>
-        {/* ========== END ROUND STEPPER UI ========== */}
       </div>
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6">
         <AnimatePresence mode="wait">
 
-          {/* ========== STEP 1: INPUT (Selection or Forms) ========== */}
+          {/* STEP 1: INPUT (Selection or Forms) */}
           {workflowStep === 1 && (
             <motion.div
               key={`step1-${internalPhase}`}
@@ -1687,7 +1775,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
             </motion.div>
           )}
 
-          {/* ========== STEP 2: VALIDATION ========== */}
+          {/* STEP 2: VALIDATION */}
           {workflowStep === 2 && (
             <motion.div
               key="step2"
@@ -1702,13 +1790,11 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
               </div>
               <h3 className="font-semibold text-lg">Validating {formDataList.length} Artefact(s)...</h3>
               <p className="text-sm text-muted-foreground">Checking authenticity and compliance</p>
-              
-              {/* Auto-advance to Step 3 after validation */}
               {setTimeout(() => setWorkflowStep(3), 2000)}
             </motion.div>
           )}
 
-          {/* ========== STEP 3: REVIEW ========== */}
+          {/* STEP 3: REVIEW */}
           {workflowStep === 3 && (
             <motion.div
               key="step3"
@@ -1729,10 +1815,14 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
                 <div className="space-y-0">
                   {selectedActions.map((s, index) => {
                     const art = artefacts.find(a => a.id === s.artefactId);
+                    const branchInfo = formDataList[index]?.formData?.branch;
                     return (
                       <div key={s.artefactId} className="flex justify-between py-2 border-b border-dashed last:border-0">
                         <span className="text-sm text-gray-500">{art?.label}</span>
-                        <span className="text-sm font-medium text-gray-800">{ACTION_META[s.action].label}</span>
+                        <span className="text-sm font-medium text-gray-800">
+                          {ACTION_META[s.action].label}
+                          {branchInfo && ` • ${BRANCH_OPTIONS.find(b => b.value === branchInfo)?.label || branchInfo}`}
+                        </span>
                       </div>
                     );
                   })}
@@ -1754,7 +1844,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
             </motion.div>
           )}
 
-          {/* ========== STEP 4: PROCESSING (Officer Review) ========== */}
+          {/* STEP 4: PROCESSING (Officer Review) */}
           {workflowStep === 4 && (
             <motion.div
               key="step4"
@@ -1805,7 +1895,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
             </motion.div>
           )}
 
-          {/* ========== STEP 5: VERIFICATION ========== */}
+          {/* STEP 5: VERIFICATION */}
           {workflowStep === 5 && (
             <motion.div
               key="step5"
@@ -1842,7 +1932,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
             </motion.div>
           )}
 
-          {/* ========== STEP 6: AUTHORIZATION ========== */}
+          {/* STEP 6: AUTHORIZATION */}
           {workflowStep === 6 && (
             <motion.div
               key="step6"
@@ -1852,34 +1942,32 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
               exit="exit"
               className="space-y-6 max-w-lg mx-auto text-center py-10"
             >
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
+              {/* QR Image */}
+              <div className="flex justify-center">
+                <img src={qr} alt="AIDA Verification QR Code" className="h-48 w-48 object-cover" />
               </div>
-            
-              <h3 className="text-xl font-semibold">Authorization Complete</h3>
+
               <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                This KYC update requires supervisor approval to be completed.
+                Scan this QR code with your mobile device to complete the verification process.
               </p>
-
-              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Transaction ID</span>
-                  <span className="font-mono text-xs">KYC-{Date.now().toString().slice(-8)}</span>
-                </div>
+              
+              <div className="space-y-3">
+                <Button 
+                  onClick={handleFinalComplete} 
+                  className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+                  disabled={loading || !isBackendReachable}
+                >
+                  {loading ? "Processing..." : "Finish & Submit"}
+                </Button>
                 
-                <div className="flex items-center gap-2 rounded bg-green-100 p-3 text-green-900 text-xs">
-                  <Check className="h-4 w-4" />
-                  <span>All checks passed for {formDataList.length} artefact(s)</span>
-                </div>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setWorkflowStep(5)} 
+                  className="w-full"
+                >
+                  Back to Verification
+                </Button>
               </div>
-
-              <Button 
-                onClick={handleFinalComplete} 
-                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
-                disabled={loading || !isBackendReachable}
-              >
-                {loading ? "Processing..." : "Finish & Submit"}
-              </Button>
             </motion.div>
           )}
 
@@ -1893,12 +1981,9 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
 KycUpdateInput.defaultProps = {
   onSubmit: (data) => {
     console.log('Default onSubmit handler - KYC Update completed:', data);
-    // You can add default behavior here, like navigation
-    alert('KYC Update completed successfully!');
   },
   onBack: () => {
     console.log('Default onBack handler');
-    // Default back behavior - go back in history
     window.history.back();
   }
 };
