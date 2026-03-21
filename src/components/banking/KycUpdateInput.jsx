@@ -1432,6 +1432,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
     }
   };
   
+
   /* FINAL STEP */
   const handleFinalComplete = async () => {
     setLoading(true);
@@ -1494,9 +1495,23 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
         }
 
         const response = await fetch("http://127.0.0.1:8000/api/kyc-update-requests/", {
+
           method: "POST",
           body: payload,
-        });
+        }
+      );
+
+      if (!response.ok) {
+        let errorText = '';
+        try {
+          const errorData = await response.json();
+          errorText = JSON.stringify(errorData);
+        } catch {
+          errorText = await response.text();
+        }
+        throw new Error(`Server returned ${response.status}: ${errorText}`);
+      }
+
 
         if (!response.ok) {
           let errorText = '';
@@ -1511,15 +1526,17 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
           throw new Error(`Server returned ${response.status}: ${errorText.substring(0, 200)}`);
         }
 
-        const res = await response.json();
-        console.log(`SUCCESS for ${artefactId}:`, res);
-        apiResponses.push(res);
-      }
 
-      const labels = selectedActions.map(s => {
-        const art = artefacts.find(a => a.id === s.artefactId);
-        return `${ACTION_META[s.action].label} ${art?.label}`;
-      });
+    const result = {
+      actions: selectedActions,
+      artefactLabels: labels,
+      verificationResults: formDataList,
+      apiResponses: apiResponses,
+      success: true
+    };
+
+    console.log('KYC Update completed:', result);
+
 
       const result = {
         actions: selectedActions,
@@ -1562,9 +1579,21 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
       }
     } finally {
       setLoading(false);
-    }
-  };
 
+    }
+
+  } catch (err) {
+    console.error("Error:", err);
+
+    if (err.message.includes('Failed to fetch')) {
+      setApiError('Network error: Cannot connect to backend.');
+    } else {
+      setApiError(`Submission failed: ${err.message}`);
+    }
+  } finally {
+    setLoading(false);
+  }
+};
   // Helper function to test backend connection
   const testBackendConnection = async () => {
     try {
@@ -1591,7 +1620,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <DashboardHeader
-        customerName={customer?.fullName || sessionUser?.first_name || "Customer"}
+        customerName={customer?.first_name || sessionUser?.first_name || "Customer"}
         isDropdownOpen={navDropdownOpen}
         setIsDropdownOpen={setNavDropdownOpen}
         onLogout={() => {
@@ -1695,11 +1724,11 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
                   {/* Customer Info */}
                   <div className="flex items-center gap-3 rounded-xl border bg-muted/30 p-4">
                     <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                      {customer.fullName?.split(' ').map(n => n[0]).join('').slice(0,2)}
+                      {customer?.first_name?.split(' ').map(n => n[0]).join('').slice(0,2)}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold">{customer.fullName}</p>
-                      <p className="text-xs text-muted-foreground">{customer.customerId} • {customer.phone}</p>
+                      <p className="text-sm font-semibold">{customer?.first_name}</p>
+                      <p className="text-xs text-muted-foreground">{customer?.user_id} • {customer?.phone}</p>
                     </div>
                   </div>
 
@@ -1828,11 +1857,11 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
                   })}
                   <div className="flex justify-between py-2 border-b border-dashed last:border-0">
                     <span className="text-sm text-gray-500">Customer</span>
-                    <span className="text-sm font-medium text-gray-800">{customer.fullName}</span>
+                    <span className="text-sm font-medium text-gray-800">{customer?.first_name}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-dashed last:border-0">
                     <span className="text-sm text-gray-500">ID</span>
-                    <span className="text-sm font-medium text-gray-800">{customer.customerId}</span>
+                    <span className="text-sm font-medium text-gray-800">{customer?.user_id}</span>
                   </div>
                 </div>
               </div>
@@ -1865,7 +1894,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs text-gray-500">Customer</p>
-                    <p className="font-semibold">{customer.fullName}</p>
+                    <p className="font-semibold">{customer?.first_name}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Items Updated</p>
