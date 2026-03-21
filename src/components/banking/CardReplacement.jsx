@@ -9,10 +9,11 @@ import {
   CreditCard,
   Zap,
   Star,
+  MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-
+import qr from '@/assets/qr.png';
 import { DashboardHeader } from "@/components/banking/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -33,6 +34,16 @@ const STEPS = [
   { id: 4, name: "Processing" }, 
   { id: 5, name: "Verification" }, 
   { id: 6, name: "Authorization" },
+];
+
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
 ];
 
 /* FUNCTION TO FETCH CARDS FROM API */
@@ -83,11 +94,13 @@ export default function CardReplacement({ customer: propCustomer, onBack, formFi
   const [selectedCard, setSelectedCard] = useState("");
   const [selectedCardDetails, setSelectedCardDetails] = useState(null);
   const [replacementReason, setReplacementReason] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const [officerNotes, setOfficerNotes] = useState("");
   const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
+  
   /* DERIVED DATA */
   const accounts = sessionUser?.account || [];
   const primaryAccount = accounts.find(acc => acc.status === "ACTIVE") || accounts[0];
@@ -134,6 +147,7 @@ function getExpiryDate(created_at) {
     const errs = {};
     if (!selectedCard) errs.card = "Select a card to replace";
     if (!replacementReason) errs.reason = "Select replacement reason";
+    if (!selectedBranch) errs.branch = "Please select a branch";
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -142,44 +156,48 @@ function getExpiryDate(created_at) {
     setSelectedCard(card.card_number || card.last4);
     setSelectedCardDetails(card);
   };
- console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee);
-const handleSubmit = async () => {
-  if (!validate()) return;
+  
+  console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee,
+          "selected branch", selectedBranch);
+          
+  const handleSubmit = async () => {
+    if (!validate()) return;
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    const response = await fetch("http://127.0.0.1:8000/api/card-replacements/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        account_number: accountNumber,
-        card_number: selectedCardDetails?.card_number || selectedCard,
-        reason: replacementReason,
-        officer_notes: officerNotes,
-        user_id: customer?.user_id || sessionUser?.user_id,
-        service_amount: serviceFee,
-      }),
-    });
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/card-replacements/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          account_number: accountNumber,
+          card_number: selectedCardDetails?.card_number || selectedCard,
+          reason: replacementReason,
+          branch: selectedBranch,
+          officer_notes: officerNotes,
+          user_id: customer?.user_id || sessionUser?.user_id,
+          service_amount: serviceFee,
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error("Failed to submit card replacement request");
+      if (!response.ok) {
+        throw new Error("Failed to submit card replacement request");
+      }
+
+      const data = await response.json();
+      console.log("Replacement Request Created:", data);
+
+      setStep(2); // move to validation step
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Failed to submit request");
+    } finally {
+      setLoading(false);
     }
-
-    const data = await response.json();
-    console.log("Replacement Request Created:", data);
-
-    setStep(2); // move to validation step
-  } catch (error) {
-    console.error("Error:", error);
-    alert("Failed to submit request");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleFinalComplete = async () => {
     setLoading(true);
@@ -327,6 +345,49 @@ const handleSubmit = async () => {
                 {formErrors.reason && <p className="text-xs text-destructive">{formErrors.reason}</p>}
               </div>
 
+              {/* Branch Selection - Always visible */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5" /> Select Branch for Card Collection *
+                </Label>
+                <Select 
+                  value={selectedBranch} 
+                  onValueChange={(value) => {
+                    setSelectedBranch(value);
+                    setFormErrors(prev => ({...prev, branch: ""}));
+                  }}
+                >
+                  <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Choose a branch for card collection" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BRANCH_OPTIONS.map((branch) => (
+                      <SelectItem key={branch.value} value={branch.value}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{branch.label}</span>
+                          <span className="text-xs text-muted-foreground">{branch.location}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.branch && (
+                  <p className="text-xs text-destructive">{formErrors.branch}</p>
+                )}
+              </div>
+
+              {/* Info Box */}
+              <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
+                <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-blue-800">Card Collection Information</p>
+                  <p className="text-xs text-blue-700">
+                    Your replacement card will be available for pickup at the selected branch within 3-5 business days.
+                    Please bring a valid ID for verification.
+                  </p>
+                </div>
+              </div>
+
               <Button 
                 onClick={handleSubmit} 
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" 
@@ -367,6 +428,7 @@ const handleSubmit = async () => {
                       </span>
                     ) : `•••• ${selectedCard}` },
                     { l: "Reason", v: replacementReason },
+                    { l: "Collection Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Current Status", v: selectedCardDetails?.status || "ACTIVE" },
                     { l: "New Card Status", v: "To be issued" },
                     { l: "Old Card Action", v: "Will be blocked" },
@@ -405,6 +467,10 @@ const handleSubmit = async () => {
                   <div>
                     <p className="text-xs text-gray-500">Delivery Method</p>
                     <p className="font-semibold">Branch Pickup</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Collection Branch</p>
+                    <p className="font-semibold">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Estimated Time</p>
@@ -452,6 +518,10 @@ const handleSubmit = async () => {
                     <p className="font-medium text-gray-700">•••• {selectedCardDetails?.last4 || selectedCard.slice(-4)}</p>
                   </div>
                   <div>
+                    <p className="text-xs text-gray-500">Collection Branch</p>
+                    <p className="font-medium text-gray-700">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
+                  </div>
+                  <div>
                     <p className="text-xs text-gray-500">Reason</p>
                     <p className="font-medium text-gray-700">{replacementReason}</p>
                   </div>
@@ -471,35 +541,33 @@ const handleSubmit = async () => {
 
           {/* STEP 6: AUTHORIZATION */}
           {step === 6 && (
-            <motion.div key="step6" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6 max-w-lg mx-auto text-center py-10">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
-              </div>
-              
-              <h3 className="text-xl font-semibold">Request Authorized</h3>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                Card replacement has been approved and queued for processing
-              </p>
+                <motion.div
+  key="step6"
+  variants={pageVariants}
+  initial="initial"
+  animate="animate"
+  exit="exit"
+  className="space-y-6 max-w-lg mx-auto text-center py-10"
+>
+  {/* QR Image */}
+  <div className="flex justify-center">
+   
+        <img src={qr} alt="AIDA" className="h-100 w-100 object-cover" />
+    
+  </div>
 
-              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Request ID</span>
-                  <span className="font-mono text-xs">REP-{Date.now().toString().slice(-8)}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Card</span>
-                  <span className="font-mono text-xs">•••• {selectedCardDetails?.last4 || selectedCard.slice(-4)}</span>
-                </div>
-              </div>
+  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+    Scan this QR code to proceed further.
+  </p>
 
-              <Button 
-                onClick={handleFinalComplete} 
-                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" 
-                disabled={loading}
-              >
-                {loading ? "Processing..." : "Finish"}
-              </Button>
-            </motion.div>
+  <Button
+    onClick={handleFinalComplete}
+    className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+    disabled={loading}
+  >
+    {loading ? "Processing..." : "Finish"}
+  </Button>
+</motion.div>
           )}
         </AnimatePresence>
       </div>

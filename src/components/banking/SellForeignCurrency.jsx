@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { DashboardHeader } from "@/components/banking/DashboardHeader";
-
+import qr from '@/assets/qr.png';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,7 @@ import {
   Receipt,
   Loader2,
   RefreshCw,
+  MapPin,
 } from "lucide-react";
 
 const STEPS = [
@@ -34,7 +35,16 @@ const STEPS = [
   { id: 3, name: "Review" },
   { id: 4, name: "Processing" },
   { id: 5, name: "Verification" },
-  { id: 6, name: "Complete" },
+];
+
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
 ];
 
 export const SellForeignCurrency = ({
@@ -53,6 +63,7 @@ export const SellForeignCurrency = ({
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [narration, setNarration] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("");
   
   // New state for currency exchange
   const [currencies, setCurrencies] = useState([]);
@@ -64,6 +75,7 @@ export const SellForeignCurrency = ({
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
@@ -162,15 +174,18 @@ export const SellForeignCurrency = ({
     const errs = {};
     if (!selectedAccount) errs.account = "Please select account";
     if (!selectedCurrency) errs.currency = "Please select currency";
+    if (!selectedBranch) errs.branch = "Please select a branch";
     const num = Number(amount);
     if (isNaN(num) || num <= 0) errs.amount = "Enter valid amount";
     
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
-   console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee); console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee);
+  
+  console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee,
+          "branch", selectedBranch);
+          
   const handleSubmit = async () => {
     if (!validate()) return;
 
@@ -189,10 +204,12 @@ export const SellForeignCurrency = ({
           exchange_rate: exchangeRate, // This is the sell_rate
           exchange_rate_type: "sell_rate",
           kes_equivalent: Number(convertedAmount), // Amount in KES received
+          branch: selectedBranch,
           reference,
           narration,
           user_id: customer?.user_id || sessionUser?.user_id,
           service_amount: serviceFee,
+          branch: selectedBranch,
         }),
       });
 
@@ -222,10 +239,10 @@ export const SellForeignCurrency = ({
   }, [step]);
 
   const handleFinish = async () => {
-    setIsSubmitting(true);
+    setLoading(true);
     // Simulate final processing
     await new Promise((r) => setTimeout(r, 1000));
-    setIsSubmitting(false);
+    setLoading(false);
     alert("Foreign Currency Sale Successful");
     if (onComplete) onComplete();
   };
@@ -268,7 +285,7 @@ export const SellForeignCurrency = ({
               Sell Foreign Currency
             </h1>
             <p className="text-xs text-gray-500">
-              Step {step} of 6: {STEPS[step - 1].name}
+              Step {step} of {STEPS.length}: {STEPS[step - 1].name}
             </p>
           </div>
         </div>
@@ -417,6 +434,37 @@ export const SellForeignCurrency = ({
                   {errors.account && <p className="text-xs text-destructive">{errors.account}</p>}
                 </div>
 
+                {/* Branch Selection - Always visible */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5" /> Select Branch *
+                  </Label>
+                  <Select 
+                    value={selectedBranch} 
+                    onValueChange={(value) => {
+                      setSelectedBranch(value);
+                      setErrors(prev => ({...prev, branch: ""}));
+                    }}
+                  >
+                    <SelectTrigger className={errors.branch ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Choose a branch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BRANCH_OPTIONS.map((branch) => (
+                        <SelectItem key={branch.value} value={branch.value}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{branch.label}</span>
+                            <span className="text-xs text-muted-foreground">{branch.location}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.branch && (
+                    <p className="text-xs text-destructive">{errors.branch}</p>
+                  )}
+                </div>
+
                 {/* Amount in Foreign Currency */}
                 <div className="space-y-2">
                   <Label>Amount in {selectedCurrency?.code || "Foreign Currency"} *</Label>
@@ -522,6 +570,7 @@ export const SellForeignCurrency = ({
                     { l: "Amount Sold", v: `${selectedCurrency?.code} ${Number(amount).toLocaleString()}` },
                     { l: "Exchange Rate", v: `1 ${selectedCurrency?.code} = ${exchangeRate} KES` },
                     { l: "You Receive", v: `KES ${Number(convertedAmount).toLocaleString()}` },
+                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Reference", v: reference || "-" },
                     { l: "Narration", v: narration || "-" },
                   ].map((row) => (
@@ -563,8 +612,9 @@ export const SellForeignCurrency = ({
                 <p className="text-sm text-muted-foreground">
                   Please verify customer identity and confirm transaction details.
                 </p>
-                <div className="bg-gray-50 p-4 rounded-lg text-xs text-gray-600 font-mono">
-                  ID: {customer?.id_number || sessionUser?.id_number || "N/A"}
+                <div className="bg-gray-50 p-4 rounded-lg text-xs text-gray-600 font-mono space-y-2">
+                  <div>ID: {customer?.id_number || sessionUser?.id_number || "N/A"}</div>
+                  <div>Branch: {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</div>
                 </div>
               </div>
 
@@ -579,7 +629,7 @@ export const SellForeignCurrency = ({
             </motion.div>
           )}
 
-          {/* ========== STEP 5: VERIFICATION (Authorization) ========== */}
+          {/* ========== STEP 5: VERIFICATION with QR Code ========== */}
           {step === 5 && (
             <motion.div
               key="step5"
@@ -589,82 +639,23 @@ export const SellForeignCurrency = ({
               exit="exit"
               className="space-y-6 max-w-lg mx-auto text-center py-10"
             >
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
+              <div className="flex justify-center">
+                <img src={qr} alt="AIDA" className="h-64 w-64 object-cover" />
               </div>
 
-              <h3 className="text-xl font-semibold">Awaiting Authorization</h3>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                This transaction requires supervisor approval to be completed.
-              </p>
-
-              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Transaction ID</span>
-                  <span className="font-mono text-xs">FCS-{Date.now().toString().slice(-8)}</span>
-                </div>
-
-                <div className="flex items-center gap-2 rounded bg-green-100 p-3 text-green-900 text-xs">
-                  <Check className="h-4 w-4" />
-                  <span>Identity Verified</span>
-                </div>
-              </div>
-
-              <Button
-                onClick={() => setStep(6)}
-                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
-              >
-                Authorize Transaction
-              </Button>
-            </motion.div>
-          )}
-
-          {/* ========== STEP 6: COMPLETE ========== */}
-          {step === 6 && (
-            <motion.div
-              key="step6"
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="space-y-6 max-w-lg mx-auto text-center py-10"
-            >
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-4">
-                <Check className="h-8 w-8 text-green-600" />
-              </div>
-
-              <h3 className="text-xl font-semibold">Sale Successful</h3>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                You have successfully sold {selectedCurrency?.code} {Number(amount).toLocaleString()}
-              </p>
-
-              <div className="rounded-xl border bg-white p-6 shadow-sm text-left space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Amount Sold</span>
-                  <span className="font-medium">{selectedCurrency?.code} {Number(amount).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Rate Applied</span>
-                  <span className="font-medium">{exchangeRate} KES per {selectedCurrency?.code}</span>
-                </div>
-                <div className="flex justify-between text-sm border-t pt-2">
-                  <span className="text-gray-500">KES Received</span>
-                  <span className="font-bold text-primary">KES {Number(convertedAmount).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">New KES Balance</span>
-                  <span className="font-bold text-primary">
-                    KES {(Number(selectedAccount?.balance || 0) + Number(convertedAmount)).toLocaleString()}
-                  </span>
-                </div>
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">Scan QR Code</h3>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                  Scan this QR code to complete your foreign currency sale.
+                </p>
               </div>
 
               <Button
                 onClick={handleFinish}
-                disabled={isSubmitting}
+                disabled={loading}
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
               >
-                {isSubmitting ? "Completing..." : "Finish"}
+                {loading ? "Processing..." : "Complete Transaction"}
               </Button>
             </motion.div>
           )}

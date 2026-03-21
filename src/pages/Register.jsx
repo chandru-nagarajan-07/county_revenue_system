@@ -1,12 +1,29 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Mail, Lock, UserPlus, Phone } from 'lucide-react';
+import { User, Mail, Lock, UserPlus, Phone, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
+];
 
 const Register = () => {
-  const navigate = useNavigate(); // Initialize navigate
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -14,6 +31,7 @@ const Register = () => {
     phone: '', 
     email: '',
     userName: '',
+    branch: '',
   });
 
   const [errors, setErrors] = useState({});
@@ -26,6 +44,16 @@ const Register = () => {
     });
     if (errors[name]) {
       setErrors({ ...errors, [name]: null });
+    }
+  };
+
+  const handleBranchChange = (value) => {
+    setFormData({
+      ...formData,
+      branch: value
+    });
+    if (errors.branch) {
+      setErrors({ ...errors, branch: null });
     }
   };
 
@@ -53,8 +81,14 @@ const Register = () => {
       tempErrors.email = "Email format is invalid";
       isValid = false;
     }
+    
     if (!formData.userName) {
-      tempErrors.userName = "user name is required";
+      tempErrors.userName = "User name is required";
+      isValid = false;
+    }
+
+    if (!formData.branch) {
+      tempErrors.branch = "Please select a branch";
       isValid = false;
     }
 
@@ -79,6 +113,7 @@ const Register = () => {
           phone: formData.phone,
           email: formData.email,
           userName: formData.userName,
+          branch: formData.branch,
         }),
       });
 
@@ -204,20 +239,53 @@ const Register = () => {
               {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
             </div>
 
+            {/* User Name */}
             <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">User Name</label>
-                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-50" />
-                  <input 
-                    type="text" 
-                    name="userName" 
-                    value={formData.UserName} 
-                    onChange={handleChange} 
-                    placeholder="Doe"
-                    className="w-full rounded-xl border border-input bg-background pl-12 pr-4 py-3 text-base outline-none focus:ring-2 focus:ring-ring transition-all"
-                  />
-                </div>
+              <label className="text-sm font-medium text-foreground">User Name</label>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-50" />
+                <input 
+                  type="text" 
+                  name="userName" 
+                  value={formData.userName} 
+                  onChange={handleChange} 
+                  placeholder="johndoe"
+                  className={`w-full rounded-xl border bg-background pl-12 pr-4 py-3 text-base outline-none focus:ring-2 transition-all
+                    ${errors.userName ? 'border-destructive focus:ring-destructive/50' : 'border-input focus:ring-ring'}`}
+                />
               </div>
+              {errors.userName && <p className="text-sm text-destructive">{errors.userName}</p>}
+            </div>
+
+            {/* Branch Selection - Always visible and required */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" /> Select Branch *
+              </label>
+              <Select 
+                value={formData.branch} 
+                onValueChange={handleBranchChange}
+              >
+                <SelectTrigger className={errors.branch ? "border-destructive" : ""}>
+                  <SelectValue placeholder="Choose your preferred branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BRANCH_OPTIONS.map((branch) => (
+                    <SelectItem key={branch.value} value={branch.value}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{branch.label}</span>
+                        <span className="text-xs text-muted-foreground">{branch.location}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.branch && (
+                <p className="text-sm text-destructive">{errors.branch}</p>
+              )}
+            </div>
+
+          
 
             <Button type="submit" className="w-full h-12 text-base font-semibold mt-4">
               Create Account

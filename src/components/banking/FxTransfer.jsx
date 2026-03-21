@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { DashboardHeader } from "@/components/banking/DashboardHeader";
-
+import qr from '@/assets/qr.png';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ import {
   ThumbsUp,
   Info,
   ArrowRightLeft,
+  MapPin,
 } from "lucide-react";
 
 const STEPS = [
@@ -32,11 +33,20 @@ const STEPS = [
   { id: 3, name: "Review" },
   { id: 4, name: "Processing" },
   { id: 5, name: "Verification" },
-  { id: 6, name: "Complete" },
 ];
 
 // API Base URL - hardcoded to fix the process is not defined error
 const API_BASE_URL = "http://127.0.0.1:8000";
+
+// Branch options for Kenya
+const BRANCH_OPTIONS = [
+  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
+];
 
 export const FxTransfer = ({
   customer: propCustomer,
@@ -57,6 +67,7 @@ export const FxTransfer = ({
   const [toBankName, setToBankName] = useState("");
   const [reference, setReference] = useState("");
   const [narration, setNarration] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("");
 
   // FX Transfer specific fields
   const [fromCurrency, setFromCurrency] = useState("KES");
@@ -66,9 +77,10 @@ export const FxTransfer = ({
   const [fxCharge, setFxCharge] = useState(0);
   const [convertedAmount, setConvertedAmount] = useState(0);
   const [totalDebit, setTotalDebit] = useState(0);
-   const serviceFee = useMemo(() => {
+  const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
+  
   // Currency data from API
   const [currencies, setCurrencies] = useState([]);
   const [loadingCurrencies, setLoadingCurrencies] = useState(false);
@@ -76,6 +88,7 @@ export const FxTransfer = ({
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [transactionId, setTransactionId] = useState(null);
   const [apiError, setApiError] = useState(null);
 
@@ -209,6 +222,7 @@ export const FxTransfer = ({
     const errs = {};
     if (!fromAccount) errs.fromAccount = "Please select source account";
     if (!toAccountNumber) errs.toAccountNumber = "Please enter destination account number";
+    if (!selectedBranch) errs.branch = "Please select a branch";
     if (!fromCurrency) errs.fromCurrency = "Please select from currency";
     if (!toCurrency) errs.toCurrency = "Please select to currency";
     if (fromCurrency === toCurrency) errs.toCurrency = "From and To currencies cannot be same";
@@ -219,8 +233,11 @@ export const FxTransfer = ({
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
- console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee);
+  
+  console.log("res", customer?.user_id || sessionUser?.user_id,
+          "service fee", serviceFee,
+          "branch", selectedBranch);
+          
   const handleSubmit = async () => {
     if (!validate()) return;
 
@@ -240,6 +257,7 @@ export const FxTransfer = ({
         fx_charge: fxCharge,
         converted_amount: convertedAmount,
         total_debit: totalDebit,
+        branch: selectedBranch,
         reference: reference || null,
         narration: narration || null,
         // Add customer/user info if needed by backend
@@ -270,6 +288,7 @@ export const FxTransfer = ({
           fx_charge: fxCharge,
           converted_amount: convertedAmount,
           total_debit: totalDebit,
+          branch: selectedBranch,
           reference,
           narration,
           user_id: customer?.user_id || sessionUser?.user_id,
@@ -327,12 +346,10 @@ export const FxTransfer = ({
   }, [step]);
 
   const handleFinish = async () => {
-    setIsSubmitting(true);
-    
+    setLoading(true);
     // Simulate final processing
     await new Promise((r) => setTimeout(r, 1000));
-    
-    setIsSubmitting(false);
+    setLoading(false);
     alert("FX Transfer Successful");
     
     if (onComplete) {
@@ -390,7 +407,7 @@ export const FxTransfer = ({
               FX Transfer
             </h1>
             <p className="text-xs text-gray-500">
-              Step {step} of 6: {STEPS[step - 1].name}
+              Step {step} of {STEPS.length}: {STEPS[step - 1].name}
             </p>
           </div>
         </div>
@@ -544,6 +561,37 @@ export const FxTransfer = ({
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Branch Selection - Always visible */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5" /> Select Branch *
+                  </Label>
+                  <Select 
+                    value={selectedBranch} 
+                    onValueChange={(value) => {
+                      setSelectedBranch(value);
+                      setErrors(prev => ({...prev, branch: ""}));
+                    }}
+                  >
+                    <SelectTrigger className={errors.branch ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Choose a branch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BRANCH_OPTIONS.map((branch) => (
+                        <SelectItem key={branch.value} value={branch.value}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{branch.label}</span>
+                            <span className="text-xs text-muted-foreground">{branch.location}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.branch && (
+                    <p className="text-xs text-destructive">{errors.branch}</p>
+                  )}
                 </div>
 
                 {/* Currency Selection */}
@@ -724,6 +772,7 @@ export const FxTransfer = ({
                     { l: "Exchange Rate", v: `1 ${fromCurrency} = ${safeToFixed(exchangeRate, 4)} ${toCurrency}` },
                     { l: "FX Charge", v: `${fromCurrency} ${safeToFixed(fxCharge)}` },
                     { l: "Recipient Gets", v: `${toCurrency} ${safeToFixed(convertedAmount)}` },
+                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Reference", v: reference || "-" },
                     { l: "Narration", v: narration || "-" },
                   ].map((row) => (
@@ -765,8 +814,9 @@ export const FxTransfer = ({
                 <p className="text-sm text-muted-foreground">
                   Please verify customer identity and confirm FX transfer details.
                 </p>
-                <div className="bg-gray-50 p-4 rounded-lg text-xs text-gray-600 font-mono">
-                  ID: {customer?.id_number || sessionUser?.id_number || "N/A"}
+                <div className="bg-gray-50 p-4 rounded-lg text-xs text-gray-600 font-mono space-y-2">
+                  <div>ID: {customer?.id_number || sessionUser?.id_number || "N/A"}</div>
+                  <div>Branch: {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</div>
                 </div>
               </div>
 
@@ -781,7 +831,7 @@ export const FxTransfer = ({
             </motion.div>
           )}
 
-          {/* STEP 5: VERIFICATION */}
+          {/* STEP 5: VERIFICATION with QR Code */}
           {step === 5 && (
             <motion.div
               key="step5"
@@ -791,102 +841,23 @@ export const FxTransfer = ({
               exit="exit"
               className="space-y-6 max-w-lg mx-auto text-center py-10"
             >
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                <ThumbsUp className="h-8 w-8 text-accent" />
+              <div className="flex justify-center">
+                <img src={qr} alt="AIDA" className="h-64 w-64 object-cover" />
               </div>
 
-              <h3 className="text-xl font-semibold">Awaiting Authorization</h3>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                This FX transfer requires supervisor approval to be completed.
-              </p>
-
-              <div className="rounded-xl border-2 border-dashed border-accent/30 bg-accent/5 p-6 space-y-4 text-left">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Transaction ID</span>
-                  <span className="font-mono text-xs">
-                    {transactionId || `FX-${Date.now().toString().slice(-8)}`}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 rounded bg-green-100 p-3 text-green-900 text-xs">
-                  <Check className="h-4 w-4" />
-                  <span>Identity Verified</span>
-                </div>
-              </div>
-
-              <Button
-                onClick={() => setStep(6)}
-                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
-              >
-                Authorize Transfer
-              </Button>
-            </motion.div>
-          )}
-
-          {/* STEP 6: COMPLETE */}
-          {step === 6 && (
-            <motion.div
-              key="step6"
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="space-y-6 max-w-lg mx-auto text-center py-10"
-            >
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-4">
-                <Check className="h-8 w-8 text-green-600" />
-              </div>
-
-              <h3 className="text-xl font-semibold">FX Transfer Successful</h3>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                Your foreign exchange transfer has been completed successfully.
-              </p>
-
-              <div className="rounded-xl border bg-white p-6 shadow-sm text-left space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">From Account</span>
-                  <span className="font-medium">{fromAccount?.account_number}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">To Account</span>
-                  <span className="font-medium">{toAccountNumber}</span>
-                </div>
-                {toAccountName && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Beneficiary</span>
-                    <span className="font-medium">{toAccountName}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Amount Sent</span>
-                  <span className="font-medium">{fromCurrency} {Number(amount).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Amount Received</span>
-                  <span className="font-medium text-green-600">{toCurrency} {safeToFixed(convertedAmount)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Rate Applied</span>
-                  <span className="font-medium">1 {fromCurrency} = {safeToFixed(exchangeRate, 4)} {toCurrency}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">FX Charge</span>
-                  <span className="font-medium text-amber-600">{fromCurrency} {safeToFixed(fxCharge)}</span>
-                </div>
-                {transactionId && (
-                  <div className="flex justify-between text-sm border-t pt-2">
-                    <span className="text-gray-500">Transaction ID</span>
-                    <span className="font-mono text-xs font-medium">{transactionId}</span>
-                  </div>
-                )}
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">Scan QR Code</h3>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                  Scan this QR code to complete your FX transfer.
+                </p>
               </div>
 
               <Button
                 onClick={handleFinish}
-                disabled={isSubmitting}
+                disabled={loading}
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
               >
-                {isSubmitting ? "Completing..." : "Finish"}
+                {loading ? "Processing..." : "Complete Transaction"}
               </Button>
             </motion.div>
           )}
