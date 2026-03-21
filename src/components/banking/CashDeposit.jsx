@@ -73,9 +73,9 @@ export const CashDepositWorkflow = ({
   /* SESSION USER */
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
-
+  const [depositData, setDepositData] = useState(null);
   /* INIT CUSTOMER */
-  useEffect(() => {
+  useEffect(() => { 
     if (propCustomer) {
       setCustomer(propCustomer);
       return;
@@ -125,6 +125,8 @@ export const CashDepositWorkflow = ({
       });
 
       const data = await response.json();
+      setDepositData(data);
+      console.log('hhjggfhf',data)
 
       if (!response.ok) {
         alert(data.message || "OTP verification failed");
@@ -494,7 +496,13 @@ export const CashDepositWorkflow = ({
               className="space-y-6 max-w-lg mx-auto text-center py-10"
             >
               <div className="flex justify-center">
-                <img src={qr} alt="AIDA" className="h-64 w-64 object-cover" />
+                <img
+                  src={
+                    depositData?.qr_img
+                      ? `http://127.0.0.1:8000${depositData.qr_img}`
+                      : ""
+                  }
+                />
               </div>
 
               <div className="space-y-4">
