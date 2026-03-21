@@ -1444,7 +1444,6 @@ export function KycUpdateInput({
     }
   };
   
-
   /* FINAL STEP */
   const handleFinalComplete = async () => {
     setLoading(true);
@@ -1601,7 +1600,7 @@ export function KycUpdateInput({
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <DashboardHeader
-        customerName={customer?.first_name || sessionUser?.first_name || "Customer"}
+        customerName={customer?.fullName || sessionUser?.first_name || "Customer"}
         isDropdownOpen={navDropdownOpen}
         setIsDropdownOpen={setNavDropdownOpen}
         onLogout={() => {
@@ -1706,6 +1705,7 @@ export function KycUpdateInput({
                   {/* Customer Info */}
                   <div className="flex items-center gap-3 rounded-xl border bg-muted/30 p-4">
                     <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+<<<<<<< HEAD
                       {(customer?.first_name || sessionUser?.first_name || "C")
                         .split(" ")
                         .map((n) => n[0])
@@ -1715,6 +1715,13 @@ export function KycUpdateInput({
                     <div>
                       <p className="text-sm font-semibold">{customer?.fullName || customer?.first_name || sessionUser?.first_name}</p>
                       <p className="text-xs text-muted-foreground">{customer?.customerId || sessionUser?.user_id} • {customer?.phone || sessionUser?.phone}</p>
+=======
+                      {customer.fullName?.split(' ').map(n => n[0]).join('').slice(0,2)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{customer.fullName}</p>
+                      <p className="text-xs text-muted-foreground">{customer.customerId} • {customer.phone}</p>
+>>>>>>> a155cc36f25bac3efcd9149773513db5932b2204
                     </div>
                   </div>
 
@@ -1842,11 +1849,19 @@ export function KycUpdateInput({
                   })}
                   <div className="flex justify-between py-2 border-b border-dashed last:border-0">
                     <span className="text-sm text-gray-500">Customer</span>
+<<<<<<< HEAD
                     <span className="text-sm font-medium text-gray-800">{customer?.fullName || customer?.first_name || sessionUser?.first_name}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-dashed last:border-0">
                     <span className="text-sm text-gray-500">ID</span>
                     <span className="text-sm font-medium text-gray-800">{customer?.customerId || sessionUser?.user_id}</span>
+=======
+                    <span className="text-sm font-medium text-gray-800">{customer.fullName}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-dashed last:border-0">
+                    <span className="text-sm text-gray-500">ID</span>
+                    <span className="text-sm font-medium text-gray-800">{customer.customerId}</span>
+>>>>>>> a155cc36f25bac3efcd9149773513db5932b2204
                   </div>
                 </div>
               </div>
@@ -1879,7 +1894,11 @@ export function KycUpdateInput({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs text-gray-500">Customer</p>
+<<<<<<< HEAD
                     <p className="font-semibold">{customer?.fullName || customer?.first_name || sessionUser?.first_name}</p>
+=======
+                    <p className="font-semibold">{customer.fullName}</p>
+>>>>>>> a155cc36f25bac3efcd9149773513db5932b2204
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Items Updated</p>
