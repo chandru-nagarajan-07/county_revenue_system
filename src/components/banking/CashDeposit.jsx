@@ -74,16 +74,6 @@ export const CashDepositWorkflow = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
   
-  /* SESSION USER */
-<<<<<<< HEAD
-  const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
-  const accounts = sessionUser?.account || [];
-  const [depositData, setDepositData] = useState(null);
-=======
-  // const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
-  // const accounts = sessionUser?.account || [];
-
->>>>>>> d9a5c5bad74cc51b1bac4e607a591ca1c42baea9
   /* INIT CUSTOMER */
   useEffect(() => { 
     if (propCustomer) {
