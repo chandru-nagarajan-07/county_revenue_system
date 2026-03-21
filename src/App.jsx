@@ -17,6 +17,9 @@ import ResetPassword from "./pages/ResetPassword";
 import EmailOtp from "./pages/EmailOtp";
 import AccountOpeningForm from "./pages/AccountOpeningForm";
 import TransactionPage from "./pages/TransactionPage";
+import DashboardTeller from "./pages/DashboardTeller";
+import QRScannerPage from "./pages/QRScannerPage";
+import ProfilePage from "./pages/ProfilePage";
 
 
 const queryClient = new QueryClient();
@@ -41,6 +44,9 @@ const App = () => (
           <Route path="/reset" element={<ResetPassword />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/transaction" element={<TransactionPage />} />
+          <Route path="/dash" element={<DashboardTeller />} />
+         <Route path="/scanner" element={<QRScannerPage />} />
+         <Route path="/profilepage" element={<ProfilePage />} />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
