@@ -1457,6 +1457,7 @@ export function KycUpdateInput({
         return;
       }
 
+
       const apiResponses = [];
       
       for (let i = 0; i < formDataList.length; i++) {
@@ -1488,6 +1489,7 @@ export function KycUpdateInput({
           if (data.frontImage) payload.append("front_image", data.frontImage);
           if (data.backImage) payload.append("back_image", data.backImage);
           if (data.selfieImage) payload.append("selfie_with_id", data.selfieImage);
+
         }
         else if (artefactId === 'biometric') {
           payload.append("fingerprint_status", data.fingerprintStatus);
@@ -1572,6 +1574,9 @@ export function KycUpdateInput({
       }
     } finally {
       setLoading(false);
+
+
+  
     }
   };
 
