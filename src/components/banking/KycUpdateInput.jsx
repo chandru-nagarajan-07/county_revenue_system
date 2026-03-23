@@ -80,13 +80,6 @@ const ACTION_META = {
   }
 };
 
-const ARTEFACT_META = {
-  'legal-id': { label: 'Legal ID', icon: <FileText className="h-5 w-5" /> },
-  'biometric': { label: 'Biometric', icon: <Fingerprint className="h-5 w-5" /> },
-  'kra-pin': { label: 'KRA PIN', icon: <ShieldCheck className="h-5 w-5" /> },
-  'account-mandates': { label: 'Account Mandates', icon: <Users className="h-5 w-5" /> },
-};
-
 /* SAFE BUILD FUNCTION */
 function buildArtefacts(customer = {}) {
   const idNumber = customer?.idNumber || '';
@@ -1265,15 +1258,42 @@ function AccountMandatesForm({ customer, onBack, onSubmit, formNumber, totalForm
   );
 }
 
-/* MAIN COMPONENT */
-export function KycUpdateInput({ customer, onSubmit, onBack }) {
+/* MAIN COMPONENT - Modified to work like DenominationExchange */
+export function KycUpdateInput({ 
+  onBack = () => {
+    console.log('Default onBack handler');
+    window.history.back();
+  },
+  formFields
+}) {
   const navigate = useNavigate();
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [isBackendReachable, setIsBackendReachable] = useState(true);
+  
+  /* GET CUSTOMER AND SESSION DATA - Like DenominationExchange */
+  let sessionUser = {};
+  try {
+    sessionUser = JSON.parse(sessionStorage.getItem("userData1")) || {};
+  } catch {
+    sessionUser = {};
+  }
+  
+  // Build customer object from session data (like in DenominationExchange)
+  const customer = {
+    fullName: sessionUser?.first_name + ' ' + (sessionUser?.last_name || ''),
+    customerId: sessionUser?.user_id || sessionUser?.customer_id || '',
+    phone: sessionUser?.phone || '',
+    idNumber: sessionUser?.id_number || '',
+    email: sessionUser?.email || '',
+    accounts: sessionUser?.account || [],
+    first_name: sessionUser?.first_name || '',
+    user_id: sessionUser?.user_id || ''
+  };
 
-  if (!customer) return null;
-
+  console.log("Session User:", sessionUser);
+  console.log("Customer Data:", customer);
+  
   const artefacts = buildArtefacts(customer);
   const exceptions = artefacts.filter(a => a.exception);
 
@@ -1285,14 +1305,6 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
   const [formDataList, setFormDataList] = useState([]);
   const [officerNotes, setOfficerNotes] = useState("");
   const [loading, setLoading] = useState(false);
-
-  /* SESSION USER */
-  let sessionUser = {};
-  try {
-    sessionUser = JSON.parse(sessionStorage.getItem("userData1")) || {};
-  } catch {
-    sessionUser = {};
-  }
 
   /* Check backend connectivity on mount */
   useEffect(() => {
@@ -1445,6 +1457,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
         return;
       }
 
+
       const apiResponses = [];
       
       for (let i = 0; i < formDataList.length; i++) {
@@ -1457,9 +1470,13 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
 
         payload.append("update_type", artefactId?.toUpperCase().replace('-', '_') || 'LEGAL_ID');
         payload.append("branch", data.branch || '');
-        payload.append("user_id", customer?.user_id || sessionUser?.user_id || '');
+        // Use session user ID like in DenominationExchange
+        payload.append("user_id", customer?.user_id || sessionUser?.user_id);
         payload.append("service_amount", "0");
-        payload.append("customer_id", customer?.customerId || '');
+        payload.append("customer_id", customer?.customerId || sessionUser?.user_id);
+        if (officerNotes) {
+          payload.append("officer_notes", officerNotes);
+        }
 
         if (artefactId === 'legal-id') {
           payload.append("id_type", data.idType);
@@ -1472,6 +1489,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
           if (data.frontImage) payload.append("front_image", data.frontImage);
           if (data.backImage) payload.append("back_image", data.backImage);
           if (data.selfieImage) payload.append("selfie_with_id", data.selfieImage);
+
         }
         else if (artefactId === 'biometric') {
           payload.append("fingerprint_status", data.fingerprintStatus);
@@ -1531,15 +1549,9 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
 
       console.log('KYC Update completed successfully:', result);
 
-      // Show success message
       alert('KYC Update completed successfully!');
       
       // Navigate to dashboard after alert
-      if (onSubmit && typeof onSubmit === 'function') {
-        onSubmit(result);
-      }
-      
-      // Navigate to dashboard page
       navigate('/dashboard');
 
     } catch (err) {
@@ -1562,6 +1574,9 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
       }
     } finally {
       setLoading(false);
+
+
+  
     }
   };
 
@@ -1579,14 +1594,13 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
     }
   };
 
-  // Safe back handler
-  const handleBack = () => {
-    if (onBack && typeof onBack === 'function') {
-      onBack();
-    } else {
-      navigate(-1);
+  // Auto-advance Step 2 -> 3 like DenominationExchange
+  useEffect(() => {
+    if (workflowStep === 2) {
+      const timer = setTimeout(() => setWorkflowStep(3), 1500);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [workflowStep]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -1596,6 +1610,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
         setIsDropdownOpen={setNavDropdownOpen}
         onLogout={() => {
           localStorage.removeItem("customer");
+          sessionStorage.removeItem("userData1");
           navigate("/");
         }}
       />
@@ -1621,7 +1636,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
       {/* Sticky Header with Back Button & Stepper */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-20 px-4 sm:px-6 py-3 shadow-sm">
         <div className="flex items-center gap-4 mb-3">
-          <Button variant="ghost" size="icon" onClick={handleBack} className="h-9 w-9">
+          <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
@@ -1695,11 +1710,15 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
                   {/* Customer Info */}
                   <div className="flex items-center gap-3 rounded-xl border bg-muted/30 p-4">
                     <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                      {customer.fullName?.split(' ').map(n => n[0]).join('').slice(0,2)}
+                      {(customer?.first_name || sessionUser?.first_name || "C")
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .slice(0, 2)}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold">{customer.fullName}</p>
-                      <p className="text-xs text-muted-foreground">{customer.customerId} • {customer.phone}</p>
+                      <p className="text-sm font-semibold">{customer?.fullName || customer?.first_name || sessionUser?.first_name}</p>
+                      <p className="text-xs text-muted-foreground">{customer?.customerId || sessionUser?.user_id} • {customer?.phone || sessionUser?.phone}</p>
                     </div>
                   </div>
 
@@ -1790,7 +1809,6 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
               </div>
               <h3 className="font-semibold text-lg">Validating {formDataList.length} Artefact(s)...</h3>
               <p className="text-sm text-muted-foreground">Checking authenticity and compliance</p>
-              {setTimeout(() => setWorkflowStep(3), 2000)}
             </motion.div>
           )}
 
@@ -1828,11 +1846,11 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
                   })}
                   <div className="flex justify-between py-2 border-b border-dashed last:border-0">
                     <span className="text-sm text-gray-500">Customer</span>
-                    <span className="text-sm font-medium text-gray-800">{customer.fullName}</span>
+                    <span className="text-sm font-medium text-gray-800">{customer?.fullName || customer?.first_name || sessionUser?.first_name}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-dashed last:border-0">
                     <span className="text-sm text-gray-500">ID</span>
-                    <span className="text-sm font-medium text-gray-800">{customer.customerId}</span>
+                    <span className="text-sm font-medium text-gray-800">{customer?.customerId || sessionUser?.user_id}</span>
                   </div>
                 </div>
               </div>
@@ -1865,7 +1883,7 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs text-gray-500">Customer</p>
-                    <p className="font-semibold">{customer.fullName}</p>
+                    <p className="font-semibold">{customer?.fullName || customer?.first_name || sessionUser?.first_name}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Items Updated</p>
@@ -1976,14 +1994,3 @@ export function KycUpdateInput({ customer, onSubmit, onBack }) {
     </div>
   );
 }
-
-// Default props to prevent errors if onSubmit/onBack are not provided
-KycUpdateInput.defaultProps = {
-  onSubmit: (data) => {
-    console.log('Default onSubmit handler - KYC Update completed:', data);
-  },
-  onBack: () => {
-    console.log('Default onBack handler');
-    window.history.back();
-  }
-};

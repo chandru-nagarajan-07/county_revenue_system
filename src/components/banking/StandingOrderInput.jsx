@@ -38,11 +38,11 @@ const STEPS = [
 ];
 
 const FREQUENCY_OPTIONS = [
-  { value: "weekly", label: "Weekly" },
-  { value: "bi-weekly", label: "Bi-Weekly" },
-  { value: "monthly", label: "Monthly" },
-  { value: "quarterly", label: "Quarterly" },
-  { value: "annually", label: "Annually" },
+  { value: "Weekly", label: "Weekly" },
+  { value: "BiWeekly", label: "Bi-Weekly" },
+  { value: "Monthly", label: "Monthly" },
+  { value: "Quarterly", label: "Quarterly" },
+  { value: "Annually", label: "Annually" },
 ];
 
 // Branch options for Kenya

@@ -34,10 +34,13 @@ const ProfilePage = () => {
     }
     // Simulate API call
     console.log('Approving:', approvalData);
+
+    alert('Service approved successfully!');
+
     navigate('/dashboard', {
       state: {
         updatedApproval: {
-          id: approvalData.id,
+          id: approvalData?.id,
           approved: true,
         },
       },
@@ -58,6 +61,30 @@ const ProfilePage = () => {
     setNavDropdownOpen(false);
     navigate('/');
   };
+
+  /* ================= FALLBACK UI ================= */
+
+  if (!approvalData) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="bg-white p-6 rounded-xl shadow text-center">
+          <p className="text-lg font-semibold">No profile data found</p>
+          <p className="text-sm text-gray-500 mt-2">
+            Please select a record from dashboard first.
+          </p>
+
+          <Button
+            onClick={() => navigate('/dashboard')}
+            className="mt-4"
+          >
+            Go to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ================= MAIN UI ================= */
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
@@ -157,6 +184,7 @@ const ProfilePage = () => {
                 </Button>
               </div>
             </div>
+
           </div>
         </div>
       </main>

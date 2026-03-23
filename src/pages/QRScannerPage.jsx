@@ -26,6 +26,7 @@ const QRScannerPage = () => {
 
   const [scanResult, setScanResult] = useState(null);
   const [showApprovalDetails, setShowApprovalDetails] = useState(false);
+
   const [approvalData, setApprovalData] = useState({
     customerId: '',
     customerName: '',
@@ -39,7 +40,10 @@ const QRScannerPage = () => {
     scanner.render(handleScan, handleError);
 
     return () => {
-      scanner.clear();
+      clearTimeout(timeout);
+      if (html5QrCode) {
+        html5QrCode.stop().catch(() => {});
+      }
     };
   }, []);
 
@@ -58,9 +62,7 @@ const QRScannerPage = () => {
     }
   };
 
-  const handleError = (err) => {
-    console.error(err);
-  };
+  /* ================= ACTIONS ================= */
 
   const handleApprove = async () => {
     // Option 2: change this to navigate to profile if you want the approve button to also go to profile
@@ -94,6 +96,8 @@ const QRScannerPage = () => {
     setConfirmPassword('');
     setShowResetModal(false);
   };
+
+  /* ================= UI ================= */
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
