@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { use } from "react";
 
 /* CONSTANTS */
 const STEPS = [
@@ -38,32 +39,36 @@ const STEPS = [
 ];
 
 // Branch options for Kenya
-const BRANCH_OPTIONS = [
-  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
-  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
-  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
-  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
-  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
-  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
-];
 
 export default function CardLimitUpdate({ customer: propCustomer, onBack, formFields }) {
   const navigate = useNavigate();
+  const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
+  const accounts = sessionUser?.account || [];
+  const branches = sessionUser?.branch || [];
+
+  /* FORMAT BRANCHES */
+  const BRANCH_OPTIONS = useMemo(() => {
+    return branches.map((b) => ({
+      value: b.branch_id,
+      label: b.branch_name,
+    }));
+  }, [branches]);
+
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
   /* SESSION USER */
-  const [sessionUser, setSessionUser] = useState({});
+  // const [sessionUser, setSessionUser] = useState({});
   
-  useEffect(() => {
-    try {
-      const userData = JSON.parse(sessionStorage.getItem("userData1")) || {};
-      console.log("Session User:", userData);
-      setSessionUser(userData);
-    } catch (error) {
-      console.error("Error parsing session user:", error);
-      setSessionUser({});
-    }
-  }, []);
+  // useEffect(() => {
+  //   try {
+  //     const userData = JSON.parse(sessionStorage.getItem("userData1")) || {};
+  //     console.log("Session User:", userData);
+  //     setSessionUser(userData);
+  //   } catch (error) {
+  //     console.error("Error parsing session user:", error);
+  //     setSessionUser({});
+  //   }
+  // }, []);
 
   /* STATE */
   const [customer, setCustomer] = useState(null);
@@ -196,6 +201,7 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
         old_atm_limit: selectedCardDetails?.atmLimit,
         new_atm_limit: Number(newAtmLimit),
         branch: selectedBranch,
+        user_id: customer?.user_id || sessionUser?.user_id,
       };
 
       const response = await fetch(
@@ -439,16 +445,13 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
                   <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
                     <SelectValue placeholder="Choose a branch for limit update" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {BRANCH_OPTIONS.map((branch) => (
-                      <SelectItem key={branch.value} value={branch.value}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{branch.label}</span>
-                          <span className="text-xs text-muted-foreground">{branch.location}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                   <SelectContent>
+  {BRANCH_OPTIONS.map((branch) => (
+    <SelectItem key={branch.value} value={branch.value}>
+      {branch.label} • {branch.value}
+    </SelectItem>
+  ))}
+</SelectContent>
                 </Select>
                 {formErrors.branch && (
                   <p className="text-xs text-destructive">{formErrors.branch}</p>

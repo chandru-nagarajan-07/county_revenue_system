@@ -38,7 +38,7 @@ const VerifyPage = () => {
   };
 
   const handleProceed = () => {
-    navigate("/dashboard", { state: { userData: data } });
+    navigate("/", { state: { userData: data } });
   };
 
   return (

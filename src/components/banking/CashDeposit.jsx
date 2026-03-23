@@ -316,13 +316,13 @@ export const CashDepositWorkflow = ({
                       <SelectValue placeholder="Choose a branch for this deposit" />
                     </SelectTrigger>
 
-                    <SelectContent>
-                      {BRANCH_OPTIONS.map((branch) => (
-                        <SelectItem key={branch.value} value={branch.value}>
-                          {branch.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                     <SelectContent>
+  {BRANCH_OPTIONS.map((branch) => (
+    <SelectItem key={branch.value} value={branch.value}>
+      {branch.label} • {branch.value}
+    </SelectItem>
+  ))}
+</SelectContent>
                   </Select>
                   {errors.branch && (
                     <p className="text-xs text-destructive">{errors.branch}</p>

@@ -47,7 +47,7 @@ const EmailOtp = () => {
 
     try {
       const response1 = await fetch(
-        `http://127.0.0.1:8002/account_fetch/${email}`,
+        `https://saccobe.zecosdk.com/account_fetch/${email}`,
         {
           method: "GET",
         }

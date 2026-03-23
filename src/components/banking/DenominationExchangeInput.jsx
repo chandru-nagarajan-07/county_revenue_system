@@ -441,13 +441,13 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
                   <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
                     <SelectValue placeholder="Choose a branch for this exchange" />
                   </SelectTrigger>
-                  <SelectContent>
-                  {BRANCH_OPTIONS.map((branch) => (
-                    <SelectItem key={branch.value} value={branch.value}>
-                      {branch.label} • {branch.value}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                   <SelectContent>
+  {BRANCH_OPTIONS.map((branch) => (
+    <SelectItem key={branch.value} value={branch.value}>
+      {branch.label} • {branch.value}
+    </SelectItem>
+  ))}
+</SelectContent>
                 </Select>
                 {formErrors.branch && (
                   <p className="text-xs text-destructive">{formErrors.branch}</p>
