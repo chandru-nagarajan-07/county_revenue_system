@@ -59,15 +59,6 @@ const STEPS = [
   { id: 6, name: "Authorization" },
 ];
 
-// Branch options for Kenya
-const BRANCH_OPTIONS = [
-  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
-  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
-  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
-  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
-  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
-  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
-];
 
 /* ---------- ACTION LIST ---------- */
 
@@ -151,10 +142,24 @@ const FREQUENCIES = [
   { value: "Annually", label: "Annually" },
 ];
 
-export function AccountModificationInput({ customer, onBack, formFields }) {
+export function AccountModificationInput({ customer: propCustomer, onBack, formFields }) {
 
   const navigate = useNavigate();
+  const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
+  const accounts = sessionUser?.account || [];
+  const branches = sessionUser?.branch || [];
+
+  /* FORMAT BRANCHES */
+  const BRANCH_OPTIONS = useMemo(() => {
+    return branches.map((b) => ({
+      value: b.branch_id,
+      label: b.branch_name,
+    }));
+  }, [branches]);
+
+
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
+  const [customer, setCustomer] = useState(null);
 
   const [step, setStep] = useState(1);
 
@@ -179,13 +184,13 @@ export function AccountModificationInput({ customer, onBack, formFields }) {
     new_status: "",
   });
   
-  let sessionUser = {};
+  // let sessionUser = {};
 
-  try {
-    sessionUser = JSON.parse(sessionStorage.getItem("userData1")) || {};
-  } catch {}
+  // try {
+  //   sessionUser = JSON.parse(sessionStorage.getItem("userData1")) || {};
+  // } catch {}
 
-  const accounts = customer?.accounts || sessionUser?.account || [];
+  // const accounts = customer?.accounts || sessionUser?.account || [];
 
   const activeAccounts = useMemo(() => {
     return accounts.filter(
@@ -266,6 +271,20 @@ export function AccountModificationInput({ customer, onBack, formFields }) {
   };
 
   /* ---------- AUTO VALIDATION ---------- */
+  /* INIT CUSTOMER */
+  useEffect(() => {
+    if (propCustomer) {
+      setCustomer(propCustomer);
+      setStmtEmail(propCustomer.email || propCustomer.Email || "");
+      return;
+    }
+    const sessionCustomer = sessionStorage.getItem("customer");
+    if (sessionCustomer) {
+        const c = JSON.parse(sessionCustomer);
+        setCustomer(c);
+        setStmtEmail(c.email || c.Email || "");
+    }
+  }, [propCustomer]);
 
   useEffect(() => {
     if (step === 2) {
@@ -282,6 +301,7 @@ export function AccountModificationInput({ customer, onBack, formFields }) {
 
       const payload = {
         account: selectedAccount?.id,
+        user_id: sessionUser?.user_id || sessionUser?.userId || sessionUser?.id,
         action_type: ACTION_TYPE_MAP[selectedActionId],
         branch: selectedBranch,
         limit_type: selectedActionId === "set-transaction-limit" ? details.limitType : null,
@@ -317,6 +337,7 @@ Details: ${JSON.stringify(details)}
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            
           },
           body: JSON.stringify(payload),
           user_id: customer?.user_id || sessionUser?.user_id,
@@ -544,16 +565,13 @@ Details: ${JSON.stringify(details)}
                         <SelectTrigger>
                           <SelectValue placeholder="Choose a branch for this modification" />
                         </SelectTrigger>
-                        <SelectContent>
-                          {BRANCH_OPTIONS.map((branch) => (
-                            <SelectItem key={branch.value} value={branch.value}>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{branch.label}</span>
-                                <span className="text-xs text-muted-foreground">{branch.location}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
+                      <SelectContent>
+  {BRANCH_OPTIONS.map((branch) => (
+    <SelectItem key={branch.value} value={branch.value}>
+      {branch.label} • {branch.value}
+    </SelectItem>
+  ))}
+</SelectContent>
                       </Select>
                     </div>
 

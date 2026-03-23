@@ -37,15 +37,15 @@ const STEPS = [
   { id: 5, name: "Verification" },
 ];
 
-// Branch options for Kenya
-const BRANCH_OPTIONS = [
-  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
-  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
-  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
-  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
-  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
-  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
-];
+// // Branch options for Kenya
+// const BRANCH_OPTIONS = [
+//   { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+//   { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+//   { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+//   { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+//   { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+//   { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
+// ];
 
 export const SellForeignCurrency = ({
   customer: propCustomer,
@@ -54,7 +54,20 @@ export const SellForeignCurrency = ({
   formFields,
 }) => {
   const navigate = useNavigate();
+  const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
+  const accounts = sessionUser?.account || [];
+  const branches = sessionUser?.branch || [];
+
+  /* FORMAT BRANCHES */
+  const BRANCH_OPTIONS = useMemo(() => {
+    return branches.map((b) => ({
+      value: b.branch_id,
+      label: b.branch_name,
+    }));
+  }, [branches]);
+ 
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
+
   const [customer, setCustomer] = useState(null);
 
   const [step, setStep] = useState(1);
@@ -80,8 +93,8 @@ export const SellForeignCurrency = ({
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
   /* SESSION USER */
-  const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
-  const accounts = sessionUser?.account || [];
+  // const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
+  // const accounts = sessionUser?.account || [];
 
   /* INIT CUSTOMER */
   useEffect(() => {
@@ -449,16 +462,13 @@ export const SellForeignCurrency = ({
                     <SelectTrigger className={errors.branch ? "border-destructive" : ""}>
                       <SelectValue placeholder="Choose a branch" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {BRANCH_OPTIONS.map((branch) => (
-                        <SelectItem key={branch.value} value={branch.value}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{branch.label}</span>
-                            <span className="text-xs text-muted-foreground">{branch.location}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                      <SelectContent>
+  {BRANCH_OPTIONS.map((branch) => (
+    <SelectItem key={branch.value} value={branch.value}>
+      {branch.label} • {branch.value}
+    </SelectItem>
+  ))}
+</SelectContent>
                   </Select>
                   {errors.branch && (
                     <p className="text-xs text-destructive">{errors.branch}</p>

@@ -64,26 +64,29 @@ const DELIVERY_METHODS = [
   { value: "printed", label: "Printed" },
 ];
 
-// Branch options for Kenya
-const BRANCH_OPTIONS = [
-  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
-  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
-  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
-  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
-  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
-  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
-];
 
 export default function StatementRequest({ customer: propCustomer, onBack, formFields }) {
   const navigate = useNavigate();
+  const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
+  const accounts = sessionUser?.account || [];
+  const branches = sessionUser?.branch || [];
+
+  /* FORMAT BRANCHES */
+  const BRANCH_OPTIONS = useMemo(() => {
+    return branches.map((b) => ({
+      value: b.branch_id,
+      label: b.branch_name,
+    }));
+  }, [branches]);
+
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
   const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
   
   /* SESSION USER */
-  const [sessionUser, setSessionUser] = useState({});
-  const [accounts, setAccounts] = useState([]);
+  // const [sessionUser, setSessionUser] = useState({});
+  // const [accounts, setAccounts] = useState([]);
   
   useEffect(() => {
     try {
@@ -498,16 +501,13 @@ export default function StatementRequest({ customer: propCustomer, onBack, formF
                   <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
                     <SelectValue placeholder="Choose a branch" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {BRANCH_OPTIONS.map((branch) => (
-                      <SelectItem key={branch.value} value={branch.value}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{branch.label}</span>
-                          <span className="text-xs text-muted-foreground">{branch.location}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                 <SelectContent>
+  {BRANCH_OPTIONS.map((branch) => (
+    <SelectItem key={branch.value} value={branch.value}>
+      {branch.label} • {branch.value}
+    </SelectItem>
+  ))}
+</SelectContent>
                 </Select>
                 {formErrors.branch && (
                   <p className="text-xs text-destructive">{formErrors.branch}</p>
