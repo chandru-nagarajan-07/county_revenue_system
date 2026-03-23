@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Search, KeyRound, Scan, CheckCircle, XCircle, TableProperties, QrCode, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader';
-import ServiceCard from '@/components/banking/ServiceCard';
+import ServiceCard from '@/components/banking/ServiceCardTeller';
 import { ChatPanel } from '@/components/banking/ChatPanel';
 import { CrossSellCard } from '@/components/banking/CrossSellCard';
 import { Html5QrcodeScanner } from 'html5-qrcode';
@@ -127,7 +127,7 @@ const DashboardTeller = () => {
     }
   }, [showScannerModal]);
 
-  // --- Category View ---
+  // --- Category View (remains for backward compatibility if needed) ---
   const openCategory = async (catKey) => {
     try {
       setLoading(true);
@@ -155,6 +155,19 @@ const DashboardTeller = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // --- NEW: Handler for category card click -> open QR scanner directly ---
+  const handleCategoryClick = (catKey, cat) => {
+    setSelectedCategory(catKey);
+    // Set context for approval modal (e.g., service name from category)
+    setSelectedApproval({
+      id: null,
+      service: cat.label,
+      serviceCharge: 0.0, // or fetch from API if needed
+    });
+    setShowScannerModal(true);
+    setScanResult(null);
   };
 
   // --- Navigation Handlers ---
@@ -209,12 +222,23 @@ const DashboardTeller = () => {
   const handleScan = (data) => {
     if (data) {
       setScanResult(data);
-      // Simulate fetching customer data from QR code
+      // Build approval data based on context (approval table or category click)
+      let serviceName = selectedApproval?.service || 'Service Approval';
+      let charge = selectedApproval?.serviceCharge?.toString() || '0.00';
+      
+      // If we have a selected category but no selectedApproval (from category click), use category label
+      if (selectedCategory && !selectedApproval?.id) {
+        const cat = serviceCategories[selectedCategory];
+        if (cat) {
+          serviceName = cat.label;
+        }
+      }
+
       const mockCustomerData = {
         customerId: 'CUST12345',
         customerName: 'John Doe',
-        charge: selectedApproval?.serviceCharge?.toString() || '25.00',
-        service: selectedApproval?.service || 'Wire Transfer',
+        charge: charge,
+        service: serviceName,
         date: new Date().toISOString().split('T')[0],
       };
       setApprovalData(mockCustomerData);
@@ -228,14 +252,22 @@ const DashboardTeller = () => {
   };
 
   const handleApprove = () => {
-    const updatedApprovals = approvals.map(item =>
-      item.id === selectedApproval?.id ? { ...item, approved: true } : item
-    );
-    setApprovals(updatedApprovals);
+    // If this approval came from the approval table, update its status
+    if (selectedApproval?.id) {
+      const updatedApprovals = approvals.map(item =>
+        item.id === selectedApproval.id ? { ...item, approved: true } : item
+      );
+      setApprovals(updatedApprovals);
+    }
     alert('Service approved successfully!');
     setShowApprovalModal(false);
     setSelectedApproval(null);
     setScanResult(null);
+    // Optionally reset category context if needed
+    if (selectedCategory) {
+      // We might want to keep category selected for further actions? For now clear it.
+      setSelectedCategory(null);
+    }
   };
 
   // --- Rendering ---
@@ -303,7 +335,7 @@ const DashboardTeller = () => {
             </motion.div>
           )}
 
-          {/* --- 2. CATEGORY VIEW --- */}
+          {/* --- 2. CATEGORY VIEW (kept for possible future use) --- */}
           {view === 'category' && selectedCategory && serviceCategories[selectedCategory] && (
             <motion.div
               key="category"
@@ -421,16 +453,22 @@ const DashboardTeller = () => {
                           transition={{ delay: i * 0.08 }}
                           className="relative"
                         >
-                          <ServiceCard
-                            variant="category"
-                            icon={cat.icon}
-                            title={cat.label}
-                            description={cat.description}
-                            onClick={() => openCategory(key)}
-                            
-                          />
-                          {/* Service Count Badge */}
-                          <div className="absolute top-3 right-3 bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                        <ServiceCard
+  variant="category"
+  icon={cat.icon}
+  title={cat.label}
+  description={cat.description}
+  onClick={() => navigate('/scanner', { 
+    state: { 
+      serviceData: {
+        service: cat.label,
+        charge: '0.00' // or fetch from API if needed
+      }
+    }
+  })}
+/>
+                          {/* Service Count Badge - Made larger */}
+                          <div className="absolute top-3 right-3 bg-blue-100 text-blue-800 text-base font-bold px-3 py-1 rounded-full shadow-sm">
                             {serviceCounts[key] || 0} services
                           </div>
                         </motion.div>
