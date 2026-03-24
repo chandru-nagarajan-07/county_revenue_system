@@ -184,6 +184,7 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
+  console.log("sessionUser", sessionUser);
  console.log("res", customer?.user_id || sessionUser?.user_id,
           "service fee", serviceFee,"branch", selectedBranch);
   const handleSubmit = async () => {
@@ -701,6 +702,7 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
 
           {/* STEP 6: AUTHORIZATION */}
           {step === 6 && (
+            
           <motion.div
   key="step6"
   variants={pageVariants}
@@ -709,7 +711,21 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
   exit="exit"
   className="space-y-6 max-w-lg mx-auto text-center py-10"
 >
-  {/* QR Image */}
+   <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
+                  <ThumbsUp className="h-8 w-8 text-accent" />
+                </div>
+                <h3 className="text-xl font-semibold">Request Complete</h3>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                  Your statement request has been processed successfully.
+                </p>  
+                <Button 
+                onClick={handleFinalComplete} 
+                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" 
+                disabled={loading}
+              >
+                {loading ? "Processing..." : "Finish"}
+              </Button>
+  {/* QR Image
   <div className="flex justify-center">
    
         <img src={qr} alt="AIDA" className="h-100 w-100 object-cover" />
@@ -726,7 +742,7 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
     disabled={loading}
   >
     {loading ? "Processing..." : "Finish"}
-  </Button>
+  </Button> */}
 </motion.div>
           )}
         </AnimatePresence>
