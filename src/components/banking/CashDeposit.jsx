@@ -493,23 +493,13 @@ export const CashDepositWorkflow = ({
               exit="exit"
               className="space-y-6 max-w-lg mx-auto text-center py-10"
             >
-              <div className="flex justify-center">
-                <img
-                  src={
-                    depositData?.qr_img
-                      ? `http://127.0.0.1:8000${depositData.qr_img}`
-                      : ""
-                  }
-                />
+               <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
+                <ThumbsUp className="h-8 w-8 text-accent" />
               </div>
-
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold">Scan QR Code</h3>
-                <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                  Scan this QR code to complete your cash deposit.
-                </p>
-              </div>
-
+              <h3 className="text-xl font-semibold">Request Complete</h3>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                Your statement request has been processed successfully.
+              </p>
               <Button
                 onClick={handleFinish}
                 disabled={loading}

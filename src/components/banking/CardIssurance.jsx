@@ -528,7 +528,14 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
   exit="exit"
   className="space-y-6 max-w-lg mx-auto text-center py-10"
 >
-  {/* QR Image */}
+   <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
+                <ThumbsUp className="h-8 w-8 text-accent" />
+              </div>
+              <h3 className="text-xl font-semibold">Request Complete</h3>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                Your statement request has been processed successfully.
+              </p>
+  {/* QR Image
   <div className="flex justify-center">
    
         <img src={qr} alt="AIDA" className="h-100 w-100 object-cover" />
@@ -537,7 +544,7 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
 
   <p className="text-sm text-muted-foreground max-w-xs mx-auto">
     Scan this QR code to proceed further.
-  </p>
+  </p> */}
 
   <Button
     onClick={handleFinalComplete}

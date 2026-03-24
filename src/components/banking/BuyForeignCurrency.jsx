@@ -644,7 +644,14 @@ export const BuyForeignCurrency = ({
               exit="exit"
               className="space-y-6 max-w-lg mx-auto text-center py-10"
             >
-              <div className="flex justify-center">
+               <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
+                <ThumbsUp className="h-8 w-8 text-accent" />
+              </div>
+              <h3 className="text-xl font-semibold">Request Complete</h3>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                Your statement request has been processed successfully.
+              </p>
+              {/* <div className="flex justify-center">
                 <img src={qr} alt="AIDA" className="h-64 w-64 object-cover" />
               </div>
 
@@ -653,9 +660,9 @@ export const BuyForeignCurrency = ({
                 <p className="text-sm text-muted-foreground max-w-xs mx-auto">
                   Scan this QR code to complete your foreign currency purchase.
                 </p>
-              </div>
+              </div> */}
 
-              {/* <div className="rounded-xl border bg-white p-5 shadow-sm text-left space-y-3">
+              <div className="rounded-xl border bg-white p-5 shadow-sm text-left space-y-3">
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   Transaction Summary
                 </h4>
@@ -673,7 +680,7 @@ export const BuyForeignCurrency = ({
                     <span className="font-medium">1 {selectedCurrency?.code} = {exchangeRate} KES</span>
                   </div>
                 </div>
-              </div> */}
+              </div>
 
               <Button
                 onClick={handleFinish}

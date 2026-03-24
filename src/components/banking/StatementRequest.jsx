@@ -171,6 +171,7 @@ export default function StatementRequest({ customer: propCustomer, onBack, formF
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
+    console.log("sessionUser", sessionUser);
   
   console.log("res", customer?.user_id || sessionUser?.user_id,
           "service fee", serviceFee,
@@ -675,67 +676,67 @@ export default function StatementRequest({ customer: propCustomer, onBack, formF
 
           {/* STEP 6: AUTHORIZATION */}
           {step === 6 && (
-            // <motion.div key="step6" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6 max-w-lg mx-auto text-center py-10">
-            //   <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-            //     <ThumbsUp className="h-8 w-8 text-accent" />
-            //   </div>
-            //   <h3 className="text-xl font-semibold">Request Complete</h3>
-            //   <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-            //     Your statement request has been processed successfully.
-            //   </p>
+            <motion.div key="step6" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6 max-w-lg mx-auto text-center py-10">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
+                <ThumbsUp className="h-8 w-8 text-accent" />
+              </div>
+              <h3 className="text-xl font-semibold">Request Complete</h3>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                Your statement request has been processed successfully.
+              </p>
               
-            //   {requestId && (
-            //     <div className="rounded-xl border bg-white p-4 shadow-sm text-left">
-            //       <div className="flex justify-between text-sm">
-            //         <span className="text-gray-500">Request ID</span>
-            //         <span className="font-mono text-xs font-medium">{requestId}</span>
-            //       </div>
-            //       <div className="flex justify-between text-sm mt-2">
-            //         <span className="text-gray-500">Delivery</span>
-            //         <span className="font-medium">{stmtDelivery === "email" ? "Email" : "Printed"}</span>
-            //       </div>
-            //       <div className="flex justify-between text-sm mt-2">
-            //         <span className="text-gray-500">Branch</span>
-            //         <span className="font-medium">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</span>
-            //       </div>
-            //     </div>
-            //   )}
+              {requestId && (
+                <div className="rounded-xl border bg-white p-4 shadow-sm text-left">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Request ID</span>
+                    <span className="font-mono text-xs font-medium">{requestId}</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-2">
+                    <span className="text-gray-500">Delivery</span>
+                    <span className="font-medium">{stmtDelivery === "email" ? "Email" : "Printed"}</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-2">
+                    <span className="text-gray-500">Branch</span>
+                    <span className="font-medium">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</span>
+                  </div>
+                </div>
+              )}
 
-            //   <Button 
-            //     onClick={handleFinalComplete} 
-            //     className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" 
-            //     disabled={loading}
-            //   >
-            //     {loading ? "Processing..." : "Finish"}
-            //   </Button>
-            // </motion.div>
-               <motion.div
-  key="step6"
-  variants={pageVariants}
-  initial="initial"
-  animate="animate"
-  exit="exit"
-  className="space-y-6 max-w-lg mx-auto text-center py-10"
->
-  {/* QR Image */}
-  <div className="flex justify-center">
+              <Button 
+                onClick={handleFinalComplete} 
+                className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" 
+                disabled={loading}
+              >
+                {loading ? "Processing..." : "Finish"}
+              </Button>
+            </motion.div>
+//                <motion.div
+//   key="step6"
+//   variants={pageVariants}
+//   initial="initial"
+//   animate="animate"
+//   exit="exit"
+//   className="space-y-6 max-w-lg mx-auto text-center py-10"
+// >
+//   {/* QR Image */}
+//   <div className="flex justify-center">
    
-        <img src={qr} alt="AIDA" className="h-100 w-100 object-cover" />
+//         <img src={qr} alt="AIDA" className="h-100 w-100 object-cover" />
     
-  </div>
+//   </div>
 
-  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-    Scan this QR code to proceed further.
-  </p>
+//   <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+//     Scan this QR code to proceed further.
+//   </p>
 
-  <Button
-    onClick={handleFinalComplete}
-    className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
-    disabled={loading}
-  >
-    {loading ? "Processing..." : "Finish"}
-  </Button>
-</motion.div>
+//   <Button
+//     onClick={handleFinalComplete}
+//     className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
+//     disabled={loading}
+//   >
+//     {loading ? "Processing..." : "Finish"}
+//   </Button>
+// </motion.div>
           )}
         </AnimatePresence>
       </div>
