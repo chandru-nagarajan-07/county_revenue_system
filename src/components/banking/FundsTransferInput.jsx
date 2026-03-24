@@ -169,7 +169,7 @@ export function FundsTransferInput({ customer: propCustomer, onBack, formFields=
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/api/fund-transfer/",
+        "https://snapsterbe.techykarthikbms.com/api/fund-transfer/",
         {
           method: "POST",
           headers: {
