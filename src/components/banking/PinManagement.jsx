@@ -41,7 +41,7 @@ const STEPS = [
 async function fetchCustomerCards(accountNumber) {
   try {
     const response = await fetch(
-      `https://snapsterbe.techykarthikbms.com/api/cards/?account=${accountNumber}`
+      `http://127.0.0.1:8000/api/cards/?account=${accountNumber}`
     );
 
     if (!response.ok) {
@@ -237,7 +237,7 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
 
       console.log("Sending PIN management request:", payload);
 
-      const response = await fetch("https://snapsterbe.techykarthikbms.com/api/card-pins/", {
+      const response = await fetch("http://127.0.0.1:8000/api/card-pins/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

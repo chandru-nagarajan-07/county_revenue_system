@@ -59,7 +59,7 @@ export const TransactionWorkflow = ({
 
     // Example backend call
     
-    fetch("https://snapsterbe.techykarthikbms.com/create_api_formfields1/", {
+    fetch("http://127.0.0.1:8000/create_api_formfields1/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
