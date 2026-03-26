@@ -32,7 +32,7 @@ const Register = () => {
   useEffect(() => {
     const fetchBranches = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/branches/");
+        const response = await fetch("https://snapsterbe.techykarthikbms.com/api/branches/");
         const data = await response.json();
         console.log("branches:", data);
         setBranches(data);
@@ -114,7 +114,7 @@ const Register = () => {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/api/sign-up/",
+        "https://snapsterbe.techykarthikbms.com/api/sign-up/",
         {
           method: "POST",
           headers: {

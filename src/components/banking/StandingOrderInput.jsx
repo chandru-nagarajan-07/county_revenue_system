@@ -142,7 +142,7 @@ export default function StandingOrderWorkflow({ customer: propCustomer, onBack, 
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/api/standing-orders/",
+        "https://snapsterbe.techykarthikbms.com/api/standing-orders/",
         {
           method: "POST",
           headers: {
@@ -193,7 +193,7 @@ export default function StandingOrderWorkflow({ customer: propCustomer, onBack, 
     setLoading(false);
     alert("Standing Order Created Successfully");
     if (onComplete) onComplete();
-    if (onBack) onBack();
+    
   };
 
   /* ANIMATION VARIANTS */
