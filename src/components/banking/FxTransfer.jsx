@@ -36,7 +36,7 @@ const STEPS = [
 ];
 
 // API Base URL - hardcoded to fix the process is not defined error
-const API_BASE_URL = "https://snapsterbe.techykarthikbms.com";
+const API_BASE_URL = "http://127.0.0.1:8000";
 
 // // Branch options for Kenya
 // const BRANCH_OPTIONS = [

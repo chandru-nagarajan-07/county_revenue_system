@@ -159,7 +159,8 @@ export function AccountModificationInput({ customer: propCustomer, onBack, formF
 
 
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
-  const [customer, setCustomer] = useState(null);
+ const [customer, setCustomer] = useState(null);
+ const [stmtEmail, setStmtEmail] = useState("");
 
   const [step, setStep] = useState(1);
 
@@ -332,7 +333,7 @@ Details: ${JSON.stringify(details)}
       console.log("Submitting payload:", payload);
 
       const res = await fetch(
-        "https://snapsterbe.techykarthikbms.com/api/account-modification-requests/",
+        "http://127.0.0.1:8000/api/account-modification-requests/",
         {
           method: "POST",
           headers: {

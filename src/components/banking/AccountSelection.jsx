@@ -8,7 +8,7 @@ export const AccountSelection = ({ customer, onContinue }) => {
 
   // FETCH ACCOUNT TYPES
   useEffect(() => {
-    fetch("https://snapsterbe.techykarthikbms.com/api/account-types/")
+    fetch("http://127.0.0.1:8000/api/account-types/")
       .then((res) => res.json())
       .then((data) => setAccountTypes(data))
       .catch((err) =>
@@ -23,7 +23,7 @@ export const AccountSelection = ({ customer, onContinue }) => {
     setSelectedAccount(type);
     setSelectedAddons([]);
 
-    fetch(`https://snapsterbe.techykarthikbms.com/account-addons/${type.code}/`)
+    fetch(`http://127.0.0.1:8000/account-addons/${type.code}/`)
       .then((res) => res.json())
       .then((data) => {
         console.log("Addons API Response:", data);

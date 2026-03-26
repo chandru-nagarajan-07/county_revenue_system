@@ -42,7 +42,7 @@ async function fetchCustomerCards(accountNumber) {
   try {
 
     const response = await fetch(
-      `https://snapsterbe.techykarthikbms.com/api/cards/?account=${accountNumber}`
+      `http://127.0.0.1:8000/api/cards/?account=${accountNumber}`
     );
 
     if (!response.ok) {
@@ -170,7 +170,7 @@ function getExpiryDate(created_at) {
     setLoading(true);
 
     try {
-      const response = await fetch("https://snapsterbe.techykarthikbms.com/api/card-replacements/", {
+      const response = await fetch("http://127.0.0.1:8000/api/card-replacements/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
