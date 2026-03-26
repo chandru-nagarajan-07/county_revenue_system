@@ -125,7 +125,6 @@ export const CashDepositWorkflow = ({
       });
 
       const data = await response.json();
-      setDepositData(data);
       console.log('hhjggfhf',data)
 
       if (!response.ok) {

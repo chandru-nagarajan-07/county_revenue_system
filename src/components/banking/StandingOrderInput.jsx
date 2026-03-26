@@ -193,7 +193,7 @@ export default function StandingOrderWorkflow({ customer: propCustomer, onBack, 
     setLoading(false);
     alert("Standing Order Created Successfully");
     if (onComplete) onComplete();
-    if (onBack) onBack();
+    
   };
 
   /* ANIMATION VARIANTS */

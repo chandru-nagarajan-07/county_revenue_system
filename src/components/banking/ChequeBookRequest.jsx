@@ -62,14 +62,14 @@ const DELIVERY_OPTIONS = [
 ];
 
 // Branch options for Kenya
-const BRANCH_OPTIONS = [
-  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
-  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
-  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
-  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
-  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
-  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
-];
+// const BRANCH_OPTIONS = [
+//   { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
+//   { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
+//   { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
+//   { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
+//   { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
+//   { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
+// ];
 
 // Helper function to get currency symbol
 const getCurrencySymbol = (currencyId) => {
@@ -86,32 +86,44 @@ const getCurrencySymbol = (currencyId) => {
 
 export default function ChequeBookRequest({ customer: propCustomer, onBack, formFields }) {
   const navigate = useNavigate();
+  const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
+  const accounts = sessionUser?.account || [];
+  const branches = sessionUser?.branch || [];
+
+  /* FORMAT BRANCHES */
+  const BRANCH_OPTIONS = useMemo(() => {
+    return branches.map((b) => ({
+      value: b.branch_id,
+      label: b.branch_name,
+    }));
+  }, [branches]);
+
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
  const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
   /* SESSION USER */
-  const [sessionUser, setSessionUser] = useState({});
-  const [accounts, setAccounts] = useState([]);
+  // const [sessionUser, setSessionUser] = useState({});
+  // const [accounts, setAccounts] = useState([]);
   
-  useEffect(() => {
-    try {
-      const userData = sessionStorage.getItem("userData1");
+  // useEffect(() => {
+  //   try {
+  //     const userData = sessionStorage.getItem("userData1");
       
-      if (userData) {
-        const parsed = JSON.parse(userData);
-        setSessionUser(parsed);
+  //     if (userData) {
+  //       const parsed = JSON.parse(userData);
+  //       setSessionUser(parsed);
         
-        if (parsed.account && Array.isArray(parsed.account)) {
-          setAccounts(parsed.account);
-        }
-      }
-    } catch (error) {
-      console.error("Error parsing session user:", error);
-      setSessionUser({});
-      setAccounts([]);
-    }
-  }, []);
+  //       if (parsed.account && Array.isArray(parsed.account)) {
+  //         setAccounts(parsed.account);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("Error parsing session user:", error);
+  //     setSessionUser({});
+  //     setAccounts([]);
+  //   }
+  // }, []);
 
   /* STATE */
   const [customer, setCustomer] = useState(null);
@@ -494,16 +506,13 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
                     <SelectTrigger className={formErrors.branch ? "border-destructive" : ""}>
                       <SelectValue placeholder="Choose a branch for collection" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {BRANCH_OPTIONS.map((branch) => (
-                        <SelectItem key={branch.value} value={branch.value}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{branch.label}</span>
-                            <span className="text-xs text-muted-foreground">{branch.location}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                     <SelectContent>
+  {BRANCH_OPTIONS.map((branch) => (
+    <SelectItem key={branch.value} value={branch.value}>
+      {branch.label} • {branch.value}
+    </SelectItem>
+  ))}
+</SelectContent>
                   </Select>
                   {formErrors.branch && (
                     <p className="text-xs text-destructive">{formErrors.branch}</p>

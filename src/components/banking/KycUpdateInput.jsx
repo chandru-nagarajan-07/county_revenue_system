@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import qr from '@/assets/qr.png';
 import {
@@ -46,16 +46,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-// Branch options for Kenya
-const BRANCH_OPTIONS = [
-  { value: "kenya", label: "Kenya - Head Office", location: "Nairobi, Kenya" },
-  { value: "nairobi", label: "Nairobi - CBD Branch", location: "Nairobi, Kenya" },
-  { value: "kilimini", label: "Kilimini - Mombasa Branch", location: "Mombasa, Kenya" },
-  { value: "westlands", label: "Westlands - Nairobi", location: "Nairobi, Kenya" },
-  { value: "industrial_area", label: "Industrial Area - Nairobi", location: "Nairobi, Kenya" },
-  { value: "nyali", label: "Nyali - Mombasa", location: "Mombasa, Kenya" },
-];
 
 /* CONSTANTS */
 const STEPS = [
@@ -166,19 +156,28 @@ const pageVariants = {
 };
 
 /* LEGAL ID FORM COMPONENT */
-function LegalIdForm({ customer, onBack, onSubmit, formNumber, totalForms, isLastForm, initialBranch }) {
+function LegalIdForm({
+  customer,
+  onBack,
+  onSubmit,
+  formNumber,
+  totalForms,
+  isLastForm,
+  initialBranch,
+  branchOptions
+}) {
   const [formData, setFormData] = useState({
+    branch: initialBranch || '',
     idType: 'national_id',
-    idNumber: customer?.idNumber || '',
+    idNumber: '',
     fullName: customer?.fullName || '',
     dateOfBirth: '',
     issueDate: '',
     expiryDate: '',
     placeOfIssue: '',
-    branch: initialBranch || '',
     frontImage: null,
     backImage: null,
-    selfieImage: null,
+    selfieImage: null
   });
 
   const [errors, setErrors] = useState({});
@@ -301,12 +300,9 @@ function LegalIdForm({ customer, onBack, onSubmit, formNumber, totalForms, isLas
                   <SelectValue placeholder="Choose branch for KYC verification" />
                 </SelectTrigger>
                 <SelectContent>
-                  {BRANCH_OPTIONS.map((branch) => (
+                  {branchOptions.map((branch) => (
                     <SelectItem key={branch.value} value={branch.value}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{branch.label}</span>
-                        <span className="text-xs text-muted-foreground">{branch.location}</span>
-                      </div>
+                      {branch.label} • {branch.value}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -531,6 +527,13 @@ function BiometricForm({ customer, onBack, onSubmit, formNumber, totalForms, isL
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fingerprintScanning, setFingerprintScanning] = useState(false);
   const [photoCapturing, setPhotoCapturing] = useState(false);
+
+  const BRANCH_OPTIONS = [
+    { value: 'BR001', label: 'Head Office', location: 'Nairobi CBD' },
+    { value: 'BR002', label: 'Mombasa Branch', location: 'Mombasa' },
+    { value: 'BR003', label: 'Kisumu Branch', location: 'Kisumu' },
+    { value: 'BR004', label: 'Nakuru Branch', location: 'Nakuru' }
+  ];
 
   const handleBranchChange = (value) => {
     setFormData(prev => ({ ...prev, branch: value }));
@@ -810,6 +813,13 @@ function KraPinForm({ customer, onBack, onSubmit, formNumber, totalForms, isLast
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const BRANCH_OPTIONS = [
+    { value: 'BR001', label: 'Head Office', location: 'Nairobi CBD' },
+    { value: 'BR002', label: 'Mombasa Branch', location: 'Mombasa' },
+    { value: 'BR003', label: 'Kisumu Branch', location: 'Kisumu' },
+    { value: 'BR004', label: 'Nakuru Branch', location: 'Nakuru' }
+  ];
+
   const handleBranchChange = (value) => {
     setFormData(prev => ({ ...prev, branch: value }));
     if (errors.branch) {
@@ -1007,6 +1017,13 @@ function AccountMandatesForm({ customer, onBack, onSubmit, formNumber, totalForm
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const BRANCH_OPTIONS = [
+    { value: 'BR001', label: 'Head Office', location: 'Nairobi CBD' },
+    { value: 'BR002', label: 'Mombasa Branch', location: 'Mombasa' },
+    { value: 'BR003', label: 'Kisumu Branch', location: 'Kisumu' },
+    { value: 'BR004', label: 'Nakuru Branch', location: 'Nakuru' }
+  ];
 
   const mandateTypes = [
     { value: 'sole', label: 'Sole Signatory' },
@@ -1258,7 +1275,7 @@ function AccountMandatesForm({ customer, onBack, onSubmit, formNumber, totalForm
   );
 }
 
-/* MAIN COMPONENT - Modified to work like DenominationExchange */
+/* MAIN COMPONENT */
 export function KycUpdateInput({ 
   onBack = () => {
     console.log('Default onBack handler');
@@ -1271,7 +1288,7 @@ export function KycUpdateInput({
   const [apiError, setApiError] = useState(null);
   const [isBackendReachable, setIsBackendReachable] = useState(true);
   
-  /* GET CUSTOMER AND SESSION DATA - Like DenominationExchange */
+  /* GET CUSTOMER AND SESSION DATA */
   let sessionUser = {};
   try {
     sessionUser = JSON.parse(sessionStorage.getItem("userData1")) || {};
@@ -1279,7 +1296,7 @@ export function KycUpdateInput({
     sessionUser = {};
   }
   
-  // Build customer object from session data (like in DenominationExchange)
+  // Build customer object from session data
   const customer = {
     fullName: sessionUser?.first_name + ' ' + (sessionUser?.last_name || ''),
     customerId: sessionUser?.user_id || sessionUser?.customer_id || '',
@@ -1305,6 +1322,15 @@ export function KycUpdateInput({
   const [formDataList, setFormDataList] = useState([]);
   const [officerNotes, setOfficerNotes] = useState("");
   const [loading, setLoading] = useState(false);
+
+  /* BRANCH OPTIONS from session */
+  const BRANCH_OPTIONS = useMemo(() => {
+    const branches = sessionUser?.branch || [];
+    return branches.map((b) => ({
+      value: b.branch_id,
+      label: b.branch_name,
+    }));
+  }, [sessionUser]);
 
   /* Check backend connectivity on mount */
   useEffect(() => {
@@ -1398,6 +1424,7 @@ export function KycUpdateInput({
             totalForms={totalForms}
             isLastForm={isLastForm}
             initialBranch=""
+            branchOptions={BRANCH_OPTIONS}
           />
         );
       case 'biometric':
@@ -1457,7 +1484,6 @@ export function KycUpdateInput({
         return;
       }
 
-
       const apiResponses = [];
       
       for (let i = 0; i < formDataList.length; i++) {
@@ -1470,7 +1496,6 @@ export function KycUpdateInput({
 
         payload.append("update_type", artefactId?.toUpperCase().replace('-', '_') || 'LEGAL_ID');
         payload.append("branch", data.branch || '');
-        // Use session user ID like in DenominationExchange
         payload.append("user_id", customer?.user_id || sessionUser?.user_id);
         payload.append("service_amount", "0");
         payload.append("customer_id", customer?.customerId || sessionUser?.user_id);
@@ -1551,7 +1576,6 @@ export function KycUpdateInput({
 
       alert('KYC Update completed successfully!');
       
-      // Navigate to dashboard after alert
       navigate('/dashboard');
 
     } catch (err) {
@@ -1574,9 +1598,6 @@ export function KycUpdateInput({
       }
     } finally {
       setLoading(false);
-
-
-  
     }
   };
 
@@ -1594,7 +1615,7 @@ export function KycUpdateInput({
     }
   };
 
-  // Auto-advance Step 2 -> 3 like DenominationExchange
+  // Auto-advance Step 2 -> 3
   useEffect(() => {
     if (workflowStep === 2) {
       const timer = setTimeout(() => setWorkflowStep(3), 1500);
@@ -1612,7 +1633,7 @@ export function KycUpdateInput({
           localStorage.removeItem("customer");
           sessionStorage.removeItem("userData1");
           navigate("/");
-        }}
+        }} 
       />
 
       {/* Error Banner */}
@@ -1960,22 +1981,13 @@ export function KycUpdateInput({
               exit="exit"
               className="space-y-6 max-w-lg mx-auto text-center py-10"
             >
-              {/* QR Image */}
-              {/* <div className="flex justify-center">
-                <img src={qr} alt="AIDA Verification QR Code" className="h-48 w-48 object-cover" />
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
+                <ThumbsUp className="h-8 w-8 text-accent" />
               </div>
-
+              <h3 className="text-xl font-semibold">Request Complete</h3>
               <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                Scan this QR code with your mobile device to complete the verification process.
+                Your KYC update request has been processed successfully.
               </p>
-               */}
-                  <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-                               <ThumbsUp className="h-8 w-8 text-accent" />
-                             </div>
-                             <h3 className="text-xl font-semibold">Request Complete</h3>
-                             <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                               Your statement request has been processed successfully.
-                             </p>
               <div className="space-y-3">
                 <Button 
                   onClick={handleFinalComplete} 

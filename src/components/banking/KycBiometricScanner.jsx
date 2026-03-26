@@ -9,7 +9,7 @@ export function KycBiometricScanner({ onComplete }) {
 
   const [fingerprintData, setFingerprintData] = useState(null);
   const [photo, setPhoto] = useState(null);
-
+  
   const simulateScan = useCallback((type) => {
     setStep(type === 'fingerprint' ? 'scanning-fingerprint' : 'scanning-photo');
     setProgress(0);

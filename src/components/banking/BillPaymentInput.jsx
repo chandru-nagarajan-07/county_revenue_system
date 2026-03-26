@@ -190,7 +190,6 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, f
     setLoading(false);
     alert("Bill Payment Successful");
     if (onComplete) onComplete();
-    if (onBack) onBack();
   };
 
   /* ANIMATION VARIANTS */
