@@ -61,7 +61,7 @@ const STATEMENT_FORMATS = [
 
 const DELIVERY_METHODS = [
   { value: "email", label: "Email" },
-  { value: "printed", label: "Printed" },
+  { value: "branch", label: "Branch" },
 ];
 
 

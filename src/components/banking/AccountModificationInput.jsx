@@ -159,7 +159,8 @@ export function AccountModificationInput({ customer: propCustomer, onBack, formF
 
 
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
-  const [customer, setCustomer] = useState(null);
+ const [customer, setCustomer] = useState(null);
+ const [stmtEmail, setStmtEmail] = useState("");
 
   const [step, setStep] = useState(1);
 
