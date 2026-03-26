@@ -75,7 +75,7 @@ const TransactionPage = () => {
         setLoadingFields(true);
 
         const response = await fetch(
-          `https://snapsterbe.techykarthikbms.com/view_api_formfields_by_service/${service.code}/`
+          `http://127.0.0.1:8000/view_api_formfields_by_service/${service.code}/`
         );
 
         const data = await response.json();

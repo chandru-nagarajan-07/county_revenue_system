@@ -108,7 +108,7 @@ export const CashDepositWorkflow = ({
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("https://snapsterbe.techykarthikbms.com/api/cash-deposits/", {
+      const response = await fetch("http://127.0.0.1:8000/api/cash-deposits/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -125,7 +125,6 @@ export const CashDepositWorkflow = ({
       });
 
       const data = await response.json();
-      setDepositData(data);
       console.log('hhjggfhf',data)
 
       if (!response.ok) {
