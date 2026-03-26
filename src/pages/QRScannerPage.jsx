@@ -212,7 +212,7 @@ const QRScannerPage = () => {
       return;
     }
     alert('Service approved successfully!');
-    navigate('/profile', {
+    navigate('/profilepage', {
       state: {
         customerId: approvalData.customerId,
         customerName: approvalData.customerName,
