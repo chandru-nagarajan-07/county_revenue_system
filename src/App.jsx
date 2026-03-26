@@ -20,6 +20,7 @@ import TransactionPage from "./pages/TransactionPage";
 import DashboardTeller from "./pages/DashboardTeller";
 import QRScannerPage from "./pages/QRScannerPage";
 import ProfilePage from "./pages/ProfilePage";
+import CartPage from "./pages/Cart";
 
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/docs" element={<Documentation />} />
+          <Route path="/cart" element={<CartPage />} />
           <Route path="/account" element={<AccountCreation />} />
           <Route path="/reset" element={<ResetPassword />} />
           <Route path="/profile" element={<Profile />} />

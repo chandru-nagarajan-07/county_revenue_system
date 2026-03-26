@@ -113,25 +113,24 @@ const Register = () => {
     if (!validate()) return;
 
     try {
-      const response = await fetch(
-        "https://snapsterbe.techykarthikbms.com/api/sign-up/",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            phone: formData.phone,
-            email: formData.email,
-            userName: formData.userName,
-            branch: formData.branch,
-          }),
-        }
-      );
 
-      const data = await response.json();
+      const response = await fetch("http://127.0.0.1:8000/api/sign-up/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          email: formData.email,
+          userName: formData.userName,
+          branch: formData.branch,
+        }),
+      });
+
+      const data = await response.json(); 
+
 
       if (!response.ok) {
         alert("Registration Failed");

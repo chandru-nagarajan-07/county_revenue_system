@@ -103,7 +103,7 @@ export const TransactionWorkflow = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    fetch("https://snapsterbe.techykarthikbms.com/api/account-types/")
+    fetch("http://127.0.0.1:8000/api/account-types/")
       .then((res) => res.json())
       .then((data) => setAccountTypes(data))
       .catch((err) => console.error("Error fetching account types:", err));
@@ -129,7 +129,7 @@ export const TransactionWorkflow = ({
     }
 
     try {
-      const res = await fetch(`https://snapsterbe.techykarthikbms.com/account-addons/${account.code}/`);
+      const res = await fetch(`http://127.0.0.1:8000/account-addons/${account.code}/`);
       const data = await res.json();
 
       setAddonsMap((prev) => ({
@@ -202,7 +202,7 @@ export const TransactionWorkflow = ({
     setIsSubmitting(true);
 
     try {
-      const testResponse = await fetch("https://snapsterbe.techykarthikbms.com/api/service-transaction/", {
+      const testResponse = await fetch("http://127.0.0.1:8000/api/service-transaction/", {
         method: "OPTIONS",
       }).catch((err) => {
         console.error("Network error - cannot reach API:", err);
@@ -237,7 +237,7 @@ export const TransactionWorkflow = ({
         console.log("Creating Transaction with payload:", payload);
 
         try {
-          const response = await fetch("https://snapsterbe.techykarthikbms.com/api/service-transaction/", {
+          const response = await fetch("http://127.0.0.1:8000/api/service-transaction/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),

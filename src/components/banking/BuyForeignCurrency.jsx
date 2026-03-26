@@ -101,7 +101,7 @@ export const BuyForeignCurrency = ({
     setCurrencyError(null);
     
     try {
-      const response = await fetch("https://snapsterbe.techykarthikbms.com/api/currencies/", {
+      const response = await fetch("http://127.0.0.1:8000/api/currencies/", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -199,7 +199,7 @@ export const BuyForeignCurrency = ({
     setIsSubmitting(true);
     try {
       // Post the foreign currency purchase transaction
-      const response = await fetch("https://snapsterbe.techykarthikbms.com/api/fx-buy/", {
+      const response = await fetch("http://127.0.0.1:8000/api/fx-buy/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

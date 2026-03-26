@@ -1,59 +1,64 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CheckCircle, User, DollarSign, Calendar, FileText } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, User, DollarSign, Calendar, FileText, RefreshCw } from 'lucide-react';
 import { DashboardHeader } from '@/components/banking/DashboardHeader';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const passedData = location.state?.approvalData;
 
-  // Dummy data for fallback
-  const dummyData = {
-    id: 'dummy-1',
-    customerId: 'CUST12345',
-    customerName: 'John Doe',
-    charge: '0.00',
-    service: 'Service Preview',
-    date: new Date().toISOString().split('T')[0],
-  };
+  // Mock data for pending approvals
+  const initialPendingApprovals = [
+    {
+      id: 1,
+      customerId: 'CUST12345',
+      customerName: 'John Doe',
+      service: 'Wire Transfer',
+      charge: '150.00',
+      date: '2025-03-25',
+    },
+    {
+      id: 2,
+      customerId: 'CUST67890',
+      customerName: 'Jane Smith',
+      service: 'Account Opening',
+      charge: '0.00',
+      date: '2025-03-26',
+    },
+    {
+      id: 3,
+      customerId: 'CUST11223',
+      customerName: 'Robert Johnson',
+      service: 'Loan Application',
+      charge: '250.00',
+      date: '2025-03-24',
+    },
+  ];
 
-  // Use passed data if available, otherwise use dummy data
-  const approvalData = passedData || dummyData;
+  const [pendingApprovals, setPendingApprovals] = useState(initialPendingApprovals);
 
-  // Header state (replicated from DashboardTeller for consistency)
+  // Header state
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
-  const handleApprove = () => {
-    if (!passedData) {
-      // If it's dummy data, just show a warning or do nothing
-      alert('This is a preview. No actual approval will be recorded.');
-      navigate('/dashboard');
-      return;
-    }
-    // Simulate API call
-    console.log('Approving:', approvalData);
-
-    alert('Service approved successfully!');
-
-    navigate('/dashboard', {
-      state: {
-        updatedApproval: {
-          id: approvalData?.id,
-          approved: true,
-        },
-      },
-    });
+  const handleApprove = (id) => {
+    // In a real app, you'd call an API here
+    console.log(`Approving approval with id ${id}`);
+    setPendingApprovals((prev) => prev.filter((item) => item.id !== id));
+    alert(`Approval for ID ${id} has been approved.`);
   };
 
-  const handleCancel = () => {
+  const handleReject = (id) => {
+    console.log(`Rejecting approval with id ${id}`);
+    setPendingApprovals((prev) => prev.filter((item) => item.id !== id));
+    alert(`Approval for ID ${id} has been rejected.`);
+  };
+
+  const handleBack = () => {
     navigate('/dash');
   };
 
   const handleResetPassword = () => {
     setNavDropdownOpen(false);
-    // Optionally navigate to reset password view or show modal
     alert('Reset password functionality would go here.');
   };
 
@@ -62,35 +67,18 @@ const ProfilePage = () => {
     navigate('/');
   };
 
-  /* ================= FALLBACK UI ================= */
-
-  if (!approvalData) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <div className="bg-white p-6 rounded-xl shadow text-center">
-          <p className="text-lg font-semibold">No profile data found</p>
-          <p className="text-sm text-gray-500 mt-2">
-            Please select a record from dashboard first.
-          </p>
-
-          <Button
-            onClick={() => navigate('/dashboard')}
-            className="mt-4"
-          >
-            Go to Dashboard
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  /* ================= MAIN UI ================= */
+  // Helper to refresh (in case you want to reload from API)
+  const handleRefresh = () => {
+    // In a real app, fetch from API again
+    alert('Refreshing list...');
+    // For demo, we just reset to initial list
+    setPendingApprovals(initialPendingApprovals);
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
-      {/* Consistent header */}
       <DashboardHeader
-        customerName={approvalData.customerName}
+        customerName="Teller"
         isDropdownOpen={navDropdownOpen}
         setIsDropdownOpen={setNavDropdownOpen}
         onResetPassword={handleResetPassword}
@@ -98,93 +86,89 @@ const ProfilePage = () => {
       />
 
       <main className="flex-1 p-4 md:p-8">
-        <div className="max-w-2xl mx-auto w-full">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCancel}
-            className="mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" /> Back to Dashboard
-          </Button>
+        <div className="max-w-6xl mx-auto w-full">
+          <div className="flex justify-between items-center mb-4">
+            <Button variant="outline" size="sm" onClick={handleBack}>
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Dashboard
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+            </Button>
+          </div>
 
           <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
             <div className="bg-blue-50 px-6 py-4 border-b">
               <h2 className="text-xl font-semibold text-blue-800 flex items-center gap-2">
-                <User className="h-5 w-5" /> Customer Profile
+                <User className="h-5 w-5" /> Service Cart for John
               </h2>
-              <p className="text-sm text-blue-600 mt-1">
-                {passedData
-                  ? 'Review the details and approve the service'
-                  : 'This is a preview with sample data'}
-              </p>
+              {/* <p className="text-sm text-blue-600 mt-1">
+                Review and take action on customer requests
+              </p> */}
             </div>
 
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-500 flex items-center gap-1">
-                    <User className="h-4 w-4" /> Customer ID
-                  </label>
-                  <p className="text-lg font-semibold text-slate-800">
-                    {approvalData.customerId}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-500 flex items-center gap-1">
-                    <User className="h-4 w-4" /> Customer Name
-                  </label>
-                  <p className="text-lg font-semibold text-slate-800">
-                    {approvalData.customerName}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-500 flex items-center gap-1">
-                    <DollarSign className="h-4 w-4" /> Charge
-                  </label>
-                  <p className="text-lg font-semibold text-green-600">
-                    ${approvalData.charge}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-500 flex items-center gap-1">
-                    <FileText className="h-4 w-4" /> Service
-                  </label>
-                  <p className="text-lg font-semibold text-slate-800">
-                    {approvalData.service}
-                  </p>
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-slate-500 flex items-center gap-1">
-                    <Calendar className="h-4 w-4" /> Date
-                  </label>
-                  <p className="text-lg font-semibold text-slate-800">
-                    {approvalData.date}
-                  </p>
-                </div>
+            {pendingApprovals.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                No pending approvals at the moment.
               </div>
-
-              <div className="flex gap-4 pt-4 border-t">
-                <Button
-                  onClick={handleApprove}
-                  className="flex-1 bg-green-600 hover:bg-green-700"
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" /> Approve Service
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleCancel}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="px-6 py-3 text-left font-medium text-gray-600">Customer ID</th>
+                      <th className="px-6 py-3 text-left font-medium text-gray-600">Customer Name</th>
+                      <th className="px-6 py-3 text-left font-medium text-gray-600">Service</th>
+                      <th className="px-6 py-3 text-left font-medium text-gray-600">Charge</th>
+                      <th className="px-6 py-3 text-left font-medium text-gray-600">Date</th>
+                      <th className="px-6 py-3 text-left font-medium text-gray-600">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {pendingApprovals.map((item) => (
+                      <tr key={item.id} className="hover:bg-gray-50 transition">
+                        <td className="px-6 py-4 font-medium">{item.customerId}</td>
+                        <td className="px-6 py-4">{item.customerName}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1">
+                            <FileText className="h-4 w-4 text-gray-400" />
+                            {item.service}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-green-600 font-medium">
+                          ${item.charge}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4 text-gray-400" />
+                            {item.date}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                              onClick={() => handleApprove(item.id)}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" /> Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                              onClick={() => handleReject(item.id)}
+                            >
+                              <XCircle className="h-4 w-4 mr-1" /> Reject
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </div>
-
+            )}
           </div>
         </div>
       </main>
