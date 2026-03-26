@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/select";
 
 // API Base URL
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = "https://snapsterbe.techykarthikbms.com";
 
 /* CONSTANTS */
 const STEPS = [
@@ -61,7 +61,7 @@ const STATEMENT_FORMATS = [
 
 const DELIVERY_METHODS = [
   { value: "email", label: "Email" },
-  { value: "printed", label: "Printed" },
+  { value: "branch", label: "Branch" },
 ];
 
 

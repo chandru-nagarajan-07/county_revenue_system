@@ -1336,7 +1336,7 @@ export function KycUpdateInput({
   useEffect(() => {
     const checkBackend = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:8000/api/kyc-update-requests/', {
+        const response = await fetch('https://snapsterbe.techykarthikbms.com/api/kyc-update-requests/', {
           method: 'OPTIONS'
         });
         setIsBackendReachable(true);
@@ -1344,7 +1344,7 @@ export function KycUpdateInput({
       } catch (error) {
         console.error('Backend not reachable:', error);
         setIsBackendReachable(false);
-        setApiError('Cannot connect to backend server. Please ensure it is running at http://127.0.0.1:8000');
+        setApiError('Cannot connect to backend server. Please ensure it is running at https://snapsterbe.techykarthikbms.com');
       }
     };
     
@@ -1479,7 +1479,7 @@ export function KycUpdateInput({
     try {
       const isReachable = await testBackendConnection();
       if (!isReachable) {
-        setApiError('Cannot connect to backend server. Please ensure it is running at http://127.0.0.1:8000');
+        setApiError('Cannot connect to backend server. Please ensure it is running at https://snapsterbe.techykarthikbms.com');
         setLoading(false);
         return;
       }
@@ -1536,7 +1536,7 @@ export function KycUpdateInput({
           if (data.signatureCardFile) payload.append("signature_card", data.signatureCardFile);
         }
 
-        const response = await fetch("http://127.0.0.1:8000/api/kyc-update-requests/", {
+        const response = await fetch("https://snapsterbe.techykarthikbms.com/api/kyc-update-requests/", {
           method: "POST",
           body: payload,
         });
@@ -1584,7 +1584,7 @@ export function KycUpdateInput({
       console.error("Error stack:", err.stack);
       
       if (err.message.includes('Failed to fetch')) {
-        setApiError('Network error: Cannot connect to the server. Please check if the backend is running at http://127.0.0.1:8000 and CORS is configured.');
+        setApiError('Network error: Cannot connect to the server. Please check if the backend is running at https://snapsterbe.techykarthikbms.com and CORS is configured.');
       } else if (err.message.includes('401')) {
         setApiError('Authentication error: Please check your login session.');
       } else if (err.message.includes('403')) {
@@ -1604,7 +1604,7 @@ export function KycUpdateInput({
   // Helper function to test backend connection
   const testBackendConnection = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/kyc-update-requests/', {
+      const response = await fetch('https://snapsterbe.techykarthikbms.com/api/kyc-update-requests/', {
         method: 'OPTIONS'
       });
       console.log('Backend reachable, status:', response.status);

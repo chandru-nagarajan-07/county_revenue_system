@@ -286,7 +286,7 @@ export default function KycArtefactWorkflow({ customer, selectedActions, onBack,
             formData.append("certificate_image", file);
           }
 
-          await fetch("http://127.0.0.1:8000/kyc-update-requests/", {
+          await fetch("https://snapsterbe.techykarthikbms.com/kyc-update-requests/", {
             method: "POST",
             body: formData
           });
@@ -300,7 +300,7 @@ export default function KycArtefactWorkflow({ customer, selectedActions, onBack,
           formData.append("fingerprint_data", data.biometricData?.fingerprint_data);
           formData.append("photo_data", data.biometricData?.photo);
 
-          await fetch("http://127.0.0.1:8000/kyc-update-requests/", {
+          await fetch("https://snapsterbe.techykarthikbms.com/kyc-update-requests/", {
             method: "POST",
             body: formData
           });
