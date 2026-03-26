@@ -52,11 +52,11 @@ export function DashboardHeader({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate('/docs')}
+          onClick={() => navigate('/cart')}
           className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
         >
           <FileText className="h-4 w-4 mr-2" />
-          Docs
+         Cart
         </Button>
         
         <Button

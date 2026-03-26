@@ -143,7 +143,7 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
         console.log("Fetching cards for account:", accountNumber);
 
         const response = await fetch(
-          `https://snapsterbe.techykarthikbms.com/api/cards/?account=${accountNumber}`
+          `http://127.0.0.1:8000/api/cards/?account=${accountNumber}`
         );
 
         console.log("API Response status:", response.status);
@@ -205,7 +205,7 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
       };
 
       const response = await fetch(
-        "https://snapsterbe.techykarthikbms.com/api/card-limit-updates/",
+        "http://127.0.0.1:8000/api/card-limit-updates/",
         {
           method: "POST",
           headers: {
@@ -241,7 +241,7 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
     setLoading(true);
     
     // Here you would make the actual API call to update limits
-    // const response = await fetch(`https://snapsterbe.techykarthikbms.com/api/cards/${selectedCardId}/`, {
+    // const response = await fetch(`http://127.0.0.1:8000/api/cards/${selectedCardId}/`, {
     //   method: 'PATCH',
     //   headers: { 'Content-Type': 'application/json' },
     //   body: JSON.stringify({

@@ -62,7 +62,7 @@ const EmailOtp = () => {
       console.log('hjgsdjgdsaj',data1)
 
       const response = await fetch(
-        "https://snapsterbe.techykarthikbms.com/api/email-verification/",
+        "http://127.0.0.1:8000/api/email-verification/",
         {
           method: "POST",
           headers: {
