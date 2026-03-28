@@ -291,7 +291,7 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
       console.error("Error completing request:", error);
     } finally {
       setLoading(false);
-      alert("Cheque Book Request Submitted Successfully");
+      alert("Cheque Book Service Request Submitted Successfully");
       if (onBack) onBack();
     }
   };
@@ -732,7 +732,7 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" 
                 disabled={loading}
               >
-                {loading ? "Processing..." : "Finish"}
+                {loading ? "Processing..." : "Add to Cart"}
               </Button>
   {/* QR Image
   <div className="flex justify-center">

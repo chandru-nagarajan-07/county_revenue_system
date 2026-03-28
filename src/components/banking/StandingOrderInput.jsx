@@ -191,7 +191,7 @@ export default function StandingOrderWorkflow({ customer: propCustomer, onBack, 
     setLoading(true);
     await new Promise((r) => setTimeout(r, 1000));
     setLoading(false);
-    alert("Standing Order Created Successfully");
+    alert("Standing Order service requested successfully!");
     if (onComplete) onComplete();
     
   };
@@ -667,7 +667,7 @@ export default function StandingOrderWorkflow({ customer: propCustomer, onBack, 
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
                 disabled={loading}
               >
-                {loading ? "Processing..." : "Finish"}
+                {loading ? "Processing..." : "Add to Cart"}
               </Button>
             </motion.div>
           )}

@@ -256,7 +256,7 @@ export const SellForeignCurrency = ({
     // Simulate final processing
     await new Promise((r) => setTimeout(r, 1000));
     setLoading(false);
-    alert("Foreign Currency Sale Successful");
+    alert("Foreign Currency Sale requested successfully!");
     if (onComplete) onComplete();
   };
 
@@ -662,7 +662,7 @@ export const SellForeignCurrency = ({
                 disabled={loading}
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
               >
-                {loading ? "Processing..." : "Complete Transaction"}
+                {loading ? "Processing..." : "Add to Cart"}
               </Button>
             </motion.div>
           )}

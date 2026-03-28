@@ -181,7 +181,7 @@ export const CashWithdrawalWorkflow = ({
     setLoading(true);
     await new Promise((r) => setTimeout(r, 1000));
     setLoading(false);
-    alert("Withdrawal Completed Successfully!");
+    alert("Withdrawal service requested successfully!");
     if (onComplete) onComplete();
     else onBack();
   };
@@ -609,7 +609,7 @@ export const CashWithdrawalWorkflow = ({
                 disabled={loading}
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
               >
-                {loading ? "Processing..." : "Complete Transaction"}
+                {loading ? "Processing..." : "Add to Cart"}
               </Button>
             </motion.div>
           )}
