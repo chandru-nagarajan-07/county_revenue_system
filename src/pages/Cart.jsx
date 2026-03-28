@@ -1,35 +1,44 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader';
 import { useNavigate } from 'react-router-dom';
 
 const CartPage = () => {
   const navigate = useNavigate();
-  const [cartItems, setCartItems] = useState([
-    { id: 1, name: 'Wireless Mouse', description: 'Ergonomic, 2.4GHz', quantity: 1, price: 29.99 },
-    { id: 2, name: 'Mechanical Keyboard', description: 'RGB backlit, blue switches', quantity: 1, price: 89.99 },
-    { id: 3, name: 'USB-C Hub', description: '7-in-1, 4K HDMI', quantity: 2, price: 45.50 },
-  ]);
+  const [cartItems, setCartItems] = useState([]);
 
-  const updateQuantity = (id, delta) => {
-    setCartItems(prev =>
-      prev.map(item =>
-        item.id === id
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item
-      )
-    );
-  };
+  useEffect(() => {
+    fetch('http://127.0.0.1:8000/api/view_service_card_list/')
+      .then((res) => res.json())
+      .then((data) => {
+        const serviceData = data.service_data || [];
+        const modelData = data.model_data || [];
+
+        const formattedData = serviceData.map((service) => {
+          const model = modelData.find(
+            (item) => item.id === service.service_data.id
+          );
+          console.log('Model found for service:', model.branch?.branch_name);
+          return {
+            id: service.id,
+            service_request_id: service.service_request_id,
+            service_code: service.service_code,
+            service_name: service.service_name,
+            amount: model?.amount || '-',
+            branch: model?.branch || '-',
+          };
+        });
+
+        setCartItems(formattedData);
+      })
+      .catch((err) => console.error('API Error:', err));
+  }, []);
 
   const removeItem = (id) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
+    setCartItems((prev) => prev.filter((item) => item.id !== id));
   };
-
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const tax = subtotal * 0.1; // 10% tax
-  const total = subtotal + tax;
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
@@ -42,7 +51,7 @@ const CartPage = () => {
           transition={{ duration: 0.3 }}
           className="max-w-6xl mx-auto"
         >
-          {/* Header with back button */}
+          {/* Header */}
           <div className="flex items-center gap-4 mb-6">
             <Button
               variant="outline"
@@ -52,15 +61,16 @@ const CartPage = () => {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
+
             <h1 className="font-display text-2xl font-bold text-slate-800">
-             Cart
+              Service Card List
             </h1>
           </div>
 
-          {/* Cart Table */}
+          {/* Table */}
           {cartItems.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm border p-12 text-center text-slate-500">
-              Your cart is empty.
+              No data available.
             </div>
           ) : (
             <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -68,73 +78,63 @@ const CartPage = () => {
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 border-b">
                     <tr>
-                      <th className="px-6 py-4 text-left font-semibold text-slate-600">Item</th>
-                      <th className="px-6 py-4 text-left font-semibold text-slate-600">Description</th>
-                      <th className="px-6 py-4 text-center font-semibold text-slate-600">Quantity</th>
-                      <th className="px-6 py-4 text-right font-semibold text-slate-600">Unit Price</th>
-                      <th className="px-6 py-4 text-right font-semibold text-slate-600">Total</th>
-                      <th className="px-6 py-4 text-center font-semibold text-slate-600">Actions</th>
+                      <th className="px-6 py-4 text-left font-semibold text-slate-600">
+                        Request ID
+                      </th>
+                      <th className="px-6 py-4 text-left font-semibold text-slate-600">
+                        Service Code
+                      </th>
+                      <th className="px-6 py-4 text-left font-semibold text-slate-600">
+                        Service Name
+                      </th>
+                      <th className="px-6 py-4 text-left font-semibold text-slate-600">
+                        Amount
+                      </th>
+                      <th className="px-6 py-4 text-left font-semibold text-slate-600">
+                        Branch
+                      </th>
+                      <th className="px-6 py-4 text-center font-semibold text-slate-600">
+                        Action
+                      </th>
                     </tr>
                   </thead>
+
                   <tbody>
-                    <AnimatePresence>
-                      {cartItems.map((item) => (
-                        <motion.tr
-                          key={item.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: 20 }}
-                          transition={{ duration: 0.2 }}
-                          className="border-b hover:bg-slate-50"
-                        >
-                          <td className="px-6 py-4 font-medium text-slate-800">{item.name}</td>
-                          <td className="px-6 py-4 text-slate-500">{item.description}</td>
-                          <td className="px-6 py-4 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              {/* <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => updateQuantity(item.id, -1)}
-                              >
-                                -
-                              </Button> */}
-                              <span className="w-8 text-center">{item.quantity}</span>
-                              {/* <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => updateQuantity(item.id, 1)}
-                              >
-                                +
-                              </Button> */}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-right text-slate-600">
-                            ${item.price.toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 text-right font-medium text-slate-800">
-                            ${(item.price * item.quantity).toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeItem(item.id)}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </AnimatePresence>
+                    {cartItems.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="border-b hover:bg-slate-50"
+                      >
+                        <td className="px-6 py-4">
+                          {item.service_request_id}
+                        </td>
+                        <td className="px-6 py-4">
+                          {item.service_code}
+                        </td>
+                        <td className="px-6 py-4">
+                          {item.service_name}
+                        </td>
+                        <td className="px-6 py-4">
+                          {item.amount}
+                        </td>
+                        <td className="px-6 py-4">
+                          {item.branch}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeItem(item.id)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
-
-              {/* Summary */}
-         
             </div>
           )}
         </motion.div>
