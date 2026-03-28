@@ -1572,9 +1572,9 @@ export function KycUpdateInput({
         success: true
       };
 
-      console.log('KYC Update completed successfully:', result);
+      console.log('KYC Update service requested successfully:', result);
 
-      alert('KYC Update completed successfully!');
+      alert('KYC Update service requested successfully!');
       
       navigate('/dashboard');
 
@@ -1994,7 +1994,7 @@ export function KycUpdateInput({
                   className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
                   disabled={loading || !isBackendReachable}
                 >
-                  {loading ? "Processing..." : "Finish & Submit"}
+                  {loading ? "Processing..." : "Add to Cart"}
                 </Button>
                 
                 <Button 

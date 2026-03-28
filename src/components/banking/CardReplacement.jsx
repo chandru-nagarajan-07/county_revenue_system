@@ -206,7 +206,7 @@ function getExpiryDate(created_at) {
     setLoading(true);
     await new Promise((r) => setTimeout(r, 1000));
     setLoading(false);
-    alert("Card Replacement Request Submitted Successfully");
+    alert("Card Replacement Service Request Submitted Successfully");
     if (onBack) onBack();
   };
 
@@ -572,7 +572,7 @@ function getExpiryDate(created_at) {
     className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
     disabled={loading}
   >
-    {loading ? "Processing..." : "Finish"}
+    {loading ? "Processing..." : "Add to Cart"}
   </Button>
 </motion.div>
           )}

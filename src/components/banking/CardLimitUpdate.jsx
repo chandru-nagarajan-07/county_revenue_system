@@ -708,7 +708,7 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
     className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
     disabled={loading}
   >
-    {loading ? "Processing..." : "Finish"}
+    {loading ? "Processing..." : "Add to Cart"}
   </Button>
 </motion.div>
           )}

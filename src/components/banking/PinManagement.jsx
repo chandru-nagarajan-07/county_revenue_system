@@ -288,7 +288,7 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
     setLoading(true);
     await new Promise(r => setTimeout(r, 1000));
     setLoading(false);
-    alert("PIN Management Request Complete");
+    alert("PIN Management Service Request Submitted Successfully");
     if (onBack) onBack();
   };
 
@@ -797,7 +797,7 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
     className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
     disabled={loading}
   >
-    {loading ? "Processing..." : "Finish"}
+    {loading ? "Processing..." : "Add to Cart"}
   </Button>
 </motion.div>
           )}

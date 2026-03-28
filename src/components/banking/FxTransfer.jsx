@@ -362,7 +362,7 @@ export const FxTransfer = ({
     // Simulate final processing
     await new Promise((r) => setTimeout(r, 1000));
     setLoading(false);
-    alert("FX Transfer Successful");
+    alert("FX Transfer service requested successfully!");
     
     if (onComplete) {
       onComplete({
@@ -873,7 +873,7 @@ export const FxTransfer = ({
                 disabled={loading}
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
               >
-                {loading ? "Processing..." : "Complete Transaction"}
+                {loading ? "Processing..." : "Add to Cart"}
               </Button>
             </motion.div>
           )}

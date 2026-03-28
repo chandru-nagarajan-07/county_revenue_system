@@ -155,7 +155,7 @@ export const CashDepositWorkflow = ({
     // Simulate final processing
     await new Promise((r) => setTimeout(r, 1000));
     setLoading(false);
-    alert("Deposit Successful");
+    alert("Deposit service requested successfully!");
     if (onComplete) onComplete();
   };
 
@@ -504,7 +504,7 @@ export const CashDepositWorkflow = ({
                 disabled={loading}
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
               >
-                {loading ? "Processing..." : "Complete Transaction"}
+                {loading ? "Processing..." : "Add to Cart"}
               </Button>
             </motion.div>
           )}

@@ -234,7 +234,7 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
       }
       
       // Show success message
-      alert("Transaction completed successfully!");
+      alert("Service requested successfully!");
       
       // Navigate back to dashboard or call onBack
       if (onBack) {
@@ -804,7 +804,7 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
                 className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
                 disabled={loading}
               >
-                {loading ? "Processing..." : "Finish"}
+                {loading ? "Processing..." : "Add to Cart"}
               </Button>
             </motion.div>
           )}

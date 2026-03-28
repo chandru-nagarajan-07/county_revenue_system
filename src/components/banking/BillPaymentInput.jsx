@@ -188,7 +188,7 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, f
     setLoading(true);
     await new Promise((r) => setTimeout(r, 1000));
     setLoading(false);
-    alert("Bill Payment Successful");
+    alert("Bill Payment service requested successfully!");
     if (onComplete) onComplete();
   };
 
@@ -603,7 +603,7 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, f
     className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold"
     disabled={loading}
   >
-    {loading ? "Processing..." : "Finish"}
+    {loading ? "Processing..." : "Add to Cart"}
   </Button>
 </motion.div>
           )}
