@@ -16,7 +16,6 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader';
@@ -335,26 +334,40 @@ const QRScannerPage = () => {
     };
   }, []);
 
-  // Updated function to handle view services navigation
-  const handleViewServices = () => {
+  const handleApprove = async () => {
     if (!approvalData.cartId) {
       alert('Please scan a QR code first.');
       return;
     }
     
-    // Navigate to ProfilePage with cart data
-    navigate('/profilepage', {
-      state: {
-        cartId: approvalData.cartId,
-        customerName: approvalData.customerName,
-        mobileNumber: approvalData.mobileNumber,
-        totalServices: approvalData.totalServices,
-        cartStatus: approvalData.cartStatus,
-        services: approvalData.services,
-        charge: approvalData.charge,
-        date: approvalData.date
-      }
-    });
+    // Check if there are pending services
+    if (processingServices.length > 0) {
+      alert(`There are ${processingServices.length} service(s) pending processing. Please complete them before approving.`);
+      return;
+    }
+    
+    // Here you can make an API call to approve the service
+    try {
+      // Example: Update cart status to approved
+      // const response = await fetch(`${API_BASE_URL}/service_cart/${approvalData.cartId}/approve/`, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      // });
+      
+      alert('Service approved successfully!');
+      navigate('/profilepage', {
+        state: {
+          cartId: approvalData.cartId,
+          customerName: approvalData.customerName,
+          totalServices: approvalData.totalServices,
+        },
+      });
+    } catch (err) {
+      console.error('Error approving service:', err);
+      alert('Failed to approve service. Please try again.');
+    }
   };
 
   const handleCancel = () => {
@@ -518,6 +531,40 @@ const QRScannerPage = () => {
                   </div>
                 </div>
 
+                {/* Services List */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <ClipboardList className="h-5 w-5 text-blue-600" />
+                    <h3 className="font-semibold">Services to Process</h3>
+                  </div>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {approvalData.services.map((service, index) => (
+                      <div 
+                        key={index} 
+                        className={`flex justify-between items-center p-3 rounded-lg border ${
+                          service.status === 'pending' ? 'border-yellow-200 bg-yellow-50' :
+                          service.status === 'processing' ? 'border-blue-200 bg-blue-50' :
+                          service.status === 'completed' ? 'border-green-200 bg-green-50' :
+                          'border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          {getServiceStatusIcon(service.status)}
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{service.service_name}</p>
+                            <p className="text-xs text-gray-500">Service ID: {service.service_id}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className={`text-xs px-2 py-1 rounded-full ${getServiceStatusColor(service.status)}`}>
+                            {service.status || 'Pending'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Cart Summary */}
                 <div className="border-t pt-3">
                   <div className="flex justify-between items-center">
@@ -546,16 +593,18 @@ const QRScannerPage = () => {
 
             <div className="mt-6">
               <Button
-                className="w-full bg-blue-600 hover:bg-blue-700"
-                onClick={handleViewServices}
-                disabled={!approvalData.cartId || isLoading}
+                className="w-full bg-green-600 hover:bg-green-700"
+                onClick={handleApprove}
+                disabled={!approvalData.cartId || isLoading || processingServices.length > 0}
               >
-                <FileText className="h-4 w-4 mr-2" /> 
-                View Services
+                <CheckCircle className="h-4 w-4 mr-2" /> 
+                {processingServices.length > 0 
+                  ? `Complete ${processingServices.length} Pending Service(s) First` 
+                  : 'Approve Service'}
               </Button>
               {processingServices.length > 0 && (
                 <p className="text-xs text-yellow-600 text-center mt-2">
-                  Some services are pending processing
+                  Please complete all pending services before approval
                 </p>
               )}
             </div>

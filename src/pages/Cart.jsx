@@ -11,58 +11,71 @@ const CartPage = () => {
 
   const [pendingItems, setPendingItems] = useState([]);
   const [completedItems, setCompletedItems] = useState([]);
-  const [selectedPendingId, setSelectedPendingId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCompletedItem, setSelectedCompletedItem] = useState(null);
 
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/api/view_service_card_list/')
+    fetch('http://127.0.0.1:8000/service_queue_items/')
       .then((res) => res.json())
       .then((data) => {
-        const serviceData = data.service_data || [];
-        const modelData = data.model_data || [];
-
-        const formattedData = serviceData.map((service) => {
-          const model = modelData.find(
-            (item) => item.id === service.service_data.id
-          );
-
+        const formattedData = data.map((service) => {
           return {
             id: service.id,
             service_request_id: service.service_request_id,
             service_code: service.service_code,
             service_name: service.service_name,
-            amount: model?.amount || '-',
-            branch: model?.branch || '-',
+            amount: service.service_data?.amount || '-',
+            branch: service.service_data?.branch || '-',
           };
         });
 
         setPendingItems(formattedData);
-      })
-      .catch((err) => console.error('API Error:', err));
+      });
   }, []);
 
-  const completeItem = () => {
-    if (selectedPendingId === null) return;
-
-    const itemToComplete = pendingItems.find(
-      (item) => item.id === selectedPendingId
+  const toggleSelection = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id)
+        ? prev.filter((item) => item !== id)
+        : [...prev, id]
     );
+  };
 
-    if (itemToComplete) {
-      setCompletedItems((prev) => [...prev, itemToComplete]);
-      setPendingItems((prev) =>
-        prev.filter((item) => item.id !== selectedPendingId)
-      );
-      setSelectedPendingId(null);
-    }
+  const completeSelectedOrders = () => {
+    if (selectedIds.length === 0) return;
+
+    fetch('http://127.0.0.1:8000/service_items/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        service_ids: selectedIds,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log('Cart Created:', data);
+
+        const completed = pendingItems.filter((item) =>
+          selectedIds.includes(item.id)
+        );
+
+        setCompletedItems((prev) => [...prev, ...completed]);
+
+        setPendingItems((prev) =>
+          prev.filter((item) => !selectedIds.includes(item.id))
+        );
+
+        setSelectedIds([]);
+      });
   };
 
   const removeItem = (id, listType) => {
     if (listType === 'pending') {
       setPendingItems((prev) => prev.filter((item) => item.id !== id));
-      if (selectedPendingId === id) setSelectedPendingId(null);
     } else {
       setCompletedItems((prev) => prev.filter((item) => item.id !== id));
     }
@@ -98,205 +111,171 @@ Completed At: ${new Date().toLocaleString()}
       <DashboardHeader customerName="John Doe" />
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="max-w-6xl mx-auto"
-        >
-          <div className="flex items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => navigate(-1)}
-                className="shrink-0"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center gap-4 mb-6">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
 
-              <h1 className="font-display text-2xl font-bold text-slate-800">
-                Cart
-              </h1>
-            </div>
+            <h1 className="text-2xl font-bold">Cart</h1>
           </div>
 
-          <Tabs defaultValue="pending" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+          <Tabs defaultValue="pending">
+
+            <TabsList className="grid grid-cols-2 mb-4">
               <TabsTrigger value="pending">
                 Pending ({pendingItems.length})
               </TabsTrigger>
+
               <TabsTrigger value="completed">
                 Completed ({completedItems.length})
               </TabsTrigger>
             </TabsList>
 
             {/* Pending */}
+
             <TabsContent value="pending">
-              {pendingItems.length === 0 ? (
-                <div className="bg-white rounded-xl shadow-sm border p-12 text-center text-slate-500">
-                  No pending orders.
-                </div>
-              ) : (
-                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 border-b">
-                        <tr>
-                          <th className="px-6 py-4 text-left">Request ID</th>
-                          <th className="px-6 py-4 text-left">Code</th>
-                          <th className="px-6 py-4 text-left">Service Name</th>
-                          <th className="px-6 py-4 text-left">Amount</th>
-                          <th className="px-6 py-4 text-left">Branch</th>
-                          <th className="px-6 py-4 text-center">Actions</th>
-                        </tr>
-                      </thead>
 
-                      <tbody>
-                        <AnimatePresence>
-                          {pendingItems.map((item) => (
-                            <motion.tr
-                              key={item.id}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, x: 20 }}
-                              className={`border-b hover:bg-slate-50 cursor-pointer ${
-                                selectedPendingId === item.id
-                                  ? 'bg-blue-50'
-                                  : ''
-                              }`}
-                              onClick={() => setSelectedPendingId(item.id)}
-                            >
-                              <td className="px-6 py-4">
-                                {item.service_request_id}
-                              </td>
-                              <td className="px-6 py-4">
-                                {item.service_code}
-                              </td>
-                              <td className="px-6 py-4">
-                                {item.service_name}
-                              </td>
-                              <td className="px-6 py-4">
-                                {item.amount}
-                              </td>
-                              <td className="px-6 py-4">
-                                {item.branch}
-                              </td>
-                              <td className="px-6 py-4 text-center">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeItem(item.id, 'pending');
-                                  }}
-                                  className="text-red-500 hover:text-red-700"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </td>
-                            </motion.tr>
-                          ))}
-                        </AnimatePresence>
-                      </tbody>
-                    </table>
-                  </div>
+              <table className="w-full border">
 
-                  {selectedPendingId !== null && (
-                    <div className="p-4 border-t bg-slate-50 flex justify-end">
-                      <Button
-                        onClick={completeItem}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        Complete Selected Order
-                      </Button>
-                    </div>
-                  )}
+                <thead>
+                  <tr>
+                    <th>Select</th>
+                    <th>Request ID</th>
+                    <th>Code</th>
+                    <th>Service</th>
+                    <th>Amount</th>
+                    <th>Branch</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {pendingItems.map((item) => (
+
+                    <tr key={item.id}>
+
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(item.id)}
+                          onChange={() => toggleSelection(item.id)}
+                        />
+                      </td>
+
+                      <td>{item.service_request_id}</td>
+                      <td>{item.service_code}</td>
+                      <td>{item.service_name}</td>
+                      <td>{item.amount}</td>
+                      <td>{item.branch}</td>
+
+                      <td>
+                        <button
+                          onClick={() =>
+                            removeItem(item.id, 'pending')
+                          }
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+
+                    </tr>
+
+                  ))}
+                </tbody>
+
+              </table>
+
+              {selectedIds.length > 0 && (
+
+                <div className="mt-4 text-right">
+
+                  <Button
+                    onClick={completeSelectedOrders}
+                    className="bg-green-600"
+                  >
+                    Complete Selected Orders
+                  </Button>
+
                 </div>
+
               )}
+
             </TabsContent>
 
             {/* Completed */}
-            <TabsContent value="completed">
-              {completedItems.length === 0 ? (
-                <div className="bg-white rounded-xl shadow-sm border p-12 text-center text-slate-500">
-                  No completed orders.
-                </div>
-              ) : (
-                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 border-b">
-                      <tr>
-                        <th className="px-6 py-4 text-left">Request ID</th>
-                        <th className="px-6 py-4 text-left">Code</th>
-                        <th className="px-6 py-4 text-left">Service Name</th>
-                        <th className="px-6 py-4 text-left">Amount</th>
-                        <th className="px-6 py-4 text-left">Branch</th>
-                        <th className="px-6 py-4 text-center">QR</th>
-                      </tr>
-                    </thead>
 
-                    <tbody>
-                      {completedItems.map((item) => (
-                        <tr key={item.id} className="border-b">
-                          <td className="px-6 py-4">
-                            {item.service_request_id}
-                          </td>
-                          <td className="px-6 py-4">
-                            {item.service_code}
-                          </td>
-                          <td className="px-6 py-4">
-                            {item.service_name}
-                          </td>
-                          <td className="px-6 py-4">
-                            {item.amount}
-                          </td>
-                          <td className="px-6 py-4">
-                            {item.branch}
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openQrModal(item)}
-                            >
-                              <QrCode className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+            <TabsContent value="completed">
+
+              <table className="w-full border">
+
+                <thead>
+                  <tr>
+                    <th>Request ID</th>
+                    <th>Code</th>
+                    <th>Service</th>
+                    <th>QR</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  {completedItems.map((item) => (
+
+                    <tr key={item.id}>
+
+                      <td>{item.service_request_id}</td>
+                      <td>{item.service_code}</td>
+                      <td>{item.service_name}</td>
+
+                      <td>
+                        <button
+                          onClick={() => openQrModal(item)}
+                        >
+                          <QrCode size={16} />
+                        </button>
+                      </td>
+
+                    </tr>
+
+                  ))}
+
+                </tbody>
+
+              </table>
+
             </TabsContent>
+
           </Tabs>
-        </motion.div>
+
+        </div>
       </main>
 
       {/* QR Modal */}
+
       {isModalOpen && selectedCompletedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6 relative">
-            <button
-              onClick={closeModal}
-              className="absolute top-4 right-4"
-            >
-              ✕
-            </button>
 
-            <h2 className="text-xl font-bold mb-4">QR Code</h2>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50">
 
-            <div className="flex justify-center">
-              <img
-                src={getQrCodeUrl(selectedCompletedItem)}
-                alt="QR"
-                className="w-48 h-48"
-              />
-            </div>
+          <div className="bg-white p-6 rounded">
+
+            <button onClick={closeModal}>Close</button>
+
+            <img
+              src={getQrCodeUrl(selectedCompletedItem)}
+              alt="QR"
+            />
+
           </div>
+
         </div>
+
       )}
+
     </div>
   );
 };
