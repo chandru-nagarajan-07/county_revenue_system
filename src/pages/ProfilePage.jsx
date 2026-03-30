@@ -21,7 +21,7 @@ import {
   ThumbsUp,
   ThumbsDown
 } from 'lucide-react';
-import { DashboardHeader } from '@/components/banking/DashboardHeader';
+import { DashboardHeader } from '@/components/banking/DashboardHeader1';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -377,7 +377,7 @@ const ProfilePage = () => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-blue-600">${serviceCart.charge}</div>
+                  <div className="text-3xl font-bold text-blue-600">KSh{serviceCart.charge}</div>
                   <div className="text-sm text-gray-500 mt-1">Total Charge</div>
                 </div>
               </div>
