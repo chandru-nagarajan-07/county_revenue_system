@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Search, KeyRound, Scan, CheckCircle, XCircle, TableProperties, QrCode, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DashboardHeader } from '@/components/banking/DashboardHeader';
+import { DashboardHeader } from '@/components/banking/DashboardHeader1';
 import ServiceCard from '@/components/banking/ServiceCardTeller';
 import { ChatPanel } from '@/components/banking/ChatPanel';
 import { CrossSellCard } from '@/components/banking/CrossSellCard';
@@ -459,7 +459,7 @@ const DashboardTeller = () => {
   icon={cat.icon}
   title={cat.label}
   description={cat.description}
-  onClick={() => navigate('/scanner', { 
+  onClick={() => navigate('', { 
     state: { 
       serviceData: {
         service: cat.label,

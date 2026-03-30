@@ -40,6 +40,7 @@ const QRScannerPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [processingServices, setProcessingServices] = useState([]);
+  const [scanAttempts, setScanAttempts] = useState(0);
 
   const [approvalData, setApprovalData] = useState({
     cartId: '',
@@ -123,6 +124,9 @@ const QRScannerPage = () => {
       });
       
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(`Cart with ID "${cartId}" not found. Please check the QR code.`);
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
@@ -156,11 +160,12 @@ const QRScannerPage = () => {
         setProcessingServices(processing);
         
         setShowApprovalDetails(true);
+        setError(null);
       }
     } catch (err) {
       console.error('Error fetching service cart:', err);
       setError(err.message || 'Failed to fetch service cart details. Please check the QR code and try again.');
-      alert(error || 'Failed to fetch service cart details');
+      setShowApprovalDetails(false);
       setScanResult(null);
     } finally {
       setIsLoading(false);
@@ -171,6 +176,7 @@ const QRScannerPage = () => {
     if (isScanning) return;
     setIsScanning(true);
     setScanResult(decodedText);
+    setError(null);
     
     try {
       // Try to parse the QR data as JSON
@@ -197,16 +203,16 @@ const QRScannerPage = () => {
     } catch (err) {
       console.error('QR code processing error:', err);
       setError(err.message || 'Failed to process QR code');
-      alert(`Error processing QR code: ${err.message}`);
-      setScanResult(null);
       setShowApprovalDetails(false);
+      setScanResult(null);
     } finally {
       setIsScanning(false);
     }
   };
 
   const handleScanFailure = (error) => {
-    if (error && !error.includes('No QR code found')) {
+    // Only log meaningful errors, ignore frequent "No QR code found" messages
+    if (error && !error.includes('No QR code found') && !error.includes('NotFoundException')) {
       console.warn('QR scan error:', error);
     }
   };
@@ -241,11 +247,13 @@ const QRScannerPage = () => {
           fps: 10,
           qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0,
+          formatsToSupport: ['QR_CODE'], // Only support QR codes for better performance
         },
         handleScanSuccess,
         handleScanFailure
       );
       setCameraActive(true);
+      setScanAttempts(0);
     } catch (err) {
       console.error(`Failed to start camera with facingMode=${facingMode}:`, err);
       if (facingMode === 'environment') {
@@ -296,8 +304,24 @@ const QRScannerPage = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file.');
+      event.target.value = '';
+      return;
+    }
+
+    // Validate file size (limit to 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size too large. Please upload an image smaller than 5MB.');
+      event.target.value = '';
+      return;
+    }
+
     try {
       await stopCamera();
+      setIsLoading(true);
+      setError(null);
 
       // Create a temporary container for file scanning
       const tempContainer = document.createElement('div');
@@ -306,26 +330,72 @@ const QRScannerPage = () => {
       document.body.appendChild(tempContainer);
 
       const tempScanner = new Html5Qrcode(tempContainer.id);
+      
       try {
-        const decodedText = await tempScanner.scanFile(file, true);
+        // Scan the file with configuration
+        const decodedText = await tempScanner.scanFile(file, {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+          formatsToSupport: ['QR_CODE'],
+        });
+        
         await tempScanner.clear();
         document.body.removeChild(tempContainer);
+        
+        // Process the scanned result
         await handleScanSuccess(decodedText);
+        
       } catch (err) {
         console.error('QR scan from file failed:', err);
+        
+        // Provide more specific error messages
+        let errorMessage = 'Could not read QR code from image. ';
+        
+        if (err.message?.includes('No MultiFormat Readers were able to detect') || 
+            err.name === 'NotFoundException') {
+          errorMessage += 'No QR code found in the image. Please ensure:\n\n' +
+            '• The image contains a clear, visible QR code\n' +
+            '• The QR code is not blurry or damaged\n' +
+            '• The QR code is well-lit and not obstructed\n\n' +
+            'Try taking a clearer photo with better lighting.';
+        } else if (err.name === 'NotSupportedError') {
+          errorMessage += 'The selected file format is not supported. Please use PNG, JPG, or JPEG format.';
+        } else {
+          errorMessage += 'Please try another image with a clear QR code.';
+        }
+        
+        setError(errorMessage);
+        
         try {
           await tempScanner.clear();
         } catch (e) {
           console.warn('Error clearing scanner:', e);
         }
         document.body.removeChild(tempContainer);
-        alert('Could not read QR code from image. Please try another image with a clear QR code.');
+        
+      } finally {
+        setIsLoading(false);
       }
+      
     } catch (err) {
       console.error('File upload error:', err);
-      alert('Error processing file. Please try again.');
+      setError('Error processing file. Please try again.');
+      setIsLoading(false);
     } finally {
       event.target.value = ''; // reset file input
+    }
+  };
+
+  // Retry scanning with better quality
+  const retryScan = () => {
+    setError(null);
+    setScanResult(null);
+    setShowApprovalDetails(false);
+    if (cameraActive) {
+      // Restart camera for better quality
+      stopCamera();
+      setTimeout(() => startCamera(), 500);
     }
   };
 
@@ -374,6 +444,10 @@ const QRScannerPage = () => {
   const handlePasswordUpdate = () => {
     if (newPassword !== confirmPassword) {
       alert('Passwords do not match!');
+      return;
+    }
+    if (newPassword.length < 6) {
+      alert('Password must be at least 6 characters long!');
       return;
     }
     alert('Password updated successfully!');
@@ -436,7 +510,7 @@ const QRScannerPage = () => {
             <div id="qr-reader-file" className="hidden" />
 
             {cameraActive && (
-              <div className="flex justify-center mt-4">
+              <div className="flex justify-center mt-4 space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -445,13 +519,31 @@ const QRScannerPage = () => {
                 >
                   <X className="h-4 w-4 mr-2" /> Stop Camera
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => startCamera()}
+                >
+                  <Camera className="h-4 w-4 mr-2" /> Switch Camera
+                </Button>
               </div>
             )}
 
-            {!cameraActive && !showApprovalDetails && !isLoading && (
-              <p className="text-center text-sm text-slate-500 mt-4">
-                Click "Scan QR Code" to start.
-              </p>
+            {!cameraActive && !showApprovalDetails && !isLoading && !error && (
+              <div className="text-center">
+                <p className="text-sm text-slate-500 mt-4">
+                  Click "Scan QR Code" to start scanning.
+                </p>
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-600">
+                    <strong>Tips for better scanning:</strong><br />
+                    • Ensure good lighting<br />
+                    • Hold the camera steady<br />
+                    • Keep QR code within the frame<br />
+                    • Avoid glare and reflections
+                  </p>
+                </div>
+              </div>
             )}
 
             {isLoading && (
@@ -462,8 +554,21 @@ const QRScannerPage = () => {
             )}
 
             {error && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{error}</p>
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-red-600 whitespace-pre-line">{error}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={retryScan}
+                      className="mt-3 text-sm"
+                    >
+                      <Scan className="h-4 w-4 mr-2" /> Try Again
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -489,7 +594,7 @@ const QRScannerPage = () => {
                 </div>
 
                 {/* Service Progress */}
-                <div className="bg-gray-50 p-4 rounded-lg">
+                {/* <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-semibold">Service Progress</h3>
                     <span className="text-sm text-gray-600">
@@ -516,7 +621,29 @@ const QRScannerPage = () => {
                       <div className="text-gray-600">Processing</div>
                     </div>
                   </div>
-                </div>
+                </div> */}
+
+                {/* Services List Preview */}
+                {approvalData.services.length > 0 && (
+                  <div className="border rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Services Preview</h3>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {approvalData.services.slice(0, 3).map((service, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-sm">
+                          <span>{service.service_name || `Service ${idx + 1}`}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs ${getServiceStatusColor(service.status)}`}>
+                            {service.status || 'pending'}
+                          </span>
+                        </div>
+                      ))}
+                      {approvalData.services.length > 3 && (
+                        <p className="text-xs text-gray-500 text-center">
+                          +{approvalData.services.length - 3} more services
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Cart Summary */}
                 <div className="border-t pt-3">
@@ -551,11 +678,11 @@ const QRScannerPage = () => {
                 disabled={!approvalData.cartId || isLoading}
               >
                 <FileText className="h-4 w-4 mr-2" /> 
-                View Services
+                View All Services
               </Button>
               {processingServices.length > 0 && (
                 <p className="text-xs text-yellow-600 text-center mt-2">
-                  Some services are pending processing
+                  {processingServices.length} service{processingServices.length !== 1 ? 's are' : ' is'} pending processing
                 </p>
               )}
             </div>
@@ -604,6 +731,12 @@ const QRScannerPage = () => {
                 />
               </Button>
             </div>
+            <div className="mt-4 pt-4 border-t">
+              <p className="text-xs text-gray-500 text-center">
+                Supported formats: PNG, JPG, JPEG<br />
+                Maximum file size: 5MB
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -623,27 +756,36 @@ const QRScannerPage = () => {
               <h2 className="text-xl font-semibold">Reset Password</h2>
             </div>
             <div className="space-y-4">
-              <input
-                type="password"
-                placeholder="Old Password"
-                value={oldPassword}
-                onChange={(e) => setOldPassword(e.target.value)}
-                className="w-full border rounded-md p-2"
-              />
-              <input
-                type="password"
-                placeholder="New Password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full border rounded-md p-2"
-              />
-              <input
-                type="password"
-                placeholder="Confirm Password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full border rounded-md p-2"
-              />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Old Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter old password"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">New Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Confirm Password</label>
+                <input
+                  type="password"
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
               <Button className="w-full" onClick={handlePasswordUpdate}>
                 Update Password
               </Button>
