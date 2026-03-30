@@ -11,12 +11,6 @@ import {
   Camera,
   Upload,
   Scan,
-  Loader2,
-  ClipboardList,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader';
@@ -37,17 +31,10 @@ const QRScannerPage = () => {
   const [showScanOptions, setShowScanOptions] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [processingServices, setProcessingServices] = useState([]);
 
   const [approvalData, setApprovalData] = useState({
-    cartId: '',
+    customerId: '',
     customerName: '',
-    mobileNumber: '',
-    totalServices: 0,
-    cartStatus: '',
-    services: [],
     charge: serviceData?.charge || '0.00',
     service: serviceData?.service || 'Service Approval',
     date: new Date().toISOString().split('T')[0],
@@ -55,9 +42,6 @@ const QRScannerPage = () => {
 
   const qrCodeRegionRef = useRef(null);
   const html5QrCodeRef = useRef(null);
-
-  // API base URL - change this to your actual backend URL
-  const API_BASE_URL = 'http://localhost:8000/api';
 
   // Check if camera is available
   const checkCameraAvailability = async () => {
@@ -75,134 +59,21 @@ const QRScannerPage = () => {
     }
   };
 
-  // Function to get service status icon
-  const getServiceStatusIcon = (status) => {
-    switch(status?.toLowerCase()) {
-      case 'completed':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      case 'processing':
-        return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
-      case 'failed':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return <ClipboardList className="h-4 w-4 text-gray-500" />;
-    }
-  };
-
-  // Function to get service status color
-  const getServiceStatusColor = (status) => {
-    switch(status?.toLowerCase()) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'processing':
-        return 'bg-blue-100 text-blue-800';
-      case 'failed':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  // Function to fetch service cart data from backend
-  const fetchServiceCart = async (cartId) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch(`${API_BASE_URL}/service_cart/${cartId}/`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add authorization token if needed
-          // 'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data) {
-        // Count services by status
-        const completedCount = data.services.filter(s => s.status === 'completed').length;
-        const pendingCount = data.services.filter(s => s.status === 'pending').length;
-        const processingCount = data.services.filter(s => s.status === 'processing').length;
-        
-        // Calculate total charge (adjust based on your actual pricing)
-        const totalCharge = data.total_services * 10; // Example calculation - modify as needed
-        
-        setApprovalData({
-          cartId: data.cart_id,
-          customerName: data.customer_name,
-          mobileNumber: data.mobile_number,
-          totalServices: data.total_services,
-          cartStatus: data.cart_status,
-          services: data.services,
-          charge: totalCharge.toFixed(2),
-          service: `${data.total_services} Service${data.total_services !== 1 ? 's' : ''}`,
-          date: new Date().toISOString().split('T')[0],
-        });
-        
-        // Set processing services (services that are pending or in progress)
-        const processing = data.services.filter(s => 
-          s.status === 'pending' || s.status === 'processing'
-        );
-        setProcessingServices(processing);
-        
-        setShowApprovalDetails(true);
-      }
-    } catch (err) {
-      console.error('Error fetching service cart:', err);
-      setError(err.message || 'Failed to fetch service cart details. Please check the QR code and try again.');
-      alert(error || 'Failed to fetch service cart details');
-      setScanResult(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleScanSuccess = async (decodedText) => {
     if (isScanning) return;
     setIsScanning(true);
     setScanResult(decodedText);
-    
-    try {
-      // Try to parse the QR data as JSON
-      let qrData;
-      try {
-        qrData = JSON.parse(decodedText);
-      } catch (parseError) {
-        // If not JSON, treat the whole text as cart_id
-        qrData = { cart_id: decodedText };
-      }
-      
-      // Extract cart_id from QR data
-      const cartId = qrData.cart_id || qrData.cartId || decodedText;
-      
-      if (!cartId) {
-        throw new Error('No cart ID found in QR code');
-      }
-      
-      console.log('Extracted cart ID:', cartId);
-      
-      // Fetch service cart details from backend
-      await fetchServiceCart(cartId);
-      
-    } catch (err) {
-      console.error('QR code processing error:', err);
-      setError(err.message || 'Failed to process QR code');
-      alert(`Error processing QR code: ${err.message}`);
-      setScanResult(null);
-      setShowApprovalDetails(false);
-    } finally {
-      setIsScanning(false);
-    }
+    const mockCustomerData = {
+      customerId: 'CUST12345',
+      customerName: 'John Doe',
+      charge: approvalData.charge,
+      service: approvalData.service,
+      date: approvalData.date,
+    };
+    setApprovalData(mockCustomerData);
+    setShowApprovalDetails(true);
+    await stopCamera();
+    setIsScanning(false);
   };
 
   const handleScanFailure = (error) => {
@@ -335,25 +206,17 @@ const QRScannerPage = () => {
     };
   }, []);
 
-  // Updated function to handle view services navigation
-  const handleViewServices = () => {
-    if (!approvalData.cartId) {
+  const handleApprove = async () => {
+    if (!approvalData.customerId) {
       alert('Please scan a QR code first.');
       return;
     }
-    
-    // Navigate to ProfilePage with cart data
+    alert('Service approved successfully!');
     navigate('/profilepage', {
       state: {
-        cartId: approvalData.cartId,
+        customerId: approvalData.customerId,
         customerName: approvalData.customerName,
-        mobileNumber: approvalData.mobileNumber,
-        totalServices: approvalData.totalServices,
-        cartStatus: approvalData.cartStatus,
-        services: approvalData.services,
-        charge: approvalData.charge,
-        date: approvalData.date
-      }
+      },
     });
   };
 
@@ -382,12 +245,6 @@ const QRScannerPage = () => {
     setConfirmPassword('');
     setShowResetModal(false);
   };
-
-  // Calculate service statistics
-  const completedServicesCount = approvalData.services.filter(s => s.status === 'completed').length;
-  const pendingServicesCount = approvalData.services.filter(s => s.status === 'pending').length;
-  const processingServicesCount = approvalData.services.filter(s => s.status === 'processing').length;
-  const progressPercentage = (completedServicesCount / approvalData.totalServices) * 100 || 0;
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
@@ -420,7 +277,6 @@ const QRScannerPage = () => {
               <Button
                 className="bg-blue-600 hover:bg-blue-700"
                 onClick={() => setShowScanOptions(true)}
-                disabled={isLoading}
               >
                 <Scan className="h-5 w-5 mr-2" /> Scan QR Code
               </Button>
@@ -448,116 +304,45 @@ const QRScannerPage = () => {
               </div>
             )}
 
-            {!cameraActive && !showApprovalDetails && !isLoading && (
+            {!cameraActive && !showApprovalDetails && (
               <p className="text-center text-sm text-slate-500 mt-4">
                 Click "Scan QR Code" to start.
               </p>
             )}
 
-            {isLoading && (
-              <div className="flex flex-col items-center justify-center mt-8">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                <p className="mt-2 text-sm text-slate-500">Loading service details...</p>
-              </div>
-            )}
-
-            {error && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{error}</p>
-              </div>
-            )}
-
-            {showApprovalDetails && !isLoading && (
+            {showApprovalDetails && (
               <div className="mt-6 space-y-4 border-t pt-4">
-                {/* Customer Information */}
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-lg mb-2">Customer Information</h3>
-                  <div className="space-y-2">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700">Cart ID</label>
-                      <p className="text-lg font-semibold">{approvalData.cartId}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700">Customer Name</label>
-                      <p className="text-lg">{approvalData.customerName}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700">Mobile Number</label>
-                      <p className="text-lg">{approvalData.mobileNumber || 'N/A'}</p>
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Customer ID</label>
+                  <p className="mt-1 text-lg font-semibold">{approvalData.customerId}</p>
                 </div>
-
-                {/* Service Progress */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-semibold">Service Progress</h3>
-                    <span className="text-sm text-gray-600">
-                      {completedServicesCount}/{approvalData.totalServices} Completed
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                    <div 
-                      className="bg-green-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${progressPercentage}%` }}
-                    />
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                    <div>
-                      <div className="text-green-600 font-semibold">{completedServicesCount}</div>
-                      <div className="text-gray-600">Completed</div>
-                    </div>
-                    <div>
-                      <div className="text-yellow-600 font-semibold">{pendingServicesCount}</div>
-                      <div className="text-gray-600">Pending</div>
-                    </div>
-                    <div>
-                      <div className="text-blue-600 font-semibold">{processingServicesCount}</div>
-                      <div className="text-gray-600">Processing</div>
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Customer Name</label>
+                  <p className="mt-1 text-lg">{approvalData.customerName}</p>
                 </div>
-
-                {/* Cart Summary */}
-                <div className="border-t pt-3">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Total Services:</span>
-                    <span className="font-semibold">{approvalData.totalServices}</span>
-                  </div>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="font-medium">Cart Status:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      approvalData.cartStatus === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                    }`}>
-                      {approvalData.cartStatus || 'Active'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="font-medium">Total Charge:</span>
-                    <span className="text-xl font-bold text-blue-600">${approvalData.charge}</span>
-                  </div>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="font-medium">Date:</span>
-                    <span className="text-gray-600">{approvalData.date}</span>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Service</label>
+                  <p className="mt-1 text-lg">{approvalData.service}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Charge</label>
+                  <p className="mt-1 text-lg">${approvalData.charge}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Date</label>
+                  <p className="mt-1 text-lg">{approvalData.date}</p>
                 </div>
               </div>
             )}
 
             <div className="mt-6">
               <Button
-                className="w-full bg-blue-600 hover:bg-blue-700"
-                onClick={handleViewServices}
-                disabled={!approvalData.cartId || isLoading}
+                className="w-full bg-green-600 hover:bg-green-700"
+                onClick={handleApprove}
+                disabled={!approvalData.customerId}
               >
-                <FileText className="h-4 w-4 mr-2" /> 
-                View Services
+                <CheckCircle className="h-4 w-4 mr-2" /> Approve Service
               </Button>
-              {processingServices.length > 0 && (
-                <p className="text-xs text-yellow-600 text-center mt-2">
-                  Some services are pending processing
-                </p>
-              )}
             </div>
           </div>
         </div>

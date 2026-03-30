@@ -145,6 +145,7 @@ const DashboardTeller = () => {
         category: catKey,
         icon: service.icon || "Circle",
         service_fee: service.service_fee || "0.00",
+       
       }));
 
       setCategoryViewServices(servicesArr);
