@@ -19,7 +19,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DashboardHeader } from '@/components/banking/DashboardHeader';
+import { DashboardHeader } from '@/components/banking/DashboardHeader1';
 
 const QRScannerPage = () => {
   const navigate = useNavigate();
@@ -131,7 +131,7 @@ const QRScannerPage = () => {
       }
       
       const data = await response.json();
-      
+      console.log('Fetched service cart data:', data);  
       if (data) {
         // Count services by status
         const completedCount = data.services.filter(s => s.status === 'completed').length;
@@ -661,7 +661,7 @@ const QRScannerPage = () => {
                   </div>
                   <div className="flex justify-between items-center mt-2">
                     <span className="font-medium">Total Charge:</span>
-                    <span className="text-xl font-bold text-blue-600">${approvalData.charge}</span>
+                    <span className="text-xl font-bold text-blue-600">KSh{approvalData.charge}</span>
                   </div>
                   <div className="flex justify-between items-center mt-2">
                     <span className="font-medium">Date:</span>
