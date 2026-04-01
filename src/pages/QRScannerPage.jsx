@@ -17,6 +17,10 @@ import {
   CheckCircle2,
   AlertCircle,
   FileText,
+  User,
+  Mail,
+  Phone,
+  MapPin,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader1';
@@ -25,7 +29,6 @@ const QRScannerPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const serviceData = location.state?.serviceData;
-
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
@@ -38,9 +41,11 @@ const QRScannerPage = () => {
   const [cameraActive, setCameraActive] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingUserDetails, setIsLoadingUserDetails] = useState(false);
   const [error, setError] = useState(null);
   const [processingServices, setProcessingServices] = useState([]);
   const [scanAttempts, setScanAttempts] = useState(0);
+  const [userDetails, setUserDetails] = useState(null); // State to store user details
 
   const [approvalData, setApprovalData] = useState({
     cartId: '',
@@ -53,12 +58,54 @@ const QRScannerPage = () => {
     service: serviceData?.service || 'Service Approval',
     date: new Date().toISOString().split('T')[0],
   });
+  console.log('Received service data from navigation state:', approvalData);
 
   const qrCodeRegionRef = useRef(null);
   const html5QrCodeRef = useRef(null);
 
   // API base URL - change this to your actual backend URL
   const API_BASE_URL = 'http://localhost:8000/api';
+
+  // New function to fetch user details by mobile number
+  const fetchUserDetails = async (mobileNumber) => {
+    if (!mobileNumber) {
+      console.log('No mobile number provided');
+      return null;
+    }
+
+    setIsLoadingUserDetails(true);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/user_detail/${mobileNumber}/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          // Add authorization token if needed
+          // 'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log(`User with mobile number "${mobileNumber}" not found`);
+          return null;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const userData = await response.json();
+      console.log('Fetched user details:', userData);
+      setUserDetails(userData);
+      return userData;
+      
+    } catch (err) {
+      console.error('Error fetching user details:', err);
+      // Don't set main error here, just log it
+      return null;
+    } finally {
+      setIsLoadingUserDetails(false);
+    }
+  };
 
   // Check if camera is available
   const checkCameraAvailability = async () => {
@@ -112,6 +159,7 @@ const QRScannerPage = () => {
   const fetchServiceCart = async (cartId) => {
     setIsLoading(true);
     setError(null);
+    setUserDetails(null); // Reset user details when fetching new cart
     
     try {
       const response = await fetch(`${API_BASE_URL}/service_cart/${cartId}/`, {
@@ -158,6 +206,11 @@ const QRScannerPage = () => {
           s.status === 'pending' || s.status === 'processing'
         );
         setProcessingServices(processing);
+        
+        // Fetch user details using the mobile number from the cart
+        if (data.mobile_number) {
+          await fetchUserDetails(data.mobile_number);
+        }
         
         setShowApprovalDetails(true);
         setError(null);
@@ -392,6 +445,7 @@ const QRScannerPage = () => {
     setError(null);
     setScanResult(null);
     setShowApprovalDetails(false);
+    setUserDetails(null); // Reset user details on retry
     if (cameraActive) {
       // Restart camera for better quality
       stopCamera();
@@ -412,7 +466,7 @@ const QRScannerPage = () => {
       return;
     }
     
-    // Navigate to ProfilePage with cart data
+    // Navigate to ProfilePage with cart data and user details
     navigate('/profilepage', {
       state: {
         cartId: approvalData.cartId,
@@ -422,7 +476,8 @@ const QRScannerPage = () => {
         cartStatus: approvalData.cartStatus,
         services: approvalData.services,
         charge: approvalData.charge,
-        date: approvalData.date
+        date: approvalData.date,
+        userDetails: userDetails // Pass user details to profile page
       }
     });
   };
@@ -553,6 +608,13 @@ const QRScannerPage = () => {
               </div>
             )}
 
+            {isLoadingUserDetails && (
+              <div className="flex items-center justify-center mt-2">
+                <Loader2 className="h-4 w-4 animate-spin text-blue-600 mr-2" />
+                <p className="text-xs text-slate-500">Fetching user details...</p>
+              </div>
+            )}
+
             {error && (
               <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                 <div className="flex items-start gap-2">
@@ -593,35 +655,68 @@ const QRScannerPage = () => {
                   </div>
                 </div>
 
-                {/* Service Progress */}
-                {/* <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-semibold">Service Progress</h3>
-                    <span className="text-sm text-gray-600">
-                      {completedServicesCount}/{approvalData.totalServices} Completed
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                    <div 
-                      className="bg-green-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${progressPercentage}%` }}
-                    />
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                    <div>
-                      <div className="text-green-600 font-semibold">{completedServicesCount}</div>
-                      <div className="text-gray-600">Completed</div>
+                {/* User Details Section - New */}
+                {/* {userDetails && (
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                      <User className="h-5 w-5 text-green-600" />
+                      Complete User Details
+                    </h3>
+                    <div className="space-y-2">
+                      {userDetails.full_name && (
+                        <div className="flex items-start gap-2">
+                          <User className="h-4 w-4 text-green-600 mt-0.5" />
+                          <div>
+                            <label className="block text-xs font-medium text-slate-600">Full Name</label>
+                            <p className="text-sm font-medium">{userDetails.full_name}</p>
+                          </div>
+                        </div>
+                      )}
+                      {userDetails.email && (
+                        <div className="flex items-start gap-2">
+                          <Mail className="h-4 w-4 text-green-600 mt-0.5" />
+                          <div>
+                            <label className="block text-xs font-medium text-slate-600">Email</label>
+                            <p className="text-sm">{userDetails.email}</p>
+                          </div>
+                        </div>
+                      )}
+                      {userDetails.phone && (
+                        <div className="flex items-start gap-2">
+                          <Phone className="h-4 w-4 text-green-600 mt-0.5" />
+                          <div>
+                            <label className="block text-xs font-medium text-slate-600">Phone</label>
+                            <p className="text-sm">{userDetails.phone}</p>
+                          </div>
+                        </div>
+                      )}
+                      {userDetails.address && (
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-4 w-4 text-green-600 mt-0.5" />
+                          <div>
+                            <label className="block text-xs font-medium text-slate-600">Address</label>
+                            <p className="text-sm">{userDetails.address}</p>
+                          </div>
+                        </div>
+                      )}
+                      {userDetails.city && (
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-4 w-4 text-green-600 mt-0.5" />
+                          <div>
+                            <label className="block text-xs font-medium text-slate-600">City</label>
+                            <p className="text-sm">{userDetails.city}</p>
+                          </div>
+                        </div>
+                      )}
+                      {userDetails.created_at && (
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600">Member Since</label>
+                          <p className="text-sm">{new Date(userDetails.created_at).toLocaleDateString()}</p>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <div className="text-yellow-600 font-semibold">{pendingServicesCount}</div>
-                      <div className="text-gray-600">Pending</div>
-                    </div>
-                    <div>
-                      <div className="text-blue-600 font-semibold">{processingServicesCount}</div>
-                      <div className="text-gray-600">Processing</div>
-                    </div>
                   </div>
-                </div> */}
+                )} */}
 
                 {/* Services List Preview */}
                 {approvalData.services.length > 0 && (
