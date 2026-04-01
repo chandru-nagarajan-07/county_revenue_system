@@ -4,8 +4,6 @@ import { Html5Qrcode } from 'html5-qrcode';
 import {
   ArrowLeft,
   QrCode,
-  XCircle,
-  CheckCircle,
   KeyRound,
   X,
   Camera,
@@ -35,16 +33,6 @@ const QRScannerPage = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
-  const inputRefs = useRef([]);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [otpError, setOtpError] = useState('');
-  const [pendingCartData, setPendingCartData] = useState(null); // Store cart data until OTP verified
-  const [userEmail, setUserEmail] = useState(''); // Will be fetched from backend using mobile number
-  const [userData, setUserData] = useState(null); // Store user data from local API
-  
   const [scanResult, setScanResult] = useState(null);
   const [showApprovalDetails, setShowApprovalDetails] = useState(false);
   const [showScanOptions, setShowScanOptions] = useState(false);
@@ -54,7 +42,17 @@ const QRScannerPage = () => {
   const [isLoadingUserDetails, setIsLoadingUserDetails] = useState(false);
   const [error, setError] = useState(null);
   const [processingServices, setProcessingServices] = useState([]);
-  const [userDetails, setUserDetails] = useState(null);
+  const [scanAttempts, setScanAttempts] = useState(0);
+  const [userDetails, setUserDetails] = useState(null); // State to store user details
+
+  // OTP verification states
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [pendingCartId, setPendingCartId] = useState(null);
+  const [userEmail, setUserEmail] = useState(''); // get from auth
 
   const [approvalData, setApprovalData] = useState({
     cartId: '',
@@ -67,6 +65,7 @@ const QRScannerPage = () => {
     service: serviceData?.service || 'Service Approval',
     date: new Date().toISOString().split('T')[0],
   });
+  console.log('Received service data from navigation state:', approvalData);
 
   const qrCodeRegionRef = useRef(null);
   const html5QrCodeRef = useRef(null);
@@ -74,8 +73,8 @@ const QRScannerPage = () => {
   // API base URL
   const API_BASE_URL = 'http://localhost:8000/api';
 
-  // Function to fetch user details by mobile number from local API
-  const fetchUserByMobile = async (mobileNumber) => {
+  // New function to fetch user details by mobile number
+  const fetchUserDetails = async (mobileNumber) => {
     if (!mobileNumber) {
       console.log('No mobile number provided');
       return null;
@@ -88,184 +87,96 @@ const QRScannerPage = () => {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          // Add authorization token if needed
+          // 'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
       });
       
       if (!response.ok) {
         if (response.status === 404) {
-          console.log(`No user found with mobile number "${mobileNumber}"`);
+          console.log(`User with mobile number "${mobileNumber}" not found`);
           return null;
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const userData = await response.json();
-      console.log('Fetched user details from local API:', userData);
+      console.log('Fetched user details:', userData);
       setUserDetails(userData);
       return userData;
       
     } catch (err) {
       console.error('Error fetching user details:', err);
+      // Don't set main error here, just log it
       return null;
     } finally {
       setIsLoadingUserDetails(false);
     }
   };
 
-  // Send OTP function using local API
-  const sendOtp = async () => {
-    if (!userEmail) {
-      setOtpError('User email not found. Please try scanning again.');
-      return;
+  // Get logged-in user's email from localStorage (adjust as needed)
+  useEffect(() => {
+    const storedEmail = localStorage.getItem('userEmail'); // replace with your auth key
+    if (storedEmail) {
+      setUserEmail(storedEmail);
+    } else {
+      // If no email, maybe redirect to login
+      console.warn('No user email found');
     }
-    
-    setOtpLoading(true);
-    setOtpError('');
-    
+  }, []);
+
+  // Automatically send OTP when modal opens
+  useEffect(() => {
+    if (showOtpModal && userEmail && !otpSent) {
+      sendOtp();
+    }
+  }, [showOtpModal, userEmail, otpSent]);
+
+  // Check if camera is available
+  const checkCameraAvailability = async () => {
     try {
-      // First, fetch user data from your local API (already have userData from fetchUserByMobile)
-      // If userData is not available, we should have it from previous step
-      if (!userData) {
-        throw new Error('User data not available. Please try scanning again.');
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      if (videoDevices.length === 0) {
+        alert('No camera found on this device.');
+        return false;
       }
-
-      // Send OTP through your backend
-      const response = await fetch(`${API_BASE_URL}/send-otp/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: userEmail }),
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to send OTP. Please try again.');
-      }
-      
-      setOtpSent(true);
-      setOtpError('');
-      console.log('OTP sent successfully to:', userEmail);
-      
+      return true;
     } catch (err) {
-      setOtpError(err.message || 'Could not send OTP. Please check your email address.');
-      console.error('Send OTP error:', err);
-    } finally {
-      setOtpLoading(false);
+      console.error('Error enumerating devices:', err);
+      return false;
     }
   };
 
-  // Handle OTP input change
-  const handleOtpChange = (element, index) => {
-    if (isNaN(element.value)) return;
-
-    const newOtp = [...otpCode];
-    newOtp[index] = element.value;
-    setOtpCode(newOtp);
-
-    if (element.value && index < 5) {
-      inputRefs.current[index + 1].focus();
+  // Function to get service status icon
+  const getServiceStatusIcon = (status) => {
+    switch(status?.toLowerCase()) {
+      case 'completed':
+        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+      case 'pending':
+        return <Clock className="h-4 w-4 text-yellow-500" />;
+      case 'processing':
+        return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
+      case 'failed':
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return <ClipboardList className="h-4 w-4 text-gray-500" />;
     }
   };
 
-  // Handle OTP key down for backspace
-  const handleOtpKeyDown = (e, index) => {
-    if (e.key === 'Backspace' && !otpCode[index] && index > 0) {
-      inputRefs.current[index - 1].focus();
-    }
-  };
-
-  // Verify OTP function using local API
-  const verifyOtp = async () => {
-    const otpValue = otpCode.join('');
-    
-    if (otpValue.length !== 6) {
-      setOtpError('Please enter a valid 6-digit OTP');
-      return;
-    }
-    
-    setOtpLoading(true);
-    setOtpError('');
-    
-    try {
-      // Get user data if not already available
-      let localUserData = userData;
-      if (!localUserData && pendingCartData?.mobile_number) {
-        localUserData = await fetchUserByMobile(pendingCartData.mobile_number);
-        if (localUserData) {
-          setUserData(localUserData);
-        }
-      }
-      
-      if (!localUserData) {
-        throw new Error('User data not found. Please try scanning again.');
-      }
-      
-      // Verify OTP with your backend
-      const response = await fetch(`${API_BASE_URL}/otp-verification/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: userEmail,
-          otp: otpValue,
-          userData1: localUserData // Send the local user data to backend
-        }),
-      });
-      
-      const data = await response.json();
-      console.log('OTP verification response:', data);
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Invalid OTP. Please try again.');
-      }
-      
-      // Store verification data
-      localStorage.setItem("verifiedUser", JSON.stringify(data));
-      sessionStorage.setItem("userData1", JSON.stringify(localUserData));
-      
-      // OTP verified successfully - now show the cart data
-      setShowOtpModal(false);
-      resetOtpState();
-      
-      // Display the cart data that was stored
-      if (pendingCartData) {
-        displayCartData(pendingCartData);
-        setPendingCartData(null);
-      }
-      
-    } catch (err) {
-      setOtpError(err.message || 'Verification failed. Please check your OTP.');
-      console.error('OTP verification error:', err);
-    } finally {
-      setOtpLoading(false);
-    }
-  };
-
-  // Function to display cart data after OTP verification
-  const displayCartData = (data) => {
-    if (data) {
-      // Calculate total charge
-      const totalCharge = data.total_services * 10; // Example calculation - modify as needed
-      
-      setApprovalData({
-        cartId: data.cart_id,
-        customerName: data.customer_name,
-        mobileNumber: data.mobile_number,
-        totalServices: data.total_services,
-        cartStatus: data.cart_status,
-        services: data.services,
-        charge: totalCharge.toFixed(2),
-        service: `${data.total_services} Service${data.total_services !== 1 ? 's' : ''}`,
-        date: new Date().toISOString().split('T')[0],
-      });
-      
-      // Set processing services
-      const processing = data.services.filter(s => 
-        s.status === 'pending' || s.status === 'processing'
-      );
-      setProcessingServices(processing);
-      
-      setShowApprovalDetails(true);
-      setError(null);
+  // Function to get service status color
+  const getServiceStatusColor = (status) => {
+    switch(status?.toLowerCase()) {
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'processing':
+        return 'bg-blue-100 text-blue-800';
+      case 'failed':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -273,7 +184,7 @@ const QRScannerPage = () => {
   const fetchServiceCart = async (cartId) => {
     setIsLoading(true);
     setError(null);
-    setUserDetails(null);
+    setUserDetails(null); // Reset user details when fetching new cart
     
     try {
       const response = await fetch(`${API_BASE_URL}/service_cart/${cartId}/`, {
@@ -291,29 +202,35 @@ const QRScannerPage = () => {
       }
       
       const data = await response.json();
-      console.log('Fetched service cart data:', data);
-      
-      if (data && data.mobile_number) {
-        // Step 1: Get user details from local API using mobile number
-        const userDataFromLocal = await fetchUserByMobile(data.mobile_number);
+      console.log('Fetched service cart data:', data);  
+      if (data) {
+        const totalCharge = data.total_services * 10; // adjust as needed
         
-        if (userDataFromLocal && userDataFromLocal.email) {
-          // Step 2: Store cart data and user data, then show OTP modal
-          setUserEmail(userDataFromLocal.email);
-          setUserData(userDataFromLocal); // Store user data for OTP verification
-          setPendingCartData(data);
-          setShowOtpModal(true);
-          setOtpSent(false); // Reset OTP sent status to trigger auto-send
-          setOtpCode(['', '', '', '', '', '']); // Reset OTP input
-        } else {
-          // No email found for this mobile number
-          setError('No user account found for this mobile number. Please contact support.');
-          setShowApprovalDetails(false);
+        setApprovalData({
+          cartId: data.cart_id,
+          customerName: data.customer_name,
+          mobileNumber: data.mobile_number,
+          totalServices: data.total_services,
+          cartStatus: data.cart_status,
+          services: data.services,
+          charge: totalCharge.toFixed(2),
+          service: `${data.total_services} Service${data.total_services !== 1 ? 's' : ''}`,
+          date: new Date().toISOString().split('T')[0],
+        });
+        
+        const processing = data.services.filter(s => 
+          s.status === 'pending' || s.status === 'processing'
+        );
+        setProcessingServices(processing);
+        
+        // Fetch user details using the mobile number from the cart
+        if (data.mobile_number) {
+          await fetchUserDetails(data.mobile_number);
         }
-      } else {
-        throw new Error('Invalid cart data: Mobile number not found');
+        
+        setShowApprovalDetails(true);
+        setError(null);
       }
-      
     } catch (err) {
       console.error('Error fetching service cart:', err);
       setError(err.message || 'Failed to fetch service cart details. Please check the QR code and try again.');
@@ -324,51 +241,88 @@ const QRScannerPage = () => {
     }
   };
 
-  // Reset OTP state
-  const resetOtpState = () => {
-    setOtpCode(['', '', '', '', '', '']);
-    setOtpSent(false);
+  // --- OTP Functions ---
+  const sendOtp = async () => {
+    if (!userEmail) {
+      setOtpError('User email not found. Please log in again.');
+      return;
+    }
+    setOtpLoading(true);
     setOtpError('');
-    setPendingCartData(null);
-    setUserEmail('');
-    setUserData(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/send-otp/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userEmail }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to send OTP. Please try again.');
+      }
+      setOtpSent(true);
+      setOtpError('');
+    } catch (err) {
+      setOtpError(err.message || 'Could not send OTP. Check your email address.');
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
-  // Auto-send OTP when modal opens
-  useEffect(() => {
-    if (showOtpModal && userEmail && userData && !otpSent && !otpLoading) {
-      sendOtp();
+  const verifyOtp = async () => {
+    if (!otpCode) {
+      setOtpError('Please enter the OTP code.');
+      return;
     }
-  }, [showOtpModal, userEmail, userData, otpSent, otpLoading]);
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/verify-otp/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userEmail, otp: otpCode }),
+      });
+      if (!response.ok) {
+        throw new Error('Invalid OTP. Please try again.');
+      }
+      // OTP verified successfully
+      setShowOtpModal(false);
+      resetOtpState();
+      await fetchServiceCart(pendingCartId);
+    } catch (err) {
+      setOtpError(err.message || 'Verification failed. Please check your OTP.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const resetOtpState = () => {
+    setOtpCode('');
+    setOtpSent(false);
+    setOtpError('');
+    setPendingCartId(null);
+  };
+  // --- End OTP Functions ---
 
   const handleScanSuccess = async (decodedText) => {
     if (isScanning) return;
     setIsScanning(true);
     setScanResult(decodedText);
     setError(null);
-    
+
     try {
-      // Try to parse the QR data as JSON
       let qrData;
       try {
         qrData = JSON.parse(decodedText);
       } catch (parseError) {
-        // If not JSON, treat the whole text as cart_id
         qrData = { cart_id: decodedText };
       }
       
-      // Extract cart_id from QR data
       const cartId = qrData.cart_id || qrData.cartId || decodedText;
-      
-      if (!cartId) {
-        throw new Error('No cart ID found in QR code');
-      }
+      if (!cartId) throw new Error('No cart ID found in QR code');
       
       console.log('Extracted cart ID:', cartId);
       
-      // Fetch service cart details from backend
-      await fetchServiceCart(cartId);
-      
+      setPendingCartId(cartId);
+      setShowOtpModal(true);
     } catch (err) {
       console.error('QR code processing error:', err);
       setError(err.message || 'Failed to process QR code');
@@ -380,7 +334,6 @@ const QRScannerPage = () => {
   };
 
   const handleScanFailure = (error) => {
-    // Only log meaningful errors
     if (error && !error.includes('No QR code found') && !error.includes('NotFoundException')) {
       console.warn('QR scan error:', error);
     }
@@ -398,6 +351,7 @@ const QRScannerPage = () => {
 
     await stopCamera();
     await new Promise(resolve => setTimeout(resolve, 500));
+
     container.classList.remove('hidden');
 
     const html5QrCode = new Html5Qrcode('qr-reader');
@@ -416,41 +370,27 @@ const QRScannerPage = () => {
         handleScanFailure
       );
       setCameraActive(true);
+      setScanAttempts(0);
     } catch (err) {
-      console.error(`Failed to start camera:`, err);
+      console.error(`Failed to start camera with facingMode=${facingMode}:`, err);
       if (facingMode === 'environment') {
         await startCamera('user');
       } else {
         let errorMsg = 'Could not access camera. ';
         if (err.name === 'NotReadableError') {
-          errorMsg += 'The camera may be in use by another application.';
+          errorMsg += 'The camera may be in use by another application. Please close other apps using the camera and try again.';
         } else if (err.name === 'NotAllowedError') {
           errorMsg += 'Please grant camera permissions.';
         } else if (err.name === 'NotFoundError') {
           errorMsg += 'No camera found on this device.';
         } else {
-          errorMsg += 'Please check your device settings and ensure you are using HTTPS.';
+          errorMsg += 'Please check your device settings and ensure you are using HTTPS (required for camera access).';
         }
         alert(errorMsg);
         setCameraActive(false);
         html5QrCodeRef.current = null;
         container.classList.add('hidden');
       }
-    }
-  };
-
-  const checkCameraAvailability = async () => {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      if (videoDevices.length === 0) {
-        alert('No camera found on this device.');
-        return false;
-      }
-      return true;
-    } catch (err) {
-      console.error('Error enumerating devices:', err);
-      return false;
     }
   };
 
@@ -513,14 +453,19 @@ const QRScannerPage = () => {
         await tempScanner.clear();
         document.body.removeChild(tempContainer);
         await handleScanSuccess(decodedText);
-        
       } catch (err) {
         console.error('QR scan from file failed:', err);
         let errorMessage = 'Could not read QR code from image. ';
         
         if (err.message?.includes('No MultiFormat Readers were able to detect') || 
             err.name === 'NotFoundException') {
-          errorMessage += 'No QR code found in the image. Please ensure the QR code is clear and well-lit.';
+          errorMessage += 'No QR code found in the image. Please ensure:\n\n' +
+            '• The image contains a clear, visible QR code\n' +
+            '• The QR code is not blurry or damaged\n' +
+            '• The QR code is well-lit and not obstructed\n\n' +
+            'Try taking a clearer photo with better lighting.';
+        } else if (err.name === 'NotSupportedError') {
+          errorMessage += 'The selected file format is not supported. Please use PNG, JPG, or JPEG format.';
         } else {
           errorMessage += 'Please try another image with a clear QR code.';
         }
@@ -533,11 +478,9 @@ const QRScannerPage = () => {
           console.warn('Error clearing scanner:', e);
         }
         document.body.removeChild(tempContainer);
-        
       } finally {
         setIsLoading(false);
       }
-      
     } catch (err) {
       console.error('File upload error:', err);
       setError('Error processing file. Please try again.');
@@ -551,7 +494,7 @@ const QRScannerPage = () => {
     setError(null);
     setScanResult(null);
     setShowApprovalDetails(false);
-    setUserDetails(null);
+    setUserDetails(null); // Reset user details on retry
     if (cameraActive) {
       stopCamera();
       setTimeout(() => startCamera(), 500);
@@ -570,6 +513,7 @@ const QRScannerPage = () => {
       return;
     }
     
+
     navigate('/profilepage', {
       state: {
         cartId: approvalData.cartId,
@@ -580,7 +524,7 @@ const QRScannerPage = () => {
         services: approvalData.services,
         charge: approvalData.charge,
         date: approvalData.date,
-        userDetails: userDetails
+        userDetails: userDetails // Pass user details to profile page
       }
     });
   };
@@ -615,40 +559,10 @@ const QRScannerPage = () => {
     setShowResetModal(false);
   };
 
+  // Service statistics
   const completedServicesCount = approvalData.services.filter(s => s.status === 'completed').length;
   const pendingServicesCount = approvalData.services.filter(s => s.status === 'pending').length;
   const processingServicesCount = approvalData.services.filter(s => s.status === 'processing').length;
-  const progressPercentage = (completedServicesCount / approvalData.totalServices) * 100 || 0;
-
-  const getServiceStatusIcon = (status) => {
-    switch(status?.toLowerCase()) {
-      case 'completed':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      case 'processing':
-        return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
-      case 'failed':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return <ClipboardList className="h-4 w-4 text-gray-500" />;
-    }
-  };
-
-  const getServiceStatusColor = (status) => {
-    switch(status?.toLowerCase()) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'processing':
-        return 'bg-blue-100 text-blue-800';
-      case 'failed':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
@@ -693,8 +607,6 @@ const QRScannerPage = () => {
               className="w-full max-w-sm mx-auto hidden"
               style={{ minHeight: cameraActive ? '300px' : '0px' }}
             />
-
-            <div id="qr-reader-file" className="hidden" />
 
             {cameraActive && (
               <div className="flex justify-center mt-4 space-x-2">
@@ -768,7 +680,6 @@ const QRScannerPage = () => {
 
             {showApprovalDetails && !isLoading && (
               <div className="mt-6 space-y-4 border-t pt-4">
-                {/* Customer Information */}
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h3 className="font-semibold text-lg mb-2">Customer Information</h3>
                   <div className="space-y-2">
@@ -787,7 +698,72 @@ const QRScannerPage = () => {
                   </div>
                 </div>
 
+
+                {/* User Details Section - New */}
+                {/* {userDetails && (
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                      <User className="h-5 w-5 text-green-600" />
+                      Complete User Details
+                    </h3>
+                    <div className="space-y-2">
+                      {userDetails.full_name && (
+                        <div className="flex items-start gap-2">
+                          <User className="h-4 w-4 text-green-600 mt-0.5" />
+                          <div>
+                            <label className="block text-xs font-medium text-slate-600">Full Name</label>
+                            <p className="text-sm font-medium">{userDetails.full_name}</p>
+                          </div>
+                        </div>
+                      )}
+                      {userDetails.email && (
+                        <div className="flex items-start gap-2">
+                          <Mail className="h-4 w-4 text-green-600 mt-0.5" />
+                          <div>
+                            <label className="block text-xs font-medium text-slate-600">Email</label>
+                            <p className="text-sm">{userDetails.email}</p>
+                          </div>
+                        </div>
+                      )}
+                      {userDetails.phone && (
+                        <div className="flex items-start gap-2">
+                          <Phone className="h-4 w-4 text-green-600 mt-0.5" />
+                          <div>
+                            <label className="block text-xs font-medium text-slate-600">Phone</label>
+                            <p className="text-sm">{userDetails.phone}</p>
+                          </div>
+                        </div>
+                      )}
+                      {userDetails.address && (
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-4 w-4 text-green-600 mt-0.5" />
+                          <div>
+                            <label className="block text-xs font-medium text-slate-600">Address</label>
+                            <p className="text-sm">{userDetails.address}</p>
+                          </div>
+                        </div>
+                      )}
+                      {userDetails.city && (
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-4 w-4 text-green-600 mt-0.5" />
+                          <div>
+                            <label className="block text-xs font-medium text-slate-600">City</label>
+                            <p className="text-sm">{userDetails.city}</p>
+                          </div>
+                        </div>
+                      )}
+                      {userDetails.created_at && (
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600">Member Since</label>
+                          <p className="text-sm">{new Date(userDetails.created_at).toLocaleDateString()}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )} */}
+
                 {/* Services List Preview */}
+
                 {approvalData.services.length > 0 && (
                   <div className="border rounded-lg p-4">
                     <h3 className="font-semibold mb-2">Services Preview</h3>
@@ -809,7 +785,6 @@ const QRScannerPage = () => {
                   </div>
                 )}
 
-                {/* Cart Summary */}
                 <div className="border-t pt-3">
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Total Services:</span>
@@ -905,7 +880,7 @@ const QRScannerPage = () => {
         </div>
       )}
 
-      {/* OTP Verification Modal - With 6-digit input fields */}
+      {/* OTP Verification Modal (no email field) */}
       {showOtpModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 relative">
@@ -913,7 +888,6 @@ const QRScannerPage = () => {
               onClick={() => {
                 setShowOtpModal(false);
                 resetOtpState();
-                retryScan();
               }}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
             >
@@ -921,60 +895,45 @@ const QRScannerPage = () => {
             </button>
             <div className="flex items-center gap-2 mb-4">
               <KeyRound className="h-5 w-5 text-blue-600" />
-              <h2 className="text-xl font-semibold">Verify Your Identity</h2>
+              <h2 className="text-xl font-semibold">Email Verification</h2>
             </div>
-            <p className="text-sm text-gray-600 mb-4">
-              We've sent a one-time password (OTP) to <strong>{userEmail}</strong>
-            </p>
-            
             <div className="space-y-4">
-              <div className="flex justify-center gap-3">
-                {otpCode.map((value, index) => (
-                  <input
-                    key={index}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength="1"
-                    value={value}
-                    onChange={(e) => handleOtpChange(e.target, index)}
-                    onKeyDown={(e) => handleOtpKeyDown(e, index)}
-                    onFocus={(e) => e.target.select()}
-                    ref={(el) => (inputRefs.current[index] = el)}
-                    className="w-12 h-14 text-center text-xl font-semibold border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                ))}
+              <p className="text-sm text-gray-600">
+                An OTP has been sent to <strong>{userEmail || 'your registered email'}</strong>.
+                Please enter it below.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">OTP Code</label>
+                <input
+                  type="text"
+                  placeholder="Enter 6-digit code"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  maxLength={6}
+                />
               </div>
-              
-              {otpError && (
-                <div className="p-2 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-xs text-red-600">{otpError}</p>
-                </div>
-              )}
-              
-              <Button 
-                className="w-full" 
+              <Button
+                className="w-full"
                 onClick={verifyOtp}
-                disabled={otpLoading || otpCode.join('').length !== 6}
+                disabled={otpLoading || !otpCode}
               >
-                {otpLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  'Verify & Continue'
-                )}
+                {otpLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                Verify OTP
               </Button>
-              
-              <div className="text-center">
+              <p className="text-xs text-center text-gray-500 mt-2">
+                Didn't receive code?{' '}
                 <button
                   onClick={sendOtp}
+                  className="text-blue-600 hover:underline"
                   disabled={otpLoading}
-                  className="text-sm text-blue-600 hover:text-blue-700 disabled:text-gray-400"
                 >
                   Resend OTP
                 </button>
-              </div>
+              </p>
+              {otpError && (
+                <p className="text-sm text-red-600 text-center">{otpError}</p>
+              )}
             </div>
           </div>
         </div>
