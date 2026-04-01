@@ -19,7 +19,8 @@ import {
   Hash,
   PauseCircle,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  Info
 } from 'lucide-react';
 import { DashboardHeader } from '@/components/banking/DashboardHeader1';
 
@@ -34,6 +35,9 @@ const ProfilePage = () => {
   const [processingServices, setProcessingServices] = useState([]);
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
   const [updatingServiceId, setUpdatingServiceId] = useState(null);
+  const [selectedServiceDetails, setSelectedServiceDetails] = useState(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   // API base URL
   const API_BASE_URL = 'http://localhost:8000/api';
@@ -91,6 +95,42 @@ const ProfilePage = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Function to fetch service cart item details
+  const fetchServiceCartItemDetails = async (cartId) => {
+    setIsLoadingDetails(true);
+    setSelectedServiceDetails(null);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/ServiceCartItemsDetail/${cartId}/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // The API returns an object with 'cart' and 'service_data' fields
+      setSelectedServiceDetails(data);
+      setIsDetailsModalOpen(true);
+      
+    } catch (err) {
+      console.error('Error fetching service cart item details:', err);
+      alert(`Failed to fetch service details: ${err.message}`);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
+
+  // Handle service ID click
+  const handleServiceIdClick = (serviceId) => {
+    fetchServiceCartItemDetails(serviceId);
   };
 
   // Load data on component mount
@@ -173,6 +213,7 @@ const ProfilePage = () => {
       case 'PENDING':
         return <Clock className="h-4 w-4 text-yellow-500" />;
       case 'PROCESSING':
+      case 'IN_PROGRESS':
         return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
       default:
         return <ClipboardList className="h-4 w-4 text-gray-500" />;
@@ -191,6 +232,7 @@ const ProfilePage = () => {
       case 'PENDING':
         return 'bg-yellow-100 text-yellow-800';
       case 'PROCESSING':
+      case 'IN_PROGRESS':
         return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -209,7 +251,8 @@ const ProfilePage = () => {
       case 'PENDING':
         return 'Pending';
       case 'PROCESSING':
-        return 'Processing';
+      case 'IN_PROGRESS':
+        return 'In Progress';
       default:
         return status || 'Unknown';
     }
@@ -242,8 +285,236 @@ const ProfilePage = () => {
   const completedServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'COMPLETED').length || 0;
   const onHoldServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'ON_HOLD').length || 0;
   const rejectedServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'REJECTED').length || 0;
-  const pendingServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'PENDING' || s.status?.toUpperCase() === 'PROCESSING').length || 0;
+  const pendingServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'PENDING' || s.status?.toUpperCase() === 'PROCESSING' || s.status?.toUpperCase() === 'IN_PROGRESS').length || 0;
   const progressPercentage = (completedServicesCount / (serviceCart?.totalServices || 1)) * 100 || 0;
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleString();
+  };
+
+  // Format currency
+  const formatCurrency = (amount) => {
+    if (!amount) return 'N/A';
+    return `KSh ${parseFloat(amount).toFixed(2)}`;
+  };
+
+  // Modal Component for Service Details
+// Modal Component for Service Details
+// Modal Component for Service Details
+const ServiceDetailsModal = () => {
+  if (!isDetailsModalOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+          <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <Info className="h-5 w-5 text-blue-600" />
+            Service Cart Item Details
+          </h3>
+
+          <button
+            onClick={() => setIsDetailsModalOpen(false)}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <XCircle className="h-6 w-6" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6">
+          {isLoadingDetails ? (
+            <div className="text-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+              <p className="mt-2 text-gray-600">Loading details...</p>
+            </div>
+
+          ) : selectedServiceDetails ? (
+
+            <div className="space-y-6">
+
+              {/* Cart Item Information */}
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-blue-50 px-4 py-2 border-b">
+                  <h4 className="font-semibold text-blue-900">
+                    Cart Item Information
+                  </h4>
+                </div>
+
+                <div className="p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    {selectedServiceDetails.cart &&
+                      Object.entries(selectedServiceDetails.cart).map(
+                        ([key, value]) => {
+
+                          // REMOVE UNWANTED FIELDS
+                          if (
+                            key === "service_data" ||
+                            key === "created_at" ||
+                            key === "documents" ||
+                            key === "core_banking_ref" ||
+                            key === "rejection_reason" ||
+                            key === "customer_notified" ||
+                            key === "processed_at" ||
+                            key === "completed_at" ||
+                            key === "teller"
+                          ) return null;
+
+                          let displayValue = value;
+
+                          if (key === "amount") {
+                            displayValue = formatCurrency(value);
+                          } 
+                          else if (value === null || value === undefined) {
+                            displayValue = "N/A";
+                          } 
+                          else if (typeof value === "boolean") {
+                            displayValue = value ? "Yes" : "No";
+                          }
+
+                          return (
+                            <div key={key} className="flex flex-col">
+                              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                {key.replace(/_/g, " ")}
+                              </span>
+
+                              <span className="text-sm text-gray-900 mt-1 font-medium">
+                                {String(displayValue)}
+                              </span>
+                            </div>
+                          );
+                        }
+                      )}
+
+                  </div>
+                </div>
+              </div>
+
+
+              {/* Service Data Section */}
+              {selectedServiceDetails.service_data && (
+                <div className="border rounded-lg overflow-hidden">
+
+                  <div className="bg-green-50 px-4 py-2 border-b">
+                    <h4 className="font-semibold text-green-900">
+                      Service Data Details
+                    </h4>
+                  </div>
+
+                  <div className="p-4">
+
+                    {selectedServiceDetails.service_data.error ? (
+                      <div className="text-red-600 p-2 bg-red-50 rounded">
+                        Error: {selectedServiceDetails.service_data.error}
+                      </div>
+
+                    ) : (
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        {Object.entries(
+                          selectedServiceDetails.service_data
+                        ).map(([key, value]) => {
+
+                          // REMOVE QR IMAGE
+                          if (key === "qr_img") return null;
+
+                          let displayValue = value;
+
+                          if (key === "created_at") {
+                            displayValue = formatDate(value);
+                          } 
+                          else if (key === "amount") {
+                            displayValue = formatCurrency(value);
+                          } 
+                          else if (value === null || value === undefined) {
+                            displayValue = "N/A";
+                          }
+
+                          return (
+                            <div key={key} className="flex flex-col">
+                              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                {key.replace(/_/g, " ")}
+                              </span>
+
+                              <span className="text-sm text-gray-900 mt-1">
+                                {displayValue}
+                              </span>
+                            </div>
+                          );
+                        })}
+
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+              )}
+
+
+              {/* Summary */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+
+                  <div>
+                    <span className="text-sm text-gray-600">
+                      Service Status:
+                    </span>
+
+                    <span
+                      className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusColor(
+                        selectedServiceDetails.cart?.service_status
+                      )}`}
+                    >
+                      {getStatusText(
+                        selectedServiceDetails.cart?.service_status
+                      )}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-sm text-gray-600">
+                      Service Code:
+                    </span>
+
+                    <span className="ml-2 font-mono text-sm font-semibold text-gray-800">
+                      {selectedServiceDetails.cart?.service_code}
+                    </span>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+
+          ) : (
+
+            <div className="text-center py-8 text-gray-500">
+              No details available for this service
+            </div>
+
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end">
+          <Button
+            onClick={() => setIsDetailsModalOpen(false)}
+          >
+            Close
+          </Button>
+        </div>
+
+      </div>
+    </div>
+  );
+};
 
   if (isLoading) {
     return (
@@ -435,7 +706,15 @@ const ProfilePage = () => {
                     
                     return (
                       <tr key={service.service_id} className="hover:bg-gray-50 transition">
-                        <td className="px-6 py-4 font-mono text-xs">{service.service_id}</td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => handleServiceIdClick(service.service_id)}
+                            className="font-mono text-xs text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+                            title="Click to view service details"
+                          >
+                            {service.service_id}
+                          </button>
+                        </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             {getServiceStatusIcon(currentStatus)}
@@ -536,6 +815,9 @@ const ProfilePage = () => {
           </div>
         </div>
       </main>
+
+      {/* Service Details Modal */}
+      <ServiceDetailsModal />
     </div>
   );
 };

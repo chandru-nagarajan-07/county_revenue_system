@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const CartPage = () => {
   const navigate = useNavigate();
-
   const [pendingItems, setPendingItems] = useState([]);
   const [completedItems, setCompletedItems] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -16,6 +15,16 @@ const CartPage = () => {
   const [activeTab, setActiveTab] = useState('pending');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCompletedItem, setSelectedCompletedItem] = useState(null);
+
+  
+  /* SESSION USER */
+  let sessionUser = {};
+  try { 
+    sessionUser = JSON.parse(sessionStorage.getItem("userData1")) || {}; 
+    console.log("Session User:", sessionUser.user_id);
+  } catch { 
+    sessionUser = {}; 
+  }
 
   // Fetch pending items on mount
   useEffect(() => {
@@ -31,8 +40,9 @@ const CartPage = () => {
 
   const fetchPendingItems = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/service_queue_items/');
-      console.log('Raw pending items response:', response);
+
+      const response = await fetch(`http://127.0.0.1:8000/customer_service_queue_items/${sessionUser.user_id}/`);
+
       const data = await response.json();
       console.log('Pending items from API:', data);
       
@@ -42,7 +52,8 @@ const CartPage = () => {
           service_request_id: service.service_request_id,
           service_code: service.service_code,
           service_name: service.service_name,
-          amount: service.service_data?.amount || '-',
+          amount: service.service_amount || '-',
+          card_status: service.cart_status || '-',
           branch: service.service_data?.branch || '-',
         };
       });
@@ -56,7 +67,7 @@ const CartPage = () => {
 
   const fetchCompletedItems = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/service_cart_list_queue/');
+      const response = await fetch(`http://127.0.0.1:8000/customer_service_cart_list_queue/${sessionUser.user_id}/`);
       
       if (!response.ok) {
         console.error('API response not OK:', response.status);
@@ -66,8 +77,27 @@ const CartPage = () => {
       const data = await response.json();
       console.log('Raw completed items response:', data);
       
-      // Store RAW data without formatting
-      setCompletedItems(data);
+      // Format the completed items data for display
+      const formattedData = data.map((cart) => ({
+        id: cart.id,
+        cart_id: cart.cart_id,
+        cart_status: cart.cart_status,
+        service_amount: cart.service_amount || 0,
+        total_services: cart.total_services || 0,
+        completed_services: cart.completed_services || 0,
+        services: cart.services || [],
+        qr_code_data: cart.qr_code_data,
+        qr_img: cart.qr_img,
+        created_at: cart.created_at,
+        expires_at: cart.expires_at,
+        customer_name: cart.customer_name,
+        mobile_number: cart.mobile_number,
+        branch: cart.branch,
+        account: cart.account,
+        teller: cart.teller
+      }));
+      
+      setCompletedItems(formattedData);
       
     } catch (error) {
       console.error('Error fetching completed items:', error);
@@ -106,25 +136,14 @@ const CartPage = () => {
       const data = await response.json();
       console.log('Cart Created:', data);
 
-      const completed = pendingItems.filter((item) =>
-        selectedIds.includes(item.id)
-      );
-
-      const completedWithCartId = completed.map(item => ({
-        ...item,
-        cart_id: data.cart_id || `CART_${Date.now()}_${item.id}`,
-        completed_at: new Date().toISOString(),
-      }));
-
-      setCompletedItems((prev) => [...prev, ...completedWithCartId]);
+      // After creating cart, refresh completed items
+      await fetchCompletedItems();
+      
+      // Clear pending items that were completed
       setPendingItems((prev) =>
         prev.filter((item) => !selectedIds.includes(item.id))
       );
       setSelectedIds([]);
-      
-      if (activeTab === 'completed') {
-        await fetchCompletedItems();
-      }
       
     } catch (error) {
       console.error('Error completing orders:', error);
@@ -148,19 +167,22 @@ const CartPage = () => {
   };
 
   const getQrCodeUrl = (item) => {
+    // Use the QR image URL from the API if available, otherwise generate one
+    if (item.qr_img) {
+      return `http://127.0.0.1:8000${item.qr_img}`;
+    }
+    
     // Create QR data with cart info
     const qrData = {
       cart_id: item.cart_id,
-      // total: item.total,
-      services_count: item.services?.length || 0,
-      completed_services: item.services?.filter(s => s.status === 'completed').length || 0,
-      // services: item.services
+      service_amount: item.service_amount,
+      total_services: item.total_services,
+      completed_services: item.completed_services,
+      created_at: item.created_at
     };
     
-    const data = JSON.stringify(qrData, null, 2);
-    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-      data
-    )}`;
+    const data = JSON.stringify(qrData);
+    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data)}`;
   };
 
   const downloadQrCode = async (item) => {
@@ -246,9 +268,6 @@ const CartPage = () => {
                           Amount
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                          Branch
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                           Action
                         </th>
                       </tr>
@@ -277,9 +296,6 @@ const CartPage = () => {
                             {item.amount}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                            {item.branch}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                             <button
                               onClick={() => removeItem(item.id)}
                               className="text-red-600 hover:text-red-800 transition-colors"
@@ -292,7 +308,7 @@ const CartPage = () => {
                       ))}
                       {pendingItems.length === 0 && (
                         <tr>
-                          <td colSpan="7" className="px-6 py-8 text-center text-slate-500">
+                          <td colSpan="6" className="px-6 py-8 text-center text-slate-500">
                             No pending items
                           </td>
                         </tr>
@@ -315,7 +331,7 @@ const CartPage = () => {
               )}
             </TabsContent>
 
-            {/* Completed Tab - Show cart_id, total, services, completed services */}
+            {/* Completed Tab */}
             <TabsContent value="completed">
               <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                 <div className="overflow-x-auto">
@@ -325,14 +341,14 @@ const CartPage = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                           Cart ID
                         </th>
-                        {/* <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                          Total
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                          Total Amount
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                          Services
-                        </th> */}
+                          Cart Status
+                        </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                          Completed Services
+                          Services Progress
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                           Actions
@@ -340,61 +356,73 @@ const CartPage = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
-                      {completedItems.map((item, index) => {
-                        // Calculate completed services count
-                        const totalServices = item.services?.length || 0;
-                        const completedServices = item.services?.filter(service => 
-                          service.status === 'completed' || 
-                          service.completed_at || 
-                          service.is_completed
-                        ).length || 0;
-                        
-                        return (
-                          <tr key={item.cart_id || item.id || index}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                              {item.cart_id || '-'}
-                            </td>
-                            {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                              {item.total || item.amount || '-'}
-                            </td> */}
-                            {/* <td className="px-6 py-4 text-sm text-slate-900">
-                              <details>
-                                <summary className="cursor-pointer text-blue-600 hover:text-blue-800">
-                                  View ({totalServices} services)
-                                </summary>
-                                <pre className="mt-2 text-xs bg-slate-50 p-2 rounded overflow-auto max-h-40">
-                                  {JSON.stringify(item.services, null, 2)}
-                                </pre>
-                              </details>
-                            </td> */}
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                      {completedItems.map((item) => (
+                        <tr key={item.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 font-mono">
+                            {item.cart_id || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                            {item.service_amount ? `${item.service_amount} Ksh` : '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              item.cart_status === 'ACTIVE' 
+                                ? 'bg-green-100 text-green-800'
+                                : item.cart_status === 'COMPLETED'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {item.cart_status || '-'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                            <div className="flex items-center gap-2">
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                {completedServices} / {totalServices}
+                                {item.completed_services || 0} / {item.total_services || 0}
                               </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => openQrModal(item)}
-                                  className="text-blue-600 hover:text-blue-800 transition-colors p-1"
-                                  aria-label="View QR code"
-                                  title="View QR Code"
-                                >
-                                  <QrCode size={18} />
-                                </button>
-                                <button
-                                  onClick={() => downloadQrCode(item)}
-                                  className="text-green-600 hover:text-green-800 transition-colors p-1"
-                                  aria-label="Download QR code"
-                                  title="Download QR Code"
-                                >
-                                  <Download size={18} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                              {/* {item.services && item.services.length > 0 && (
+                                <details className="relative">
+                                  <summary className="cursor-pointer text-blue-600 hover:text-blue-800 text-xs">
+                                    View Details
+                                  </summary>
+                                  <div className="absolute left-0 mt-2 w-64 bg-white border rounded-lg shadow-lg p-3 z-10">
+                                    <div className="text-xs space-y-1">
+                                      <p className="font-semibold mb-2">Services:</p>
+                                      {item.services.map((service, idx) => (
+                                        <div key={idx} className="border-b pb-1 mb-1">
+                                          <p><strong>{service.service_name}</strong></p>
+                                          <p className="text-gray-600">Status: {service.status || 'pending'}</p>
+                                          <p className="text-gray-600">Amount: {service.service_amount}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </details>
+                              )} */}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => openQrModal(item)}
+                                className="text-blue-600 hover:text-blue-800 transition-colors p-1"
+                                aria-label="View QR code"
+                                title="View QR Code"
+                              >
+                                <QrCode size={18} />
+                              </button>
+                              <button
+                                onClick={() => downloadQrCode(item)}
+                                className="text-green-600 hover:text-green-800 transition-colors p-1"
+                                aria-label="Download QR code"
+                                title="Download QR Code"
+                              >
+                                <Download size={18} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
                       {completedItems.length === 0 && (
                         <tr>
                           <td colSpan="5" className="px-6 py-8 text-center text-slate-500">
@@ -443,16 +471,28 @@ const CartPage = () => {
                   src={getQrCodeUrl(selectedCompletedItem)}
                   alt="QR Code"
                   className="w-64 h-64"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(JSON.stringify({
+                      cart_id: selectedCompletedItem.cart_id,
+                      message: 'QR code not available'
+                    }))}`;
+                  }}
                 />
               </div>
               <div className="mt-2 text-sm text-slate-600">
                 <div className="bg-slate-50 p-3 rounded space-y-1">
                   <p><strong>Cart ID:</strong> {selectedCompletedItem.cart_id || '-'}</p>
-                  <p><strong>Total:</strong> {selectedCompletedItem.total || selectedCompletedItem.amount || '-'}</p>
-                  <p><strong>Total Services:</strong> {selectedCompletedItem.services?.length || 0}</p>
-                  <p><strong>Completed Services:</strong> {
-                    selectedCompletedItem.services?.filter(s => s.status === 'completed' || s.completed_at || s.is_completed).length || 0
-                  }</p>
+                  <p><strong>Total Amount:</strong> {selectedCompletedItem.service_amount ? `${selectedCompletedItem.service_amount} ₺` : '-'}</p>
+                  <p><strong>Cart Status:</strong> {selectedCompletedItem.cart_status || '-'}</p>
+                  <p><strong>Total Services:</strong> {selectedCompletedItem.total_services || 0}</p>
+                  <p><strong>Completed Services:</strong> {selectedCompletedItem.completed_services || 0}</p>
+                  {selectedCompletedItem.customer_name && (
+                    <p><strong>Customer:</strong> {selectedCompletedItem.customer_name}</p>
+                  )}
+                  {selectedCompletedItem.created_at && (
+                    <p><strong>Created:</strong> {new Date(selectedCompletedItem.created_at).toLocaleString()}</p>
+                  )}
                 </div>
               </div>
               <div className="mt-4">
