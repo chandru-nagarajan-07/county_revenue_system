@@ -32,6 +32,7 @@ const CartPage = () => {
   const fetchPendingItems = async () => {
     try {
       const response = await fetch('http://127.0.0.1:8000/service_queue_items/');
+      console.log('Raw pending items response:', response);
       const data = await response.json();
       console.log('Pending items from API:', data);
       
@@ -47,6 +48,7 @@ const CartPage = () => {
       });
 
       setPendingItems(formattedData);
+      console.log('Formatted pending items:', formattedData[0].id);
     } catch (error) {
       console.error('Error fetching pending items:', error);
     }
