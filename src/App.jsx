@@ -22,6 +22,7 @@ import QRScannerPage from "./pages/QRScannerPage";
 import ProfilePage from "./pages/ProfilePage";
 import CartPage from "./pages/Cart";
 import Dashboard from "./pages/Dashboardnew";
+import Reorder from "./pages/reorder";
 
 
 const queryClient = new QueryClient();
@@ -48,9 +49,10 @@ const App = () => (
           <Route path="/profile" element={<Profile />} />
           <Route path="/transaction" element={<TransactionPage />} />
           <Route path="/dash" element={<DashboardTeller />} />
-         <Route path="/scanner" element={<QRScannerPage />} />
-         <Route path="/profilepage" element={<ProfilePage />} />
+          <Route path="/scanner" element={<QRScannerPage />} />
+          <Route path="/profilepage" element={<ProfilePage />} />
           <Route path="/dashboardnew" element={<Dashboard />} />
+          <Route path="/reorder" element={<Reorder />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
        
