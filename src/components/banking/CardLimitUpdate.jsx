@@ -44,15 +44,15 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
   const navigate = useNavigate();
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
-  const branches = sessionUser?.branch || [];
+  // const branches = sessionUser?.branch || [];
 
   /* FORMAT BRANCHES */
-  const BRANCH_OPTIONS = useMemo(() => {
-    return branches.map((b) => ({
-      value: b.branch_id,
-      label: b.branch_name,
-    }));
-  }, [branches]);
+  // const BRANCH_OPTIONS = useMemo(() => {
+  //   return branches.map((b) => ({
+  //     value: b.branch_id,
+  //     label: b.branch_name,
+  //   }));
+  // }, [branches]);
 
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -80,7 +80,7 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [newPosLimit, setNewPosLimit] = useState("");
   const [newAtmLimit, setNewAtmLimit] = useState("");
-  const [selectedBranch, setSelectedBranch] = useState("");
+  // const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
@@ -177,7 +177,7 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
   const validate = () => {
     const e = {};
     if (!selectedCardId) e.card = "Select card";
-    if (!selectedBranch) e.branch = "Please select a branch";
+    // if (!selectedBranch) e.branch = "Please select a branch";
     if (!newPosLimit || Number(newPosLimit) <= 0) e.pos = "Valid POS limit required";
     if (!newAtmLimit || Number(newAtmLimit) <= 0) e.atm = "Valid ATM limit required";
     setFormErrors(e);
@@ -186,7 +186,7 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
   
   console.log("res", customer?.user_id || sessionUser?.user_id,
           "service fee", serviceFee,
-          "selected branch", selectedBranch);
+          );
           
   const handleSubmit = async () => {
     if (!validate()) return;
@@ -200,7 +200,7 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
         new_pos_limit: Number(newPosLimit),
         old_atm_limit: selectedCardDetails?.atmLimit,
         new_atm_limit: Number(newAtmLimit),
-        branch: selectedBranch,
+        // branch: selectedBranch,
         user_id: customer?.user_id || sessionUser?.user_id,
       };
 
@@ -214,7 +214,7 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
           body: JSON.stringify(payload),
             user_id: customer?.user_id || sessionUser?.user_id,
             service_amount: serviceFee,
-            branch: selectedBranch,
+            // branch: selectedBranch,
         }
       );
 
@@ -431,7 +431,7 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
               </div>
 
               {/* Branch Selection - Always visible */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label className="flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5" /> Select Branch *
                 </Label>
@@ -456,10 +456,10 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
                 {formErrors.branch && (
                   <p className="text-xs text-destructive">{formErrors.branch}</p>
                 )}
-              </div>
+              </div> */}
 
               {/* Info Box */}
-              <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
+              {/* <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
                 <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-medium text-blue-800">Limit Update Information</p>
@@ -468,7 +468,7 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
                     Please bring valid ID for verification.
                   </p>
                 </div>
-              </div>
+              </div> */}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -554,7 +554,7 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
                     { l: "New POS Limit", v: `KES ${Number(newPosLimit).toLocaleString()}` },
                     { l: "Current ATM Limit", v: `KES ${selectedCardDetails.atmLimit?.toLocaleString()}` },
                     { l: "New ATM Limit", v: `KES ${Number(newAtmLimit).toLocaleString()}` },
-                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
+                    // { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                   ].map((row) => (
                     <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
                       <span className="text-sm text-gray-500">{row.l}</span>
@@ -598,9 +598,9 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   <span>Verify requested limits against customer profile risk.</span>
                 </div>
-                <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600">
+                {/* <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600">
                   <span className="font-medium">Branch:</span> {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}
-                </div>
+                </div> */}
               </div>
 
               <div className="space-y-2">
@@ -651,10 +651,10 @@ export default function CardLimitUpdate({ customer: propCustomer, onBack, formFi
                     <p className="text-xs text-gray-500">Customer ID</p>
                     <p className="font-medium text-gray-700">{customerId}</p>
                   </div>
-                  <div className="col-span-2">
+                  {/* <div className="col-span-2">
                     <p className="text-xs text-gray-500">Branch</p>
                     <p className="font-medium text-gray-700">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
-                  </div>
+                  </div> */}
                 </div>
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />

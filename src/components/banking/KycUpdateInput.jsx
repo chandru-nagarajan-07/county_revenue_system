@@ -163,11 +163,11 @@ function LegalIdForm({
   formNumber,
   totalForms,
   isLastForm,
-  initialBranch,
-  branchOptions
+  // initialBranch,
+  // branchOptions
 }) {
   const [formData, setFormData] = useState({
-    branch: initialBranch || '',
+    // branch: initialBranch || '',
     idType: 'national_id',
     idNumber: '',
     fullName: customer?.fullName || '',
@@ -198,12 +198,12 @@ function LegalIdForm({
     }
   };
 
-  const handleBranchChange = (value) => {
-    setFormData(prev => ({ ...prev, branch: value }));
-    if (errors.branch) {
-      setErrors(prev => ({ ...prev, branch: null }));
-    }
-  };
+  // const handleBranchChange = (value) => {
+  //   setFormData(prev => ({ ...prev, branch: value }));
+  //   if (errors.branch) {
+  //     setErrors(prev => ({ ...prev, branch: null }));
+  //   }
+  // };
 
   const handleFileChange = (e, fieldName) => {
     const file = e.target.files[0];
@@ -218,9 +218,9 @@ function LegalIdForm({
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.branch) {
-      newErrors.branch = 'Branch is required';
-    }
+    // if (!formData.branch) {
+    //   newErrors.branch = 'Branch is required';
+    // }
     if (!formData.idNumber.trim()) {
       newErrors.idNumber = 'ID number is required';
     }
@@ -288,7 +288,7 @@ function LegalIdForm({
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Branch Selection */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5" /> Select Branch *
               </Label>
@@ -512,9 +512,9 @@ function LegalIdForm({
 }
 
 /* BIOMETRIC FORM COMPONENT */
-function BiometricForm({ customer, onBack, onSubmit, formNumber, totalForms, isLastForm, initialBranch }) {
+function BiometricForm({ customer, onBack, onSubmit, formNumber, totalForms, isLastForm }) {
   const [formData, setFormData] = useState({
-    branch: initialBranch || '',
+    // branch: initialBranch || '',
     fingerprintStatus: 'pending',
     fingerprintImage: null,
     photoStatus: 'pending',
@@ -528,19 +528,19 @@ function BiometricForm({ customer, onBack, onSubmit, formNumber, totalForms, isL
   const [fingerprintScanning, setFingerprintScanning] = useState(false);
   const [photoCapturing, setPhotoCapturing] = useState(false);
 
-  const BRANCH_OPTIONS = [
-    { value: 'BR001', label: 'Head Office', location: 'Nairobi CBD' },
-    { value: 'BR002', label: 'Mombasa Branch', location: 'Mombasa' },
-    { value: 'BR003', label: 'Kisumu Branch', location: 'Kisumu' },
-    { value: 'BR004', label: 'Nakuru Branch', location: 'Nakuru' }
-  ];
+  // const BRANCH_OPTIONS = [
+  //   { value: 'BR001', label: 'Head Office', location: 'Nairobi CBD' },
+  //   { value: 'BR002', label: 'Mombasa Branch', location: 'Mombasa' },
+  //   { value: 'BR003', label: 'Kisumu Branch', location: 'Kisumu' },
+  //   { value: 'BR004', label: 'Nakuru Branch', location: 'Nakuru' }
+  // ];
 
-  const handleBranchChange = (value) => {
-    setFormData(prev => ({ ...prev, branch: value }));
-    if (errors.branch) {
-      setErrors(prev => ({ ...prev, branch: null }));
-    }
-  };
+  // const handleBranchChange = (value) => {
+  //   setFormData(prev => ({ ...prev, branch: value }));
+  //   if (errors.branch) {
+  //     setErrors(prev => ({ ...prev, branch: null }));
+  //   }
+  // };
 
   const handleFingerprintScan = () => {
     setFingerprintScanning(true);
@@ -569,9 +569,9 @@ function BiometricForm({ customer, onBack, onSubmit, formNumber, totalForms, isL
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.branch) {
-      newErrors.branch = 'Branch is required';
-    }
+    // if (!formData.branch) {
+    //   newErrors.branch = 'Branch is required';
+    // }
     if (formData.fingerprintStatus !== 'completed') {
       newErrors.fingerprint = 'Fingerprint scan is required';
     }
@@ -627,7 +627,7 @@ function BiometricForm({ customer, onBack, onSubmit, formNumber, totalForms, isL
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Branch Selection */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5" /> Select Branch *
               </Label>
@@ -650,7 +650,7 @@ function BiometricForm({ customer, onBack, onSubmit, formNumber, totalForms, isL
                 </SelectContent>
               </Select>
               {errors.branch && <p className="text-xs text-destructive">{errors.branch}</p>}
-            </div>
+            </div> */}
 
             {/* Fingerprint Capture */}
             <div className="space-y-4">
@@ -802,9 +802,9 @@ function BiometricForm({ customer, onBack, onSubmit, formNumber, totalForms, isL
 }
 
 /* KRA PIN FORM COMPONENT */
-function KraPinForm({ customer, onBack, onSubmit, formNumber, totalForms, isLastForm, initialBranch }) {
+function KraPinForm({ customer, onBack, onSubmit, formNumber, totalForms, isLastForm }) {
   const [formData, setFormData] = useState({
-    branch: initialBranch || '',
+    // branch: initialBranch || '',
     kraPin: '',
     fullNameOnCertificate: customer?.fullName || '',
     certificateFile: null
@@ -813,19 +813,19 @@ function KraPinForm({ customer, onBack, onSubmit, formNumber, totalForms, isLast
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const BRANCH_OPTIONS = [
-    { value: 'BR001', label: 'Head Office', location: 'Nairobi CBD' },
-    { value: 'BR002', label: 'Mombasa Branch', location: 'Mombasa' },
-    { value: 'BR003', label: 'Kisumu Branch', location: 'Kisumu' },
-    { value: 'BR004', label: 'Nakuru Branch', location: 'Nakuru' }
-  ];
+  // const BRANCH_OPTIONS = [
+  //   { value: 'BR001', label: 'Head Office', location: 'Nairobi CBD' },
+  //   { value: 'BR002', label: 'Mombasa Branch', location: 'Mombasa' },
+  //   { value: 'BR003', label: 'Kisumu Branch', location: 'Kisumu' },
+  //   { value: 'BR004', label: 'Nakuru Branch', location: 'Nakuru' }
+  // ];
 
-  const handleBranchChange = (value) => {
-    setFormData(prev => ({ ...prev, branch: value }));
-    if (errors.branch) {
-      setErrors(prev => ({ ...prev, branch: null }));
-    }
-  };
+  // const handleBranchChange = (value) => {
+  //   setFormData(prev => ({ ...prev, branch: value }));
+  //   if (errors.branch) {
+  //     setErrors(prev => ({ ...prev, branch: null }));
+  //   }
+  // };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -848,9 +848,9 @@ function KraPinForm({ customer, onBack, onSubmit, formNumber, totalForms, isLast
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.branch) {
-      newErrors.branch = 'Branch is required';
-    }
+    // if (!formData.branch) {
+    //   newErrors.branch = 'Branch is required';
+    // }
     if (!formData.kraPin.trim()) {
       newErrors.kraPin = 'KRA PIN is required';
     } else if (!/^[A-Z]\d{9}[A-Z]$/.test(formData.kraPin)) {
@@ -908,7 +908,7 @@ function KraPinForm({ customer, onBack, onSubmit, formNumber, totalForms, isLast
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Branch Selection */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5" /> Select Branch *
               </Label>
@@ -931,7 +931,7 @@ function KraPinForm({ customer, onBack, onSubmit, formNumber, totalForms, isLast
                 </SelectContent>
               </Select>
               {errors.branch && <p className="text-xs text-destructive">{errors.branch}</p>}
-            </div>
+            </div> */}
 
             {/* KRA PIN Input */}
             <div className="space-y-2">
@@ -1007,7 +1007,7 @@ function KraPinForm({ customer, onBack, onSubmit, formNumber, totalForms, isLast
 /* ACCOUNT MANDATES FORM COMPONENT */
 function AccountMandatesForm({ customer, onBack, onSubmit, formNumber, totalForms, isLastForm, initialBranch }) {
   const [formData, setFormData] = useState({
-    branch: initialBranch || '',
+    // branch: initialBranch || '',
     mandateType: '',
     primarySignatory: customer?.fullName || '',
     secondarySignatory: '',
@@ -1018,12 +1018,12 @@ function AccountMandatesForm({ customer, onBack, onSubmit, formNumber, totalForm
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const BRANCH_OPTIONS = [
-    { value: 'BR001', label: 'Head Office', location: 'Nairobi CBD' },
-    { value: 'BR002', label: 'Mombasa Branch', location: 'Mombasa' },
-    { value: 'BR003', label: 'Kisumu Branch', location: 'Kisumu' },
-    { value: 'BR004', label: 'Nakuru Branch', location: 'Nakuru' }
-  ];
+  // const BRANCH_OPTIONS = [
+  //   { value: 'BR001', label: 'Head Office', location: 'Nairobi CBD' },
+  //   { value: 'BR002', label: 'Mombasa Branch', location: 'Mombasa' },
+  //   { value: 'BR003', label: 'Kisumu Branch', location: 'Kisumu' },
+  //   { value: 'BR004', label: 'Nakuru Branch', location: 'Nakuru' }
+  // ];
 
   const mandateTypes = [
     { value: 'sole', label: 'Sole Signatory' },
@@ -1039,12 +1039,12 @@ function AccountMandatesForm({ customer, onBack, onSubmit, formNumber, totalForm
     { id: '0011-2345-6792', currency: 'KES' }
   ];
 
-  const handleBranchChange = (value) => {
-    setFormData(prev => ({ ...prev, branch: value }));
-    if (errors.branch) {
-      setErrors(prev => ({ ...prev, branch: null }));
-    }
-  };
+  // const handleBranchChange = (value) => {
+  //   setFormData(prev => ({ ...prev, branch: value }));
+  //   if (errors.branch) {
+  //     setErrors(prev => ({ ...prev, branch: null }));
+  //   }
+  // };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -1079,9 +1079,9 @@ function AccountMandatesForm({ customer, onBack, onSubmit, formNumber, totalForm
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.branch) {
-      newErrors.branch = 'Branch is required';
-    }
+    // if (!formData.branch) {
+    //   newErrors.branch = 'Branch is required';
+    // }
     if (!formData.mandateType) {
       newErrors.mandateType = 'Mandate type is required';
     }
@@ -1140,7 +1140,7 @@ function AccountMandatesForm({ customer, onBack, onSubmit, formNumber, totalForm
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Branch Selection */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5" /> Select Branch *
               </Label>
@@ -1163,7 +1163,7 @@ function AccountMandatesForm({ customer, onBack, onSubmit, formNumber, totalForm
                 </SelectContent>
               </Select>
               {errors.branch && <p className="text-xs text-destructive">{errors.branch}</p>}
-            </div>
+            </div> */}
 
             {/* Mandate Type */}
             <div className="space-y-2">
@@ -1324,13 +1324,13 @@ export function KycUpdateInput({
   const [loading, setLoading] = useState(false);
 
   /* BRANCH OPTIONS from session */
-  const BRANCH_OPTIONS = useMemo(() => {
-    const branches = sessionUser?.branch || [];
-    return branches.map((b) => ({
-      value: b.branch_id,
-      label: b.branch_name,
-    }));
-  }, [sessionUser]);
+  // const BRANCH_OPTIONS = useMemo(() => {
+  //   const branches = sessionUser?.branch || [];
+  //   return branches.map((b) => ({
+  //     value: b.branch_id,
+  //     label: b.branch_name,
+  //   }));
+  // }, [sessionUser]);
 
   /* Check backend connectivity on mount */
   useEffect(() => {
@@ -1423,8 +1423,8 @@ export function KycUpdateInput({
             formNumber={formNumber}
             totalForms={totalForms}
             isLastForm={isLastForm}
-            initialBranch=""
-            branchOptions={BRANCH_OPTIONS}
+            // initialBranch=""
+            // branchOptions={BRANCH_OPTIONS}
           />
         );
       case 'biometric':
@@ -1437,7 +1437,8 @@ export function KycUpdateInput({
             formNumber={formNumber}
             totalForms={totalForms}
             isLastForm={isLastForm}
-            initialBranch=""
+            // initialBranch=""
+            // branchOptions={BRANCH_OPTIONS}
           />
         );
       case 'kra-pin':
@@ -1450,7 +1451,7 @@ export function KycUpdateInput({
             formNumber={formNumber}
             totalForms={totalForms}
             isLastForm={isLastForm}
-            initialBranch=""
+            // initialBranch=""
           />
         );
       case 'account-mandates':
@@ -1463,7 +1464,7 @@ export function KycUpdateInput({
             formNumber={formNumber}
             totalForms={totalForms}
             isLastForm={isLastForm}
-            initialBranch=""
+            // initialBranch=""
           />
         );
       default:
@@ -1495,7 +1496,7 @@ export function KycUpdateInput({
         console.log(`Preparing payload for ${artefactId}:`, data);
 
         payload.append("update_type", artefactId?.toUpperCase().replace('-', '_') || 'LEGAL_ID');
-        payload.append("branch", data.branch || '');
+        // payload.append("branch", data.branch || '');
         payload.append("user_id", customer?.user_id || sessionUser?.user_id);
         payload.append("service_amount", "0");
         payload.append("customer_id", customer?.customerId || sessionUser?.user_id);
@@ -1854,13 +1855,13 @@ export function KycUpdateInput({
                 <div className="space-y-0">
                   {selectedActions.map((s, index) => {
                     const art = artefacts.find(a => a.id === s.artefactId);
-                    const branchInfo = formDataList[index]?.formData?.branch;
+                    // const branchInfo = formDataList[index]?.formData?.branch;
                     return (
                       <div key={s.artefactId} className="flex justify-between py-2 border-b border-dashed last:border-0">
                         <span className="text-sm text-gray-500">{art?.label}</span>
                         <span className="text-sm font-medium text-gray-800">
                           {ACTION_META[s.action].label}
-                          {branchInfo && ` • ${BRANCH_OPTIONS.find(b => b.value === branchInfo)?.label || branchInfo}`}
+                          {/* {branchInfo && ` • ${BRANCH_OPTIONS.find(b => b.value === branchInfo)?.label || branchInfo}`} */}
                         </span>
                       </div>
                     );

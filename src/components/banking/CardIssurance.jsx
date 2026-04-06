@@ -45,15 +45,15 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
   const navigate = useNavigate();
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
-  const branches = sessionUser?.branch || [];
+  // const branches = sessionUser?.branch || [];
 
-  /* FORMAT BRANCHES */
-  const BRANCH_OPTIONS = useMemo(() => {
-    return branches.map((b) => ({
-      value: b.branch_id,
-      label: b.branch_name,
-    }));
-  }, [branches]);
+  // /* FORMAT BRANCHES */
+  // const BRANCH_OPTIONS = useMemo(() => {
+  //   return branches.map((b) => ({
+  //     value: b.branch_id,
+  //     label: b.branch_name,
+  //   }));
+  // }, [branches]);
 
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -81,7 +81,7 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
   const [enableContactless, setEnableContactless] = useState(true);
   const [dailyPosLimit, setDailyPosLimit] = useState("200000");
   const [dailyAtmLimit, setDailyAtmLimit] = useState("100000");
-  const [selectedBranch, setSelectedBranch] = useState("");
+  // const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
@@ -146,14 +146,14 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
     if (!linkedAccount) errs.linkedAccount = "Select account";
     if (!cardType) errs.cardType = "Select card type";
     if (!nameOnCard) errs.nameOnCard = "Name required";
-    if (!selectedBranch) errs.branch = "Please select a branch";
+    // if (!selectedBranch) errs.branch = "Please select a branch";
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
   
   console.log("res", customer?.user_id || sessionUser?.user_id,
           "service fee", serviceFee,
-          "selected branch", selectedBranch);
+  );
           
   const handleSubmit = async () => {
     if (!validate()) return;
@@ -176,7 +176,7 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
             contactless_enabled: enableContactless,
             daily_pos_limit: Number(dailyPosLimit),
             daily_atm_limit: Number(dailyAtmLimit),
-            branch: selectedBranch,
+            // branch: selectedBranch,
             officer_notes: officerNotes,
             user_id: customer?.user_id || sessionUser?.user_id,
             service_amount: serviceFee,
@@ -344,7 +344,7 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
               </div>
 
               {/* Branch Selection - Always visible */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label className="flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5" /> Select Branch *
                 </Label>
@@ -369,7 +369,7 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
                 {formErrors.branch && (
                   <p className="text-xs text-destructive">{formErrors.branch}</p>
                 )}
-              </div>
+              </div> */}
 
               {/* Contactless Switch */}
               <div className="flex items-center justify-between rounded-lg border p-3 bg-gray-50">
@@ -390,7 +390,7 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
               </div>
 
               {/* Info Box */}
-              <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
+              {/* <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
                 <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-medium text-blue-800">Card Collection Information</p>
@@ -399,7 +399,7 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
                     Please bring a valid ID for verification.
                   </p>
                 </div>
-              </div>
+              </div> */}
 
               <Button onClick={handleSubmit} className="w-full gold-gradient text-accent-foreground font-semibold shadow-gold" disabled={loading}>
                 {loading ? "Processing..." : "Submit Request"}
@@ -433,7 +433,7 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
                     { l: "Account", v: linkedAccount },
                     { l: "Card Type", v: cardType },
                     { l: "Name on Card", v: nameOnCard },
-                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
+                    // { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Contactless", v: enableContactless ? "Enabled" : "Disabled" },
                     { l: "Limits", v: `POS: KES ${Number(dailyPosLimit).toLocaleString()} / ATM: KES ${Number(dailyAtmLimit).toLocaleString()}` },
                   ].map((row) => (
@@ -465,9 +465,9 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   <span>Card request is being prepared for printing queue.</span>
                 </div>
-                <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600">
+                {/* <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600">
                   <span className="font-medium">Collection Branch:</span> {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}
-                </div>
+                </div> */}
               </div>
 
               <div className="space-y-2">
@@ -500,10 +500,10 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
                     <p className="text-xs text-gray-500">Customer ID</p>
                     <p className="font-medium text-gray-700">{customer?.customerId || customer?.user_id}</p>
                   </div>
-                  <div className="col-span-2">
+                  {/* <div className="col-span-2">
                     <p className="text-xs text-gray-500">Collection Branch</p>
                     <p className="font-medium text-gray-700">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
-                  </div>
+                  </div> */}
                 </div>
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />

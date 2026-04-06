@@ -56,15 +56,15 @@ export const SellForeignCurrency = ({
   const navigate = useNavigate();
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
-  const branches = sessionUser?.branch || [];
+  // const branches = sessionUser?.branch || [];
 
-  /* FORMAT BRANCHES */
-  const BRANCH_OPTIONS = useMemo(() => {
-    return branches.map((b) => ({
-      value: b.branch_id,
-      label: b.branch_name,
-    }));
-  }, [branches]);
+  // /* FORMAT BRANCHES */
+  // const BRANCH_OPTIONS = useMemo(() => {
+  //   return branches.map((b) => ({
+  //     value: b.branch_id,
+  //     label: b.branch_name,
+  //   }));
+  // }, [branches]);
  
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -76,7 +76,7 @@ export const SellForeignCurrency = ({
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [narration, setNarration] = useState("");
-  const [selectedBranch, setSelectedBranch] = useState("");
+  // const [selectedBranch, setSelectedBranch] = useState("");
   
   // New state for currency exchange
   const [currencies, setCurrencies] = useState([]);
@@ -187,7 +187,7 @@ export const SellForeignCurrency = ({
     const errs = {};
     if (!selectedAccount) errs.account = "Please select account";
     if (!selectedCurrency) errs.currency = "Please select currency";
-    if (!selectedBranch) errs.branch = "Please select a branch";
+    // if (!selectedBranch) errs.branch = "Please select a branch";
     const num = Number(amount);
     if (isNaN(num) || num <= 0) errs.amount = "Enter valid amount";
     
@@ -197,7 +197,7 @@ export const SellForeignCurrency = ({
   
   console.log("res", customer?.user_id || sessionUser?.user_id,
           "service fee", serviceFee,
-          "branch", selectedBranch);
+        );
           
   const handleSubmit = async () => {
     if (!validate()) return;
@@ -217,12 +217,12 @@ export const SellForeignCurrency = ({
           exchange_rate: exchangeRate, // This is the sell_rate
           exchange_rate_type: "sell_rate",
           kes_equivalent: Number(convertedAmount), // Amount in KES received
-          branch: selectedBranch,
+          // branch: selectedBranch,
           reference,
           narration,
           user_id: customer?.user_id || sessionUser?.user_id,
           service_amount: serviceFee,
-          branch: selectedBranch,
+          // branch: selectedBranch,
         }),
       });
 
@@ -448,7 +448,7 @@ export const SellForeignCurrency = ({
                 </div>
 
                 {/* Branch Selection - Always visible */}
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5" /> Select Branch *
                   </Label>
@@ -473,7 +473,7 @@ export const SellForeignCurrency = ({
                   {errors.branch && (
                     <p className="text-xs text-destructive">{errors.branch}</p>
                   )}
-                </div>
+                </div> */}
 
                 {/* Amount in Foreign Currency */}
                 <div className="space-y-2">
@@ -580,7 +580,7 @@ export const SellForeignCurrency = ({
                     { l: "Amount Sold", v: `${selectedCurrency?.code} ${Number(amount).toLocaleString()}` },
                     { l: "Exchange Rate", v: `1 ${selectedCurrency?.code} = ${exchangeRate} KES` },
                     { l: "You Receive", v: `KES ${Number(convertedAmount).toLocaleString()}` },
-                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
+                    // { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Reference", v: reference || "-" },
                     { l: "Narration", v: narration || "-" },
                   ].map((row) => (
@@ -624,7 +624,7 @@ export const SellForeignCurrency = ({
                 </p>
                 <div className="bg-gray-50 p-4 rounded-lg text-xs text-gray-600 font-mono space-y-2">
                   <div>ID: {customer?.id_number || sessionUser?.id_number || "N/A"}</div>
-                  <div>Branch: {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</div>
+                  {/* <div>Branch: {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</div> */}
                 </div>
               </div>
 

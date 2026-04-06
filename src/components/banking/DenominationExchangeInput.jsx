@@ -51,13 +51,13 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
   /* SESSION USER */
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
-  const branches = sessionUser?.branch || [];
-  const BRANCH_OPTIONS = useMemo(() => {
-    return branches.map((b) => ({
-      value: b.branch_id,
-      label: b.branch_name,
-    }));
-  }, [branches]);
+  // const branches = sessionUser?.branch || [];
+  // const BRANCH_OPTIONS = useMemo(() => {
+  //   return branches.map((b) => ({
+  //     value: b.branch_id,
+  //     label: b.branch_name,
+  //   }));
+  // }, [branches]);
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
   /* SESSION USER */
@@ -80,7 +80,7 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
   const [sourceAccNum, setSourceAccNum] = useState("");
   const [settlementAccNum, setSettlementAccNum] = useState("");
   const [settlementMethod, setSettlementMethod] = useState("account-credit");
-  const [selectedBranch, setSelectedBranch] = useState("");
+  // const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -129,7 +129,7 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
   const validateForm = () => {
     const errs = {};
     if (!selectedPair) errs.currency = "Select currency";
-    if (!selectedBranch) errs.branch = "Please select a branch";
+    // if (!selectedBranch) errs.branch = "Please select a branch";
     if (!fcyAmount || fcyNum <= 0) errs.amount = "Enter valid amount";
     if (!sourceAccNum) errs.source = "Select source account";
     if (!settlementAccNum) errs.settlement = "Select settlement account";
@@ -142,7 +142,7 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
   }, [formFields]);
 
   console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee,          "branch", selectedBranch);
+          "service fee", serviceFee);
 
   const handleStepOneSubmit = async () => {
     if (!validateForm()) return;
@@ -162,7 +162,7 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
             fcy_amount: Number(fcyAmount),
             source_account: sourceAccNum,
             settlement_account: settlementAccNum,
-            branch: selectedBranch,
+            // branch: selectedBranch,
             mid_rate: midRate,
             system_rate: systemOfferedRate,
             final_rate: finalRate,
@@ -426,7 +426,7 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
                 </div>
               </div>
 
-              {/* Branch Selection - Always visible */}
+              {/* Branch Selection - Always visible 
               <div className="space-y-2">
                 <Label className="flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5" /> Select Branch *
@@ -454,7 +454,7 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
                 )}
               </div>
 
-              {/* Info Box */}
+              {/* Info Box 
               <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
                 <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
@@ -464,7 +464,7 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
                     The branch will be responsible for rate approval and settlement.
                   </p>
                 </div>
-              </div>
+              </div>*/}
 
               {/* Accounts */}
               <div className="space-y-2">
@@ -573,7 +573,7 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
                     { l: "Direction", v: direction },
                     { l: "Currency", v: selectedPair?.label },
                     { l: "Amount", v: `${fcyNum.toLocaleString()} ${selectedPair?.code}` },
-                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
+                    // { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Source Acc", v: sourceAccNum },
                     { l: "Settlement Acc", v: settlementAccNum },
                     { l: "Method", v: settlementMethod.replace('-', ' ') },
@@ -679,10 +679,10 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
                     <span className="text-gray-500">KES Equivalent</span>
                     <span className="font-bold text-lg">KES {kesTotal.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between">
+                  {/* <div className="flex justify-between">
                     <span className="text-gray-500">Branch</span>
                     <span className="font-medium">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</span>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
@@ -749,10 +749,10 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
                     <p className="text-xs text-gray-500">Total (KES)</p>
                     <p className="font-bold text-lg">{kesTotal.toLocaleString()}</p>
                   </div>
-                  <div className="col-span-2">
+                  {/* <div className="col-span-2">
                     <p className="text-xs text-gray-500">Branch</p>
                     <p className="font-medium text-gray-700">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
-                  </div>
+                  </div> */}
                 </div>
 
                 {rateImproved && (

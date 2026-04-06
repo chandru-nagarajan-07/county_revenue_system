@@ -61,7 +61,7 @@ const STATEMENT_FORMATS = [
 
 const DELIVERY_METHODS = [
   { value: "email", label: "Email" },
-  { value: "branch", label: "Branch" },
+  // { value: "branch", label: "Branch" },
 ];
 
 
@@ -69,15 +69,15 @@ export default function StatementRequest({ customer: propCustomer, onBack, formF
   const navigate = useNavigate();
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
-  const branches = sessionUser?.branch || [];
+  // const branches = sessionUser?.branch || [];
 
-  /* FORMAT BRANCHES */
-  const BRANCH_OPTIONS = useMemo(() => {
-    return branches.map((b) => ({
-      value: b.branch_id,
-      label: b.branch_name,
-    }));
-  }, [branches]);
+  // /* FORMAT BRANCHES */
+  // const BRANCH_OPTIONS = useMemo(() => {
+  //   return branches.map((b) => ({
+  //     value: b.branch_id,
+  //     label: b.branch_name,
+  //   }));
+  // }, [branches]);
 
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
   const serviceFee = useMemo(() => {
@@ -118,7 +118,7 @@ export default function StatementRequest({ customer: propCustomer, onBack, formF
   const [periodTo, setPeriodTo] = useState("");
   const [stmtFormat, setStmtFormat] = useState("pdf");
   const [stmtDelivery, setStmtDelivery] = useState("email");
-  const [selectedBranch, setSelectedBranch] = useState("");
+  // const [selectedBranch, setSelectedBranch] = useState("");
   const [stmtEmail, setStmtEmail] = useState("");
   const [certified, setCertified] = useState(false);
   const [purpose, setPurpose] = useState("");
@@ -160,7 +160,7 @@ export default function StatementRequest({ customer: propCustomer, onBack, formF
   const validate = () => {
     const errs = {};
     if (!selectedAccount) errs.account = "Select account";
-    if (!selectedBranch) errs.branch = "Please select a branch";
+    // if (!selectedBranch) errs.branch = "Please select a branch";
     if (needsPeriod && !periodFrom) errs.periodFrom = "Start date required";
     if (needsPeriod && !periodTo) errs.periodTo = "End date required";
     if (needsPeriod && periodFrom && periodTo && new Date(periodFrom) > new Date(periodTo)) {
@@ -175,7 +175,7 @@ export default function StatementRequest({ customer: propCustomer, onBack, formF
   
   console.log("res", customer?.user_id || sessionUser?.user_id,
           "service fee", serviceFee,
-          "selected branch", selectedBranch);
+       );
           
   const handleSubmit = async () => {
     if (!validate()) return;
@@ -208,7 +208,7 @@ export default function StatementRequest({ customer: propCustomer, onBack, formF
         statement_type: stmtType,
         output_format: stmtFormat,
         delivery_method: stmtDelivery,
-        branch: selectedBranch,
+        // branch: selectedBranch,
         email: stmtDelivery === "email" ? stmtEmail : null,
         date_from: needsPeriod ? periodFrom : null,
         date_to: needsPeriod ? periodTo : null,
@@ -228,7 +228,7 @@ export default function StatementRequest({ customer: propCustomer, onBack, formF
         body: JSON.stringify(payload),
           users_id: customer?.user_id || sessionUser?.user_id,
           service_amount: serviceFee,
-          branch: selectedBranch,
+          // branch: selectedBranch,
       });
 
       const data = await response.json();
@@ -488,7 +488,7 @@ export default function StatementRequest({ customer: propCustomer, onBack, formF
               </div>
 
               {/* Branch Selection - Always visible */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label className="flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5" /> Select Branch *
                 </Label>
@@ -513,7 +513,7 @@ export default function StatementRequest({ customer: propCustomer, onBack, formF
                 {formErrors.branch && (
                   <p className="text-xs text-destructive">{formErrors.branch}</p>
                 )}
-              </div>
+              </div> */}
 
               {/* Email field for email delivery */}
               {stmtDelivery === "email" && (
@@ -561,11 +561,11 @@ export default function StatementRequest({ customer: propCustomer, onBack, formF
                     {stmtType === "mini" ? "Instant" : "1-2 business days"}
                     {certified && " (Certified statements may take longer)"}
                   </p>
-                  {selectedBranch && (
+                  {/* {selectedBranch && (
                     <p className="text-xs text-primary mt-1">
                       Branch: {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label}
                     </p>
-                  )}
+                  )} */}
                 </div>
               </div>
 
@@ -611,7 +611,7 @@ export default function StatementRequest({ customer: propCustomer, onBack, formF
                     { l: "Period", v: needsPeriod ? `${periodFrom} to ${periodTo}` : "N/A" },
                     { l: "Format", v: STATEMENT_FORMATS.find(f => f.value === stmtFormat)?.label },
                     { l: "Delivery", v: stmtDelivery === "email" ? `Email (${stmtEmail})` : "Printed Copy" },
-                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
+                    // { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Certified", v: certified ? `Yes ${purpose ? `- ${purpose}` : ""}` : "No" },
                   ].map((row) => (
                     <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
@@ -657,10 +657,10 @@ export default function StatementRequest({ customer: propCustomer, onBack, formF
                     <p className="text-xs text-muted-foreground">Customer ID</p>
                     <p className="font-medium">{customer?.id || customer?.customerId || sessionUser?.id || "N/A"}</p>
                   </div>
-                  <div>
+                  {/* <div>
                     <p className="text-xs text-muted-foreground">Branch</p>
                     <p className="font-medium">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
-                  </div>
+                  </div> */}
                 </div>
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />
@@ -695,10 +695,10 @@ export default function StatementRequest({ customer: propCustomer, onBack, formF
                     <span className="text-gray-500">Delivery</span>
                     <span className="font-medium">{stmtDelivery === "email" ? "Email" : "Printed"}</span>
                   </div>
-                  <div className="flex justify-between text-sm mt-2">
+                  {/* <div className="flex justify-between text-sm mt-2">
                     <span className="text-gray-500">Branch</span>
                     <span className="font-medium">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</span>
-                  </div>
+                  </div> */}
                 </div>
               )}
 

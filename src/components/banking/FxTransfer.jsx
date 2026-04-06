@@ -57,15 +57,15 @@ export const FxTransfer = ({
   const navigate = useNavigate();
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
-  const branches = sessionUser?.branch || [];
+  // const branches = sessionUser?.branch || [];
 
-  /* FORMAT BRANCHES */
-  const BRANCH_OPTIONS = useMemo(() => {
-    return branches.map((b) => ({
-      value: b.branch_id,
-      label: b.branch_name,
-    }));
-  }, [branches]);
+  // /* FORMAT BRANCHES */
+  // const BRANCH_OPTIONS = useMemo(() => {
+  //   return branches.map((b) => ({
+  //     value: b.branch_id,
+  //     label: b.branch_name,
+  //   }));
+  // }, [branches]);
 
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
   const [customer, setCustomer] = useState(null);
@@ -79,7 +79,7 @@ export const FxTransfer = ({
   const [toBankName, setToBankName] = useState("");
   const [reference, setReference] = useState("");
   const [narration, setNarration] = useState("");
-  const [selectedBranch, setSelectedBranch] = useState("");
+  // const [selectedBranch, setSelectedBranch] = useState("");
 
   // FX Transfer specific fields
   const [fromCurrency, setFromCurrency] = useState("KES");
@@ -234,7 +234,7 @@ export const FxTransfer = ({
     const errs = {};
     if (!fromAccount) errs.fromAccount = "Please select source account";
     if (!toAccountNumber) errs.toAccountNumber = "Please enter destination account number";
-    if (!selectedBranch) errs.branch = "Please select a branch";
+    // if (!selectedBranch) errs.branch = "Please select a branch";
     if (!fromCurrency) errs.fromCurrency = "Please select from currency";
     if (!toCurrency) errs.toCurrency = "Please select to currency";
     if (fromCurrency === toCurrency) errs.toCurrency = "From and To currencies cannot be same";
@@ -248,7 +248,7 @@ export const FxTransfer = ({
   
   console.log("res", customer?.user_id || sessionUser?.user_id,
           "service fee", serviceFee,
-          "branch", selectedBranch);
+         );
           
   const handleSubmit = async () => {
     if (!validate()) return;
@@ -269,7 +269,7 @@ export const FxTransfer = ({
         fx_charge: fxCharge,
         converted_amount: convertedAmount,
         total_debit: totalDebit,
-        branch: selectedBranch,
+        // branch: selectedBranch,
         reference: reference || null,
         narration: narration || null,
         // Add customer/user info if needed by backend
@@ -300,7 +300,7 @@ export const FxTransfer = ({
           fx_charge: fxCharge,
           converted_amount: convertedAmount,
           total_debit: totalDebit,
-          branch: selectedBranch,
+          // branch: selectedBranch,
           reference,
           narration,
           user_id: customer?.user_id || sessionUser?.user_id,
@@ -576,7 +576,7 @@ export const FxTransfer = ({
                 </div>
 
                 {/* Branch Selection - Always visible */}
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5" /> Select Branch *
                   </Label>
@@ -601,7 +601,7 @@ export const FxTransfer = ({
                   {errors.branch && (
                     <p className="text-xs text-destructive">{errors.branch}</p>
                   )}
-                </div>
+                </div> */}
 
                 {/* Currency Selection */}
                 <div className="grid grid-cols-2 gap-3 pt-2">
@@ -781,7 +781,7 @@ export const FxTransfer = ({
                     { l: "Exchange Rate", v: `1 ${fromCurrency} = ${safeToFixed(exchangeRate, 4)} ${toCurrency}` },
                     { l: "FX Charge", v: `${fromCurrency} ${safeToFixed(fxCharge)}` },
                     { l: "Recipient Gets", v: `${toCurrency} ${safeToFixed(convertedAmount)}` },
-                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
+                    // { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Reference", v: reference || "-" },
                     { l: "Narration", v: narration || "-" },
                   ].map((row) => (
@@ -825,7 +825,7 @@ export const FxTransfer = ({
                 </p>
                 <div className="bg-gray-50 p-4 rounded-lg text-xs text-gray-600 font-mono space-y-2">
                   <div>ID: {customer?.id_number || sessionUser?.id_number || "N/A"}</div>
-                  <div>Branch: {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</div>
+                  {/* <div>Branch: {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</div> */}
                 </div>
               </div>
 
