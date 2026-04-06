@@ -60,15 +60,15 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, f
   const navigate = useNavigate();
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
-  const branches = sessionUser?.branch || [];
+  // const branches = sessionUser?.branch || [];
 
   /* FORMAT BRANCHES */
-  const BRANCH_OPTIONS = useMemo(() => {
-    return branches.map((b) => ({
-      value: b.branch_id,
-      label: b.branch_name,
-    }));
-  }, [branches]);
+  // const BRANCH_OPTIONS = useMemo(() => {
+  //   return branches.map((b) => ({
+  //     value: b.branch_id,
+  //     label: b.branch_name,
+  //   }));
+  // }, [branches]);
 
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -86,7 +86,7 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, f
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [amount, setAmount] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
-  const [selectedBranch, setSelectedBranch] = useState("");
+  // const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
@@ -124,7 +124,7 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, f
     if (!selectedBiller) errs.biller = "Select a biller";
     if (!selectedAccount) errs.account = "Select payment account";
     if (!accountNumber) errs.accNum = "Enter account number";
-    if (!selectedBranch) errs.branch = "Please select a branch";
+    // if (!selectedBranch) errs.branch = "Please select a branch";
     const num = Number(amount);
     if (isNaN(num) || num <= 0) errs.amount = "Enter valid amount";
     setFormErrors(errs);
@@ -133,7 +133,7 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, f
   
   console.log("res", customer?.user_id || sessionUser?.user_id,
           "service fee", serviceFee,
-          "selected branch", selectedBranch);
+          );
           
   const handleSubmit = async () => {
     if (!validate()) return;
@@ -157,7 +157,7 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, f
             amount: Number(amount),
             source_account: selectedAccount?.account_number,
             currency: selectedAccount?.currency || "KES",
-            branch: selectedBranch,
+            // branch: selectedBranch,
             officer_notes: officerNotes,
           }),
         }
@@ -342,7 +342,7 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, f
               </div>
 
               {/* Branch Selection - Always visible */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label className="flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5" /> Select Branch *
                 </Label>
@@ -367,10 +367,10 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, f
                 {formErrors.branch && (
                   <p className="text-xs text-destructive">{formErrors.branch}</p>
                 )}
-              </div>
+              </div> */}
 
               {/* Info Box */}
-              <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
+              {/* <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
                 <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-medium text-blue-800">Payment Branch Information</p>
@@ -379,7 +379,7 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, f
                     The branch will be recorded for audit and reconciliation purposes.
                   </p>
                 </div>
-              </div>
+              </div> */}
 
               {/* Source Account */}
               <div className="space-y-2">
@@ -456,7 +456,7 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, f
                     { l: "Account No", v: accountNumber },
                     { l: "Amount", v: `KES ${Number(amount).toLocaleString()}` },
                     { l: "Paid From", v: selectedAccount?.account_number },
-                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
+                    // { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                   ].map((row) => (
                     <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
                       <span className="text-sm text-gray-500">{row.l}</span>
@@ -498,9 +498,9 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, f
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   <span>Payment is being routed to {selectedBiller?.name}.</span>
                 </div>
-                <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600">
+                {/* <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600">
                   <span className="font-medium">Branch:</span> {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}
-                </div>
+                </div> */}
               </div>
 
               <div className="space-y-2">
@@ -548,10 +548,10 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, f
                     <p className="text-xs text-gray-500">Customer ID</p>
                     <p className="font-medium text-gray-700">{customer?.user_id || sessionUser?.user_id}</p>
                   </div>
-                  <div className="col-span-2">
+                  {/* <div className="col-span-2">
                     <p className="text-xs text-gray-500">Branch</p>
                     <p className="font-medium text-gray-700">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
-                  </div>
+                  </div> */}
                 </div>
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />

@@ -52,14 +52,14 @@ export const CashWithdrawalWorkflow = ({
   /* SESSION USER */
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
-  const branches = sessionUser?.branch || [];
+  // const branches = sessionUser?.branch || [];
 
-  const BRANCH_OPTIONS = useMemo(() => {
-    return branches.map((b) => ({
-      value: b.branch_id,
-      label: b.branch_name,
-    }));
-  }, [branches]);
+  // const BRANCH_OPTIONS = useMemo(() => {
+  //   return branches.map((b) => ({
+  //     value: b.branch_id,
+  //     label: b.branch_name,
+  //   }));
+  // }, [branches]);
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
   const [customer, setCustomer] = useState(null);
 
@@ -71,7 +71,7 @@ export const CashWithdrawalWorkflow = ({
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [narration, setNarration] = useState("");
-  const [selectedBranch, setSelectedBranch] = useState("");
+  // const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   
   /* PROCESSING STATE */
@@ -120,7 +120,7 @@ export const CashWithdrawalWorkflow = ({
   const validateForm = () => {
     const errs = {};
     if (!selectedAccount) errs.account = "Select an account";
-    if (!selectedBranch) errs.branch = "Please select a branch";
+    // if (!selectedBranch) errs.branch = "Please select a branch";
     if (!amount || withdrawalAmount <= 0) errs.amount = "Enter valid amount";
     
     // Check sufficient funds (basic client-side check)
@@ -133,7 +133,7 @@ export const CashWithdrawalWorkflow = ({
   };
   
   console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee, "branch", selectedBranch);
+          "service fee", serviceFee);
           
   const handleStepOneSubmit = async () => {
     if (!validateForm()) return;
@@ -146,7 +146,7 @@ export const CashWithdrawalWorkflow = ({
         body: JSON.stringify({
           account_number: selectedAccount.account_number,
           amount: withdrawalAmount,
-          branch: selectedBranch,
+          // branch: selectedBranch,
           reference,
           narration,
           user_id: customer?.user_id || sessionUser?.user_id,
@@ -326,7 +326,7 @@ export const CashWithdrawalWorkflow = ({
                   {formErrors.account && <p className="text-xs text-destructive">{formErrors.account}</p>}
                 </div>
 
-                {/* Branch Selection - Always visible */}
+                {/* Branch Selection - Always visible 
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5" /> Select Branch *
@@ -354,7 +354,7 @@ export const CashWithdrawalWorkflow = ({
                   )}
                 </div>
 
-                {/* Info Box */}
+                {/* Info Box 
                 <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
                   <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                   <div>
@@ -364,7 +364,7 @@ export const CashWithdrawalWorkflow = ({
                       The branch will be responsible for cash disbursement and reconciliation.
                     </p>
                   </div>
-                </div>
+                </div>*/}
 
                 <div className="space-y-2">
                   <Label>Amount (KES)</Label>
@@ -450,7 +450,7 @@ export const CashWithdrawalWorkflow = ({
                     { l: "Transaction Time", v: new Date().toLocaleString() },
                     { l: "Debit Account", v: selectedAccount?.account_number },
                     { l: "Amount", v: `KES ${withdrawalAmount.toLocaleString()}` },
-                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
+                    // { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Reference", v: reference || "-" },
                     { l: "Narration", v: narration || "-" },
                   ].map((row) => (
@@ -521,7 +521,7 @@ export const CashWithdrawalWorkflow = ({
                   { l: "Transaction Time", v: new Date().toLocaleString() },
                   { l: "Debit Account", v: selectedAccount?.account_number },
                   { l: "Amount", v: `KES ${withdrawalAmount.toLocaleString()}` },
-                  { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
+                  // { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                   { l: "Reference", v: reference || "-" },
                   { l: "Narration", v: narration || "-" },
                 ].map((row) => (
@@ -549,10 +549,10 @@ export const CashWithdrawalWorkflow = ({
                     <span className="text-gray-500">Account Balance</span>
                     <span className="font-medium">KES {Number(selectedAccount?.balance).toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between">
+                  {/* <div className="flex justify-between">
                     <span className="text-gray-500">Branch</span>
                     <span className="font-medium">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</span>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 

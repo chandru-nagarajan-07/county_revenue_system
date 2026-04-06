@@ -62,15 +62,15 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
   const navigate = useNavigate();
     const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
-  const branches = sessionUser?.branch || [];
+  // const branches = sessionUser?.branch || [];
 
   /* FORMAT BRANCHES */
-  const BRANCH_OPTIONS = useMemo(() => {
-    return branches.map((b) => ({
-      value: b.branch_id,
-      label: b.branch_name,
-    }));
-  }, [branches]);
+  // const BRANCH_OPTIONS = useMemo(() => {
+  //   return branches.map((b) => ({
+  //     value: b.branch_id,
+  //     label: b.branch_name,
+  //   }));
+  // }, [branches]);
 
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -96,7 +96,7 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
   /* FORM STATE */
   const [pinCard, setPinCard] = useState("");
   const [pinAction, setPinAction] = useState("");
-  const [selectedBranch, setSelectedBranch] = useState("");
+  // const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   
   /* ACTION SPECIFIC STATE */
@@ -150,7 +150,7 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
     const e = {};
     if (!pinCard) e.card = "Select card";
     if (!pinAction) e.action = "Select action";
-    if (!selectedBranch) e.branch = "Please select a branch";
+    // if (!selectedBranch) e.branch = "Please select a branch";
 
     // Specific validations based on action
     if (pinAction === 'set-new') {
@@ -184,7 +184,7 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
   
   console.log("res", customer?.user_id || sessionUser?.user_id,
           "service fee", serviceFee,
-          "branch", selectedBranch);
+        );
           
   const handleSubmit = async () => {
     if (!validate()) return;
@@ -197,7 +197,7 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
         account_number: accountNumber,
         card_number: selectedCardDetails?.card_number || pinCard,
         action: pinAction,
-        branch: selectedBranch,
+        // branch: selectedBranch,
         officer_notes: officerNotes,
         user_id: customer?.user_id || sessionUser?.user_id,
       };
@@ -245,7 +245,7 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
         body: JSON.stringify(payload),
           user_id: customer?.user_id || sessionUser?.user_id,
           service_amount: serviceFee,
-          branch: selectedBranch,
+          // branch: selectedBranch,
       });
 
       // Get the response data
@@ -427,7 +427,7 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
               </div>
 
               {/* Branch Selection - Always visible */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label className="flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5" /> Select Branch *
                 </Label>
@@ -452,10 +452,10 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
                 {formErrors.branch && (
                   <p className="text-xs text-destructive">{formErrors.branch}</p>
                 )}
-              </div>
+              </div> */}
 
               {/* Info Box */}
-              <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
+              {/* <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
                 <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-medium text-blue-800">PIN Service Information</p>
@@ -464,7 +464,7 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
                     For branch pickup, visit the selected branch with valid ID.
                   </p>
                 </div>
-              </div>
+              </div> */}
 
               {/* DYNAMIC FIELDS BASED ON ACTION */}
               <AnimatePresence mode="wait">
@@ -542,7 +542,7 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
                         <SelectContent>
                           <SelectItem value="sms">SMS</SelectItem>
                           <SelectItem value="email">Email</SelectItem>
-                          <SelectItem value="branch">Branch Pickup</SelectItem>
+                          {/* <SelectItem value="branch">Branch Pickup</SelectItem> */}
                         </SelectContent>
                       </Select>
                       {formErrors.deliveryMethod && <p className="text-xs text-destructive">{formErrors.deliveryMethod}</p>}
@@ -649,12 +649,12 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
                     <span className="text-sm text-gray-500">Action</span>
                     <span className="text-sm font-medium text-gray-800">{actionLabel[pinAction]}</span>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-dashed">
+                  {/* <div className="flex justify-between py-2 border-b border-dashed">
                     <span className="text-sm text-gray-500">Branch</span>
                     <span className="text-sm font-medium text-gray-800">
                       {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}
                     </span>
-                  </div>
+                  </div> */}
                   
                   {/* Dynamic Details in Review */}
                   {(pinAction === 'set-new' || pinAction === 'reset') && (
@@ -711,9 +711,9 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                   <span>PIN request queued for next step processing.</span>
                 </div>
-                <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600">
+                {/* <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600">
                   <span className="font-medium">Branch:</span> {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}
-                </div>
+                </div> */}
               </div>
 
               <div className="space-y-2">
@@ -746,10 +746,10 @@ export default function PinManagement({ customer: propCustomer, onBack, formFiel
                     <p className="text-xs text-gray-500">Customer ID</p>
                     <p className="font-medium text-gray-700">{customer?.customerId || customer?.user_id}</p>
                   </div>
-                  <div className="col-span-2">
+                  {/* <div className="col-span-2">
                     <p className="text-xs text-gray-500">Branch</p>
                     <p className="font-medium text-gray-700">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
-                  </div>
+                  </div> */}
                 </div>
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />

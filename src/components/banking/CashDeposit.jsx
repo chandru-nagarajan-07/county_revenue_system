@@ -47,15 +47,15 @@ export const CashDepositWorkflow = ({
   /* SESSION USER */
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
-  const branches = sessionUser?.branch || [];
+  // const branches = sessionUser?.branch || [];
 
-  /* FORMAT BRANCHES */
-  const BRANCH_OPTIONS = useMemo(() => {
-    return branches.map((b) => ({
-      value: b.branch_id,
-      label: b.branch_name,
-    }));
-  }, [branches]);
+  // /* FORMAT BRANCHES */
+  // const BRANCH_OPTIONS = useMemo(() => {
+  //   return branches.map((b) => ({
+  //     value: b.branch_id,
+  //     label: b.branch_name,
+  //   }));
+  // }, [branches]);
 
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
   const [customer, setCustomer] = useState(null);
@@ -66,7 +66,7 @@ export const CashDepositWorkflow = ({
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [narration, setNarration] = useState("");
-  const [selectedBranch, setSelectedBranch] = useState("");
+  // const [selectedBranch, setSelectedBranch] = useState("");
   const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
   }, [formFields]);
@@ -93,7 +93,7 @@ export const CashDepositWorkflow = ({
   const validate = () => {
     const errs = {};
     if (!selectedAccount) errs.account = "Please select account";
-    if (!selectedBranch) errs.branch = "Please select a branch";
+    // if (!selectedBranch) errs.branch = "Please select a branch";
     const num = Number(amount);
     if (isNaN(num) || num <= 0) errs.amount = "Enter valid amount";
     setErrors(errs);
@@ -101,7 +101,7 @@ export const CashDepositWorkflow = ({
   };
   
   console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee, "branch", selectedBranch);
+          "service fee", serviceFee);
           
   const handleSubmit = async () => {
     if (!validate()) return;
@@ -116,7 +116,7 @@ export const CashDepositWorkflow = ({
         body: JSON.stringify({
           account_number: selectedAccount.account_number,
           amount: Number(amount),
-          branch: selectedBranch,
+          // branch: selectedBranch,
           reference,
           narration,
           user_id: customer?.user_id || sessionUser?.user_id,
@@ -299,7 +299,7 @@ export const CashDepositWorkflow = ({
                   {errors.account && <p className="text-xs text-destructive">{errors.account}</p>}
                 </div>
 
-                {/* Branch Selection - Always visible */}
+                {/* Branch Selection - Always visible
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5" /> Select Branch *
@@ -326,9 +326,9 @@ export const CashDepositWorkflow = ({
                   {errors.branch && (
                     <p className="text-xs text-destructive">{errors.branch}</p>
                   )}
-                </div>
+                </div> */}
 
-                {/* Info Box */}
+                {/* Info Box 
                 <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
                   <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                   <div>
@@ -339,7 +339,7 @@ export const CashDepositWorkflow = ({
                     </p>
                   </div>
                 </div>
-
+*/}
                 <div className="space-y-2">
                   <Label>Amount *</Label>
                   <Input
@@ -423,7 +423,7 @@ export const CashDepositWorkflow = ({
                   {[
                     { l: "Account", v: selectedAccount?.account_number },
                     { l: "Amount", v: `KES ${Number(amount).toLocaleString()}` },
-                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
+                    // { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Reference", v: reference || "-" },
                     { l: "Narration", v: narration || "-" },
                   ].map((row) => (
@@ -467,7 +467,7 @@ export const CashDepositWorkflow = ({
                 </p>
                 <div className="bg-gray-50 p-4 rounded-lg text-xs text-gray-600 font-mono space-y-2">
                   <div>ID: {customer?.id_number || sessionUser?.id_number || "N/A"}</div>
-                  <div>Branch: {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</div>
+                  {/* <div>Branch: {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</div> */}
                 </div>
               </div>
 

@@ -65,15 +65,15 @@ export default function CardReplacement({ customer: propCustomer, onBack, formFi
   const navigate = useNavigate();
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
-  const branches = sessionUser?.branch || [];
+  // const branches = sessionUser?.branch || [];
 
-  /* FORMAT BRANCHES */
-  const BRANCH_OPTIONS = useMemo(() => {
-    return branches.map((b) => ({
-      value: b.branch_id,
-      label: b.branch_name,
-    }));
-  }, [branches]);
+  // /* FORMAT BRANCHES */
+  // const BRANCH_OPTIONS = useMemo(() => {
+  //   return branches.map((b) => ({
+  //     value: b.branch_id,
+  //     label: b.branch_name,
+  //   }));
+  // }, [branches]);
 
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -97,7 +97,7 @@ export default function CardReplacement({ customer: propCustomer, onBack, formFi
   const [selectedCard, setSelectedCard] = useState("");
   const [selectedCardDetails, setSelectedCardDetails] = useState(null);
   const [replacementReason, setReplacementReason] = useState("");
-  const [selectedBranch, setSelectedBranch] = useState("");
+  // const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const [officerNotes, setOfficerNotes] = useState("");
   const serviceFee = useMemo(() => {
@@ -150,7 +150,7 @@ function getExpiryDate(created_at) {
     const errs = {};
     if (!selectedCard) errs.card = "Select a card to replace";
     if (!replacementReason) errs.reason = "Select replacement reason";
-    if (!selectedBranch) errs.branch = "Please select a branch";
+    // if (!selectedBranch) errs.branch = "Please select a branch";
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -162,7 +162,7 @@ function getExpiryDate(created_at) {
   
   console.log("res", customer?.user_id || sessionUser?.user_id,
           "service fee", serviceFee,
-          "selected branch", selectedBranch);
+  );
           
   const handleSubmit = async () => {
     if (!validate()) return;
@@ -179,7 +179,7 @@ function getExpiryDate(created_at) {
           account_number: accountNumber,
           card_number: selectedCardDetails?.card_number || selectedCard,
           reason: replacementReason,
-          branch: selectedBranch,
+          // branch: selectedBranch,
           officer_notes: officerNotes,
           user_id: customer?.user_id || sessionUser?.user_id,
           service_amount: serviceFee,
@@ -349,7 +349,7 @@ function getExpiryDate(created_at) {
               </div>
 
               {/* Branch Selection - Always visible */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label className="flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5" /> Select Branch for Card Collection *
                 </Label>
@@ -374,10 +374,10 @@ function getExpiryDate(created_at) {
                 {formErrors.branch && (
                   <p className="text-xs text-destructive">{formErrors.branch}</p>
                 )}
-              </div>
+              </div> */}
 
               {/* Info Box */}
-              <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
+              {/* <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
                 <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-medium text-blue-800">Card Collection Information</p>
@@ -386,7 +386,7 @@ function getExpiryDate(created_at) {
                     Please bring a valid ID for verification.
                   </p>
                 </div>
-              </div>
+              </div> */}
 
               <Button 
                 onClick={handleSubmit} 
@@ -428,7 +428,7 @@ function getExpiryDate(created_at) {
                       </span>
                     ) : `•••• ${selectedCard}` },
                     { l: "Reason", v: replacementReason },
-                    { l: "Collection Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
+                    // { l: "Collection Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Current Status", v: selectedCardDetails?.status || "ACTIVE" },
                     { l: "New Card Status", v: "To be issued" },
                     { l: "Old Card Action", v: "Will be blocked" },
@@ -464,14 +464,14 @@ function getExpiryDate(created_at) {
               <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Card Processing Details</h4>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
+                  {/* <div>
                     <p className="text-xs text-gray-500">Delivery Method</p>
                     <p className="font-semibold">Branch Pickup</p>
-                  </div>
-                  <div>
+                  </div> */}
+                  {/* <div>
                     <p className="text-xs text-gray-500">Collection Branch</p>
                     <p className="font-semibold">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
-                  </div>
+                  </div> */}
                   <div>
                     <p className="text-xs text-gray-500">Estimated Time</p>
                     <p className="font-bold text-lg">3-5 Days</p>
@@ -517,10 +517,10 @@ function getExpiryDate(created_at) {
                     <p className="text-xs text-gray-500">Card to Replace</p>
                     <p className="font-medium text-gray-700">•••• {selectedCardDetails?.last4 || selectedCard.slice(-4)}</p>
                   </div>
-                  <div>
+                  {/* <div>
                     <p className="text-xs text-gray-500">Collection Branch</p>
                     <p className="font-medium text-gray-700">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
-                  </div>
+                  </div> */}
                   <div>
                     <p className="text-xs text-gray-500">Reason</p>
                     <p className="font-medium text-gray-700">{replacementReason}</p>

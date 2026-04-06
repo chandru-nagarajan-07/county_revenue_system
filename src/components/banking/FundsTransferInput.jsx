@@ -59,15 +59,15 @@ export function FundsTransferInput({ customer: propCustomer, onBack, formFields=
   const navigate = useNavigate();
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
-  const branches = sessionUser?.branch || [];
+  // const branches = sessionUser?.branch || [];
 
   /* FORMAT BRANCHES */
-  const BRANCH_OPTIONS = useMemo(() => {
-    return branches.map((b) => ({
-      value: b.branch_id,
-      label: b.branch_name,
-    }));
-  }, [branches]);
+  // const BRANCH_OPTIONS = useMemo(() => {
+  //   return branches.map((b) => ({
+  //     value: b.branch_id,
+  //     label: b.branch_name,
+  //   }));
+  // }, [branches]);
 
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
@@ -98,7 +98,7 @@ export function FundsTransferInput({ customer: propCustomer, onBack, formFields=
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [selectedChannelId, setSelectedChannelId] = useState(null);
-  const [selectedBranch, setSelectedBranch] = useState("");
+  // const [selectedBranch, setSelectedBranch] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const serviceFee = useMemo(() => {
     return formFields?.[0]?.service_type?.service_fee || 0;
@@ -150,7 +150,7 @@ export function FundsTransferInput({ customer: propCustomer, onBack, formFields=
     if (!beneficiaryAccount.trim()) errs.beneficiaryAccount = "Beneficiary account is required";
     if (!beneficiaryName.trim()) errs.beneficiaryName = "Beneficiary name is required";
     if (numAmount <= 0) errs.amount = "Enter a valid amount";
-    if (!selectedBranch) errs.branch = "Please select a branch";
+    // if (!selectedBranch) errs.branch = "Please select a branch";
     if (!effectiveChannelId) errs.channel = "Please select a payment channel";
     if (selectedRec && !selectedRec.eligible) errs.channel = selectedRec.ineligibleReason || "Channel not available";
     
@@ -159,8 +159,7 @@ export function FundsTransferInput({ customer: propCustomer, onBack, formFields=
   };
   
   console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee,
-          "selected branch", selectedBranch);
+          "service fee", serviceFee);
           
   const handleStepOneSubmit = async () => {
     if (!validate()) return;
@@ -184,7 +183,7 @@ export function FundsTransferInput({ customer: propCustomer, onBack, formFields=
             amount: numAmount,
             destination: destination,
             channel_id: effectiveChannelId,
-            branch: selectedBranch,
+            // branch: selectedBranch,
             reference: reference,
             officer_notes: officerNotes,
           }),
@@ -416,7 +415,7 @@ export function FundsTransferInput({ customer: propCustomer, onBack, formFields=
               </div>
 
               {/* Branch Selection - Always visible */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label className="flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5" /> Select Branch *
                 </Label>
@@ -441,10 +440,10 @@ export function FundsTransferInput({ customer: propCustomer, onBack, formFields=
                 {formErrors.branch && (
                   <p className="text-xs text-destructive">{formErrors.branch}</p>
                 )}
-              </div>
+              </div> */}
 
               {/* Info Box */}
-              <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
+              {/* <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 border border-blue-200 p-3">
                 <MapPin className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-medium text-blue-800">Transaction Branch Information</p>
@@ -453,7 +452,7 @@ export function FundsTransferInput({ customer: propCustomer, onBack, formFields=
                     Please ensure the branch is correct for authorization purposes.
                   </p>
                 </div>
-              </div>
+              </div> */}
 
               {/* Amount */}
               <div className="space-y-2">
@@ -563,7 +562,7 @@ export function FundsTransferInput({ customer: propCustomer, onBack, formFields=
                     { l: "Destination", v: destination.replace('-', ' ') },
                     { l: "Amount", v: `KES ${numAmount.toLocaleString()}` },
                     { l: "Channel", v: selectedRec?.channel?.name || "N/A" },
-                    { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
+                    // { l: "Branch", v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch },
                     { l: "Reference", v: reference || "-" },
                   ].map((row) => (
                     <div key={row.l} className="flex justify-between py-2 border-b border-dashed last:border-0">
@@ -638,10 +637,10 @@ export function FundsTransferInput({ customer: propCustomer, onBack, formFields=
                     <p className="text-xs text-gray-500">Estimated Time</p>
                     <p className="font-bold text-lg">{selectedRec?.channel?.sla || 'Immediate'}</p>
                   </div>
-                  <div className="col-span-2">
+                  {/* <div className="col-span-2">
                     <p className="text-xs text-gray-500">Branch</p>
                     <p className="font-medium">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
-                  </div>
+                  </div> */}
                 </div>
 
                 <div className="bg-blue-50 border border-blue-100 text-blue-800 text-xs p-3 rounded-lg flex items-start gap-2">
@@ -705,10 +704,10 @@ export function FundsTransferInput({ customer: propCustomer, onBack, formFields=
                     <p className="text-xs text-gray-500">Destination</p>
                     <p className="font-medium text-gray-700">{beneficiaryAccount}</p>
                   </div>
-                  <div className="col-span-2">
+                  {/* <div className="col-span-2">
                     <p className="text-xs text-gray-500">Branch</p>
                     <p className="font-medium text-gray-700">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
-                  </div>
+                  </div> */}
                 </div>
 
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">

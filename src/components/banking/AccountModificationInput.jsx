@@ -223,10 +223,12 @@ export function AccountModificationInput({ customer: propCustomer, onBack, formF
       return;
     }
     
-    if (!selectedBranch) {
-      alert("Please select a branch");
-      return;
-    }
+    // ========== BRANCH VALIDATION COMMENTED OUT ==========
+    // if (!selectedBranch) {
+    //   alert("Please select a branch");
+    //   return;
+    // }
+    // ====================================================
 
     if (
       selectedActionId === "set-transaction-limit" &&
@@ -554,7 +556,8 @@ Details: ${JSON.stringify(details)}
                       </SelectContent>
                     </Select>
 
-                    {/* Branch Selection - Always visible */}
+                    {/* ========== BRANCH SELECTION UI COMMENTED OUT ========== */}
+                    {/*
                     <div className="space-y-2">
                       <Label className="flex items-center gap-1.5">
                         <MapPin className="h-3.5 w-3.5" /> Select Branch *
@@ -566,17 +569,17 @@ Details: ${JSON.stringify(details)}
                         <SelectTrigger>
                           <SelectValue placeholder="Choose a branch for this modification" />
                         </SelectTrigger>
-                      <SelectContent>
-  {BRANCH_OPTIONS.map((branch) => (
-    <SelectItem key={branch.value} value={branch.value}>
-      {branch.label} • {branch.value}
-    </SelectItem>
-  ))}
-</SelectContent>
+                        <SelectContent>
+                          {BRANCH_OPTIONS.map((branch) => (
+                            <SelectItem key={branch.value} value={branch.value}>
+                              {branch.label} • {branch.value}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
                       </Select>
                     </div>
-
-                  
+                    */}
+                    {/* ========== END COMMENTED BRANCH UI ========== */}
 
                     {/* TRANSACTION LIMIT */}
                     {selectedActionId === "set-transaction-limit" && (

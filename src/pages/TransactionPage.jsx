@@ -19,11 +19,11 @@ import  CardIssurance from "@/components/banking/CardIssurance";
 import CardLimitUpdate  from "@/components/banking/CardLimitUpdate";
 import CardReplacement  from "@/components/banking/CardReplacement";
 import PinManagement  from "@/components/banking/PinManagement";
-import { FxTransfer } from "../components/banking/FxTransfer";
-import { BuyForeignCurrency } from "../components/banking/BuyForeignCurrency";
-import { SellForeignCurrency } from "../components/banking/SellForeignCurrency";
-import  ChequeBookRequest from "../components/banking/ChequeBookRequest";
-import StatementRequest from "../components/banking/StatementRequest";
+import { FxTransfer } from "@/components/banking/FxTransfer";
+import { BuyForeignCurrency } from "@/components/banking/BuyForeignCurrency";
+import { SellForeignCurrency } from "@/components/banking/SellForeignCurrency";
+import  ChequeBookRequest from "@/components/banking/ChequeBookRequest";
+import StatementRequest from "@/components/banking/StatementRequest";
 
 
 /* --- Service → Component Map --- */
@@ -113,7 +113,7 @@ const TransactionPage = () => {
 
   /* --- Component selection using API label --- */
   const SelectedComponent = SERVICE_COMPONENTS[serviceLabel];
-
+console.log("Selected Service Label:", serviceLabel);
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
       <motion.div

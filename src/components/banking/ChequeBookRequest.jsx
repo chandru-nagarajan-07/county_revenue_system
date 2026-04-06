@@ -58,7 +58,7 @@ const SERIES_PREFS = [
 
 const DELIVERY_OPTIONS = [
   { value: "post", label: "Collect by Post" },
-  { value: "branch", label: "Nearby Branch" },
+  // { value: "branch", label: "Nearby Branch" },
 ];
 
 // Branch options for Kenya
@@ -88,15 +88,15 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
   const navigate = useNavigate();
   const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
-  const branches = sessionUser?.branch || [];
+  // const branches = sessionUser?.branch || [];
 
-  /* FORMAT BRANCHES */
-  const BRANCH_OPTIONS = useMemo(() => {
-    return branches.map((b) => ({
-      value: b.branch_id,
-      label: b.branch_name,
-    }));
-  }, [branches]);
+  // /* FORMAT BRANCHES */
+  // const BRANCH_OPTIONS = useMemo(() => {
+  //   return branches.map((b) => ({
+  //     value: b.branch_id,
+  //     label: b.branch_name,
+  //   }));
+  // }, [branches]);
 
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
  const serviceFee = useMemo(() => {
@@ -137,7 +137,7 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
   const [chequeLeaves, setChequeLeaves] = useState("50");
   const [seriesPref, setSeriesPref] = useState("continue");
   const [deliveryOption, setDeliveryOption] = useState("post");
-  const [selectedBranch, setSelectedBranch] = useState("");
+  // const [selectedBranch, setSelectedBranch] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [smsNotify, setSmsNotify] = useState(true);
@@ -192,13 +192,13 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
     const errs = {};
     if (!selectedAccount) errs.account = "Select account";
     if (!contactPhone.trim()) errs.phone = "Phone required";
-    if (deliveryOption === "branch" && !selectedBranch) errs.branch = "Please select a branch";
+    // if (deliveryOption === "branch" && !selectedBranch) errs.branch = "Please select a branch";
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
   console.log("sessionUser", sessionUser);
  console.log("res", customer?.user_id || sessionUser?.user_id,
-          "service fee", serviceFee,"branch", selectedBranch);
+          "service fee", serviceFee,);
   const handleSubmit = async () => {
     if (!validate()) return;
     
@@ -229,7 +229,7 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
         cheque_leaves: parseInt(chequeLeaves),
         series_preference: seriesPref,
         delivery_method: deliveryOption,
-        branch: deliveryOption === "branch" ? selectedBranch : null,
+        // branch: deliveryOption === "branch" ? selectedBranch : null,
         contact_phone: contactPhone,
         contact_email: contactEmail || null,
         sms_notification: smsNotify,
@@ -248,7 +248,7 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
         body: JSON.stringify(payload),
           user_id: customer?.user_id || sessionUser?.user_id,
           service_amount: serviceFee,
-          branch: selectedBranch,
+          // branch: selectedBranch,
       });
 
       const data = await response.json();
@@ -465,7 +465,7 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
               </div>
 
               {/* Delivery Option */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label>Delivery Method *</Label>
                 <Select value={deliveryOption} onValueChange={(value) => {
                   setDeliveryOption(value);
@@ -488,10 +488,10 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </div> */}
 
               {/* Branch Selection - Only shows when delivery method is "branch" */}
-              {deliveryOption === "branch" && (
+              {/* {deliveryOption === "branch" && (
                 <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
                   <Label className="flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5" /> Select Branch *
@@ -528,18 +528,18 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
                     </div>
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* ETA Info */}
               <div className="flex items-start gap-2.5 rounded-lg bg-muted/40 border p-3">
                 <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-medium text-foreground">Estimated Delivery Time</p>
-                  <p className="text-xs text-muted-foreground">
+                  {/* <p className="text-xs text-muted-foreground">
                     {deliveryOption === "branch" 
                       ? "2-3 business days for branch collection" 
                       : "5-7 business days for postal delivery"}
-                  </p>
+                  </p> */}
                 </div>
               </div>
 
@@ -626,16 +626,16 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
                     { l: "Account", v: selectedAccount?.account_number },
                     { l: "Leaves", v: CHEQUE_LEAVES.find(l => l.value === chequeLeaves)?.label },
                     { l: "Series", v: SERIES_PREFS.find(s => s.value === seriesPref)?.label },
-                    { 
-                      l: "Delivery", 
-                      v: deliveryOption === "post" ? "Collect by Post" : "Nearby Branch" 
-                    },
-                    ...(deliveryOption === "branch" && selectedBranch ? [
-                      { 
-                        l: "Branch", 
-                        v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch 
-                      }
-                    ] : []),
+                    // { 
+                    //   l: "Delivery", 
+                    //   v: deliveryOption === "post" ? "Collect by Post" : "Nearby Branch" 
+                    // },
+                    // ...(deliveryOption === "branch" && selectedBranch ? [
+                    //   { 
+                    //     l: "Branch", 
+                    //     v: BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch 
+                    //   }
+                    // ] : []),
                     { l: "Contact Phone", v: contactPhone },
                     { l: "Contact Email", v: contactEmail || "-" },
                     { l: "SMS Notifications", v: smsNotify ? "Yes" : "No" },
@@ -690,12 +690,12 @@ export default function ChequeBookRequest({ customer: propCustomer, onBack, form
                     <p className="text-xs text-muted-foreground">Delivery</p>
                     <p className="font-medium">{deliveryOption === "post" ? "Post" : "Branch"}</p>
                   </div>
-                  {deliveryOption === "branch" && selectedBranch && (
+                  {/* {deliveryOption === "branch" && selectedBranch && (
                     <div className="col-span-2">
                       <p className="text-xs text-muted-foreground">Collection Branch</p>
                       <p className="font-medium">{BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label || selectedBranch}</p>
                     </div>
-                  )}
+                  )} */}
                 </div>
                 <div className="flex items-center gap-2 bg-green-50 text-green-800 text-xs p-2 rounded border border-green-200 mt-2">
                   <Star className="h-3.5 w-3.5" />
