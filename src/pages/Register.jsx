@@ -111,7 +111,19 @@ const Register = () => {
     e.preventDefault();
 
     if (!validate()) return;
-
+    try {
+      const response = await fetch(`https://saccobe.zecosdk.com/account_fetch/${formData.email}`, {
+        method: "GET",
+      }); 
+      if (!response.ok) {
+        alert(data1.message || "OTP verification failed");
+        navigate('/create-account')
+        return;
+      }}catch (error) {
+      console.error(error);
+      alert("Something went wrong");
+     navigate('/create-account')
+    };
     try {
       const response = await fetch("http://127.0.0.1:8000/api/sign-up/", {
         method: "POST",

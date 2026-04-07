@@ -80,7 +80,7 @@ const AccountOpeningForm = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (validate()) {
+    if (validate()) { 
       console.log("Account Opening Request:", formData);
       navigate('/verify-otp');
     }
