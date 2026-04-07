@@ -13,7 +13,9 @@ const DashboardTeller = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const customer = location.state?.customer;
-
+  const branch = customer?.teller_info;
+  console.log("DashboardTeller received customer:", customer);
+  console.log("DashboardTeller received branch:", branch);
   // --- State Management ---
   const [serviceCategories, setServiceCategories] = useState({});
   const [allServices, setAllServices] = useState([]);
@@ -79,7 +81,7 @@ const DashboardTeller = () => {
   const fetchServiceApprovals = async () => {
     try {
       setApprovalsLoading(true);
-      const response = await fetch("http://127.0.0.1:8000/api/all_cards/");
+      const response = await fetch(`http://127.0.0.1:8000/api/all_cards/${branch}/`);
       if (!response.ok) throw new Error("Failed to fetch service approvals");
       
       const data = await response.json();
