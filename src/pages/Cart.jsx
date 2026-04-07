@@ -233,16 +233,34 @@ const CartPage = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
-      <DashboardHeader customerName="John Doe" />
+     <header className="flex items-center justify-between px-8 py-5 navy-gradient">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/dashboard')}
+            className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="font-display text-2xl font-bold text-primary-foreground tracking-tight">
+              Cart
+            </h1>
+            <p className="text-sm text-primary-foreground/60">Handle your service requests efficiently</p>
+          </div>
+        </div>
+      </header>
+
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
-          <div className="flex items-center gap-4 mb-6">
+          {/* <div className="flex items-center gap-4 mb-6">
             <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-2xl font-bold">Cart</h1>
-          </div>
+          </div> */}
 
           <Tabs defaultValue="pending" onValueChange={(value) => setActiveTab(value)}>
             <TabsList className="grid grid-cols-2 mb-4">

@@ -20,7 +20,7 @@ const Admin = () => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/dashboard')}
             className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
           >
             <ArrowLeft className="h-5 w-5" />
