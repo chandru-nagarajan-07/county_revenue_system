@@ -20,7 +20,8 @@ import {
   PauseCircle,
   ThumbsUp,
   ThumbsDown,
-  Info
+  Info,
+  Send
 } from 'lucide-react';
 import { DashboardHeader } from '@/components/banking/DashboardHeader1';
 
@@ -28,6 +29,15 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const cartData = location.state;
+  const customer = location.state?.customer;
+  const branch = customer?.teller_info;
+  const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
+  const accounts = sessionUser?.account || [];
+  console.log("ProfilePage session user:", sessionUser);
+  
+  // Get branch code from session storage
+  const branchCode = JSON.parse(sessionStorage.getItem("teller"));
+  console.log("Branch Code:", branchCode);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -38,6 +48,14 @@ const ProfilePage = () => {
   const [selectedServiceDetails, setSelectedServiceDetails] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  
+  // Transfer modal states
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [selectedTransferService, setSelectedTransferService] = useState(null);
+  const [tellers, setTellers] = useState([]);
+  const [isLoadingTellers, setIsLoadingTellers] = useState(false);
+  const [selectedTeller, setSelectedTeller] = useState(null);
+  const [isTransferring, setIsTransferring] = useState(false);
 
   // API base URL
   const API_BASE_URL = 'http://localhost:8000/api';
@@ -46,7 +64,7 @@ const ProfilePage = () => {
   const STATUS_OPTIONS = {
     ON_HOLD: 'ON_HOLD',
     COMPLETED: 'COMPLETED',
-    REJECTED: 'REJECTED'
+    TRANSFERRED: 'TRANSFERRED'
   };
 
   // Function to fetch service cart from backend
@@ -128,6 +146,153 @@ const ProfilePage = () => {
     }
   };
 
+  // Function to fetch tellers of the current branch
+  const fetchTellersByBranch = async () => {
+    setIsLoadingTellers(true);
+    setTellers([]);
+    
+    try {
+      if (!branchCode) {
+        throw new Error('Branch code not found');
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/fetch_tellers/${encodeURIComponent(branchCode)}/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Tellers fetched:", data);
+      
+      // Transform the data - map teller IDs to user details
+      // Since the API returns TellerAllocation data with teller IDs
+      const formattedTellers = data.map((allocation) => {
+        // You can either fetch user details here or have backend include them
+        // For now, we'll use the teller ID and try to get user info from session/local storage
+        return {
+          id: allocation.teller,
+          name: `Teller ${allocation.teller}`, // Temporary name
+          email: 'Loading...',
+          employee_id: allocation.teller,
+          branch_id: allocation.branch,
+          allocation_id: allocation.id,
+          allocated_at: allocation.allocated_at
+        };
+      });
+      
+      setTellers(formattedTellers);
+      
+      // Fetch user details for each teller
+      const tellersWithDetails = await Promise.all(
+        formattedTellers.map(async (teller) => {
+          try {
+            // Try to get user details from your user endpoint
+            const userResponse = await fetch(`${API_BASE_URL}/users/${teller.id}/`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+            });
+            
+            if (userResponse.ok) {
+              const userData = await userResponse.json();
+              return {
+                ...teller,
+                name: userData.name || userData.full_name || `Teller ${teller.id}`,
+                email: userData.email || 'N/A',
+                employee_id: userData.user_ID || userData.employee_id || teller.id,
+              };
+            }
+          } catch (err) {
+            console.error(`Error fetching user ${teller.id}:`, err);
+          }
+          return teller;
+        })
+      );
+      
+      setTellers(tellersWithDetails);
+      
+    } catch (err) {
+      console.error('Error fetching tellers:', err);
+      alert(`Failed to fetch tellers: ${err.message}`);
+    } finally {
+      setIsLoadingTellers(false);
+    }
+  };
+
+  // Function to transfer service to another teller
+  const transferService = async () => {
+    if (!selectedTransferService || !selectedTeller) {
+      alert('Please select a teller to transfer the service');
+      return;
+    }
+    
+    setIsTransferring(true);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/service_transfer/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          service_id: selectedTransferService.service_id,
+          from_teller_id: customer?.user_id || JSON.parse(localStorage.getItem('user') || '{}').id,
+          to_teller_id: selectedTeller.id,
+          transfer_reason: 'Service reassigned',
+          status: 'TO_BE_PROCESSED'
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Refresh the cart data to get updated statuses
+      if (serviceCart && serviceCart.cartId) {
+        await fetchServiceCart(serviceCart.cartId);
+      }
+      
+      alert(`Service successfully transferred to ${selectedTeller.name}`);
+      
+      // Close modal and reset states
+      setIsTransferModalOpen(false);
+      setSelectedTransferService(null);
+      setSelectedTeller(null);
+      setTellers([]);
+      
+    } catch (err) {
+      console.error('Error transferring service:', err);
+      alert(`Failed to transfer service: ${err.message}`);
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
+  // Handle transfer button click
+  const handleTransferClick = async (service) => {
+    // Check if branch code is available
+    if (!branchCode) {
+      alert('Branch information not available. Please refresh and try again.');
+      return;
+    }
+    
+    setSelectedTransferService(service);
+    setIsTransferModalOpen(true);
+    await fetchTellersByBranch();
+  };
+
   // Handle service ID click
   const handleServiceIdClick = (serviceId) => {
     fetchServiceCartItemDetails(serviceId);
@@ -184,8 +349,8 @@ const ProfilePage = () => {
         case STATUS_OPTIONS.ON_HOLD:
           message = 'Service put on hold successfully!';
           break;
-        case STATUS_OPTIONS.REJECTED:
-          message = 'Service rejected successfully!';
+        case STATUS_OPTIONS.TRANSFERRED:
+          message = 'Service transferred successfully!';
           break;
         default:
           message = 'Service status updated successfully!';
@@ -208,8 +373,8 @@ const ProfilePage = () => {
         return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case 'ON_HOLD':
         return <PauseCircle className="h-4 w-4 text-orange-500" />;
-      case 'REJECTED':
-        return <ThumbsDown className="h-4 w-4 text-red-500" />;
+      case 'TO_BE_PROCESSED':
+        return <Send className="h-4 w-4 text-purple-500" />;
       case 'PENDING':
         return <Clock className="h-4 w-4 text-yellow-500" />;
       case 'PROCESSING':
@@ -227,12 +392,12 @@ const ProfilePage = () => {
         return 'bg-green-100 text-green-800';
       case 'ON_HOLD':
         return 'bg-orange-100 text-orange-800';
-      case 'REJECTED':
-        return 'bg-red-100 text-red-800';
+      case 'TRANSFERRED':
+        return 'bg-purple-100 text-purple-800';
       case 'PENDING':
         return 'bg-yellow-100 text-yellow-800';
       case 'PROCESSING':
-      case 'IN_PROGRESS':
+      case 'TO_BE_PROCESSED':
         return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -246,13 +411,15 @@ const ProfilePage = () => {
         return 'Completed';
       case 'ON_HOLD':
         return 'On Hold';
-      case 'REJECTED':
-        return 'Rejected';
+      case 'TRANSFERRED':
+        return 'Transferred';
       case 'PENDING':
         return 'Pending';
       case 'PROCESSING':
       case 'IN_PROGRESS':
         return 'In Progress';
+      case 'TO_BE_PROCESSED':
+        return 'To Be Processed';
       default:
         return status || 'Unknown';
     }
@@ -284,7 +451,7 @@ const ProfilePage = () => {
   // Calculate service statistics
   const completedServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'COMPLETED').length || 0;
   const onHoldServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'ON_HOLD').length || 0;
-  const rejectedServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'REJECTED').length || 0;
+  const transferredServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'TRANSFERRED').length || 0;
   const pendingServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'PENDING' || s.status?.toUpperCase() === 'PROCESSING' || s.status?.toUpperCase() === 'IN_PROGRESS').length || 0;
   const progressPercentage = (completedServicesCount / (serviceCart?.totalServices || 1)) * 100 || 0;
 
@@ -301,220 +468,355 @@ const ProfilePage = () => {
     return `KSh ${parseFloat(amount).toFixed(2)}`;
   };
 
-  // Modal Component for Service Details
-// Modal Component for Service Details
-// Modal Component for Service Details
-const ServiceDetailsModal = () => {
-  if (!isDetailsModalOpen) return null;
-  
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-          <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-            <Info className="h-5 w-5 text-blue-600" />
-            Service Cart Item Details
-          </h3>
+  // Transfer Modal Component
+  const TransferModal = () => {
+    if (!isTransferModalOpen) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          
+          {/* Header */}
+          <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+            <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <Send className="h-5 w-5 text-purple-600" />
+              Transfer Service
+            </h3>
+            <button
+              onClick={() => {
+                setIsTransferModalOpen(false);
+                setSelectedTransferService(null);
+                setSelectedTeller(null);
+                setTellers([]);
+              }}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <XCircle className="h-6 w-6" />
+            </button>
+          </div>
 
-          <button
-            onClick={() => setIsDetailsModalOpen(false)}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <XCircle className="h-6 w-6" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-6">
-          {isLoadingDetails ? (
-            <div className="text-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
-              <p className="mt-2 text-gray-600">Loading details...</p>
-            </div>
-
-          ) : selectedServiceDetails ? (
-
-            <div className="space-y-6">
-
-              {/* Cart Item Information */}
-              <div className="border rounded-lg overflow-hidden">
-                <div className="bg-blue-50 px-4 py-2 border-b">
-                  <h4 className="font-semibold text-blue-900">
-                    Cart Item Information
-                  </h4>
-                </div>
-
-                <div className="p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                    {selectedServiceDetails.cart &&
-                      Object.entries(selectedServiceDetails.cart).map(
-                        ([key, value]) => {
-
-                          // REMOVE UNWANTED FIELDS
-                          if (
-                            key === "service_data" ||
-                            key === "created_at" ||
-                            key === "documents" ||
-                            key === "core_banking_ref" ||
-                            key === "rejection_reason" ||
-                            key === "customer_notified" ||
-                            key === "processed_at" ||
-                            key === "completed_at" ||
-                            key === "teller"
-                          ) return null;
-
-                          let displayValue = value;
-
-                          if (key === "amount") {
-                            displayValue = formatCurrency(value);
-                          } 
-                          else if (value === null || value === undefined) {
-                            displayValue = "N/A";
-                          } 
-                          else if (typeof value === "boolean") {
-                            displayValue = value ? "Yes" : "No";
-                          }
-
-                          return (
-                            <div key={key} className="flex flex-col">
-                              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {key.replace(/_/g, " ")}
-                              </span>
-
-                              <span className="text-sm text-gray-900 mt-1 font-medium">
-                                {String(displayValue)}
-                              </span>
-                            </div>
-                          );
-                        }
-                      )}
-
+          {/* Body */}
+          <div className="p-6">
+            {/* Service Information */}
+            {selectedTransferService && (
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-semibold text-gray-700 mb-2">Service to Transfer</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Service ID:</span>
+                    <span className="ml-2 font-mono font-semibold">{selectedTransferService.service_id}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Service Name:</span>
+                    <span className="ml-2 font-semibold">{selectedTransferService.service_name}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Current Status:</span>
+                    <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${getServiceStatusColor(selectedTransferService.status)}`}>
+                      {getStatusText(selectedTransferService.status)}
+                    </span>
                   </div>
                 </div>
               </div>
+            )}
 
+            {/* Tellers List */}
+            <div>
+              <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Select Teller to Transfer To
+              </h4>
+              
+              {isLoadingTellers ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto" />
+                  <p className="mt-2 text-gray-600">Loading tellers...</p>
+                </div>
+              ) : tellers.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-600">No tellers found in your branch</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {tellers.map((teller) => (
+                    <div
+                      key={teller.id}
+                      onClick={() => setSelectedTeller(teller)}
+                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                        selectedTeller?.id === teller.id
+                          ? 'border-purple-500 bg-purple-50'
+                          : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <User className="h-4 w-4 text-gray-500" />
+                            <span className="font-semibold text-gray-800">{teller.name}</span>
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            <div>Email: {teller.email || 'N/A'}</div>
+                            <div>Employee ID: {teller.employee_id || 'N/A'}</div>
+                          </div>
+                        </div>
+                        {selectedTeller?.id === teller.id && (
+                          <CheckCircle className="h-5 w-5 text-purple-600" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
 
-              {/* Service Data Section */}
-              {selectedServiceDetails.service_data && (
+          {/* Footer */}
+          <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsTransferModalOpen(false);
+                setSelectedTransferService(null);
+                setSelectedTeller(null);
+                setTellers([]);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={transferService}
+              disabled={!selectedTeller || isTransferring}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {isTransferring ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Transferring...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Transfer Service
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Service Details Modal Component
+  const ServiceDetailsModal = () => {
+    if (!isDetailsModalOpen) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          
+          {/* Header */}
+          <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+            <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <Info className="h-5 w-5 text-blue-600" />
+              Service Cart Item Details
+            </h3>
+
+            <button
+              onClick={() => setIsDetailsModalOpen(false)}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <XCircle className="h-6 w-6" />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="p-6">
+            {isLoadingDetails ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+                <p className="mt-2 text-gray-600">Loading details...</p>
+              </div>
+
+            ) : selectedServiceDetails ? (
+
+              <div className="space-y-6">
+
+                {/* Cart Item Information */}
                 <div className="border rounded-lg overflow-hidden">
-
-                  <div className="bg-green-50 px-4 py-2 border-b">
-                    <h4 className="font-semibold text-green-900">
-                      Service Data Details
+                  <div className="bg-blue-50 px-4 py-2 border-b">
+                    <h4 className="font-semibold text-blue-900">
+                      Cart Item Information
                     </h4>
                   </div>
 
                   <div className="p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                    {selectedServiceDetails.service_data.error ? (
-                      <div className="text-red-600 p-2 bg-red-50 rounded">
-                        Error: {selectedServiceDetails.service_data.error}
-                      </div>
+                      {selectedServiceDetails.cart &&
+                        Object.entries(selectedServiceDetails.cart).map(
+                          ([key, value]) => {
 
-                    ) : (
+                            // Remove unwanted fields
+                            if (
+                              key === "service_data" ||
+                              key === "created_at" ||
+                              key === "documents" ||
+                              key === "core_banking_ref" ||
+                              key === "rejection_reason" ||
+                              key === "customer_notified" ||
+                              key === "processed_at" ||
+                              key === "completed_at" ||
+                              key === "teller"
+                            ) return null;
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            let displayValue = value;
 
-                        {Object.entries(
-                          selectedServiceDetails.service_data
-                        ).map(([key, value]) => {
+                            if (key === "amount") {
+                              displayValue = formatCurrency(value);
+                            } 
+                            else if (value === null || value === undefined) {
+                              displayValue = "N/A";
+                            } 
+                            else if (typeof value === "boolean") {
+                              displayValue = value ? "Yes" : "No";
+                            }
 
-                          // REMOVE QR IMAGE
-                          if (key === "qr_img") return null;
+                            return (
+                              <div key={key} className="flex flex-col">
+                                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  {key.replace(/_/g, " ")}
+                                </span>
 
-                          let displayValue = value;
-
-                          if (key === "created_at") {
-                            displayValue = formatDate(value);
-                          } 
-                          else if (key === "amount") {
-                            displayValue = formatCurrency(value);
-                          } 
-                          else if (value === null || value === undefined) {
-                            displayValue = "N/A";
+                                <span className="text-sm text-gray-900 mt-1 font-medium">
+                                  {String(displayValue)}
+                                </span>
+                              </div>
+                            );
                           }
+                        )}
 
-                          return (
-                            <div key={key} className="flex flex-col">
-                              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {key.replace(/_/g, " ")}
-                              </span>
-
-                              <span className="text-sm text-gray-900 mt-1">
-                                {displayValue}
-                              </span>
-                            </div>
-                          );
-                        })}
-
-                      </div>
-                    )}
-
+                    </div>
                   </div>
                 </div>
-              )}
 
+                {/* Service Data Section */}
+                {selectedServiceDetails.service_data && (
+                  <div className="border rounded-lg overflow-hidden">
 
-              {/* Summary */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex justify-between items-center">
+                    <div className="bg-green-50 px-4 py-2 border-b">
+                      <h4 className="font-semibold text-green-900">
+                        Service Data Details
+                      </h4>
+                    </div>
 
-                  <div>
-                    <span className="text-sm text-gray-600">
-                      Service Status:
-                    </span>
+                    <div className="p-4">
 
-                    <span
-                      className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusColor(
-                        selectedServiceDetails.cart?.service_status
-                      )}`}
-                    >
-                      {getStatusText(
-                        selectedServiceDetails.cart?.service_status
+                      {selectedServiceDetails.service_data.error ? (
+                        <div className="text-red-600 p-2 bg-red-50 rounded">
+                          Error: {selectedServiceDetails.service_data.error}
+                        </div>
+
+                      ) : (
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                          {Object.entries(
+                            selectedServiceDetails.service_data
+                          ).map(([key, value]) => {
+
+                            // Remove QR image
+                            if (key === "qr_img") return null;
+
+                            let displayValue = value;
+
+                            if (key === "created_at") {
+                              displayValue = formatDate(value);
+                            } 
+                            else if (key === "amount") {
+                              displayValue = formatCurrency(value);
+                            } 
+                            else if (value === null || value === undefined) {
+                              displayValue = "N/A";
+                            }
+
+                            return (
+                              <div key={key} className="flex flex-col">
+                                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  {key.replace(/_/g, " ")}
+                                </span>
+
+                                <span className="text-sm text-gray-900 mt-1">
+                                  {displayValue}
+                                </span>
+                              </div>
+                            );
+                          })}
+
+                        </div>
                       )}
-                    </span>
+
+                    </div>
                   </div>
+                )}
 
-                  <div>
-                    <span className="text-sm text-gray-600">
-                      Service Code:
-                    </span>
+                {/* Summary */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
 
-                    <span className="ml-2 font-mono text-sm font-semibold text-gray-800">
-                      {selectedServiceDetails.cart?.service_code}
-                    </span>
+                    <div>
+                      <span className="text-sm text-gray-600">
+                        Service Status:
+                      </span>
+
+                      <span
+                        className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusColor(
+                          selectedServiceDetails.cart?.service_status
+                        )}`}
+                      >
+                        {getStatusText(
+                          selectedServiceDetails.cart?.service_status
+                        )}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-sm text-gray-600">
+                        Service Code:
+                      </span>
+
+                      <span className="ml-2 font-mono text-sm font-semibold text-gray-800">
+                        {selectedServiceDetails.cart?.service_code}
+                      </span>
+                    </div>
+
                   </div>
-
                 </div>
+
               </div>
 
-            </div>
+            ) : (
 
-          ) : (
+              <div className="text-center py-8 text-gray-500">
+                No details available for this service
+              </div>
 
-            <div className="text-center py-8 text-gray-500">
-              No details available for this service
-            </div>
+            )}
+          </div>
 
-          )}
+          {/* Footer */}
+          <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end">
+            <Button
+              onClick={() => setIsDetailsModalOpen(false)}
+            >
+              Close
+            </Button>
+          </div>
+
         </div>
-
-        {/* Footer */}
-        <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end">
-          <Button
-            onClick={() => setIsDetailsModalOpen(false)}
-          >
-            Close
-          </Button>
-        </div>
-
       </div>
-    </div>
-  );
-};
+    );
+  };
 
   if (isLoading) {
     return (
@@ -678,8 +980,8 @@ const ServiceDetailsModal = () => {
                   <div className="text-gray-600">On Hold</div>
                 </div>
                 <div>
-                  <div className="text-red-600 font-semibold">{rejectedServicesCount}</div>
-                  <div className="text-gray-600">Rejected</div>
+                  <div className="text-purple-600 font-semibold">{transferredServicesCount}</div>
+                  <div className="text-gray-600">Transferred</div>
                 </div>
                 <div>
                   <div className="text-yellow-600 font-semibold">{pendingServicesCount}</div>
@@ -756,15 +1058,15 @@ const ServiceDetailsModal = () => {
                                   <PauseCircle className="h-4 w-4 mr-1" /> Hold
                                 </Button>
                               )}
-                              {currentStatus !== STATUS_OPTIONS.REJECTED && (
+                              {currentStatus !== STATUS_OPTIONS.TRANSFERRED && (
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                                  onClick={() => updateServiceStatus(service.service_id, STATUS_OPTIONS.REJECTED)}
-                                  title="Reject"
+                                  className="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+                                  onClick={() => handleTransferClick(service)}
+                                  title="Transfer Service"
                                 >
-                                  <ThumbsDown className="h-4 w-4 mr-1" /> Reject
+                                  <Send className="h-4 w-4 mr-1" /> Transfer Deck
                                 </Button>
                               )}
                             </div>
@@ -779,9 +1081,9 @@ const ServiceDetailsModal = () => {
                               <PauseCircle className="h-4 w-4" /> On Hold
                             </div>
                           )}
-                          {currentStatus === STATUS_OPTIONS.REJECTED && (
-                            <div className="text-red-600 text-sm flex items-center gap-1">
-                              <ThumbsDown className="h-4 w-4" /> Rejected
+                          {currentStatus === STATUS_OPTIONS.TO_BE_PROCESSED && (
+                            <div className="text-purple-600 text-sm flex items-center gap-1">
+                              <Send className="h-4 w-4" /> To Be Processed
                             </div>
                           )}
                         </td>
@@ -815,6 +1117,9 @@ const ServiceDetailsModal = () => {
           </div>
         </div>
       </main>
+
+      {/* Transfer Modal */}
+      <TransferModal />
 
       {/* Service Details Modal */}
       <ServiceDetailsModal />
