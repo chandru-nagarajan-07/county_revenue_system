@@ -40,13 +40,14 @@ const ProfilePage = () => {
   
   // Get branch code from session storage
   const branchCode = tellerUser?.teller_info || null;
+  const teller_id = tellerUser?.teller_id| null;
   
   // Option 2: If stored separately as 'teller' in sessionStorage
   const tellerFromSession = JSON.parse(sessionStorage.getItem("teller") || "null");
   const branchCodeAlt = tellerFromSession || branchCode;
   
   console.log("Branch Code:", branchCode);
-  console.log("Branch Code Alternative:", branchCodeAlt);
+  console.log("Branch Code Alternative:", teller_id);
   
   // Use the branch code that's available
   const finalBranchCode = branchCode || branchCodeAlt;
@@ -69,6 +70,7 @@ const ProfilePage = () => {
   const [isLoadingTellers, setIsLoadingTellers] = useState(false);
   const [selectedTeller, setSelectedTeller] = useState(null);
   const [isTransferring, setIsTransferring] = useState(false);
+  const [transferReason, setTransferReason] = useState('');
 
   // API base URL
   const API_BASE_URL = 'http://localhost:8000/api';
@@ -86,7 +88,7 @@ const ProfilePage = () => {
     setError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/service_cart/${cartId}/`, {
+      const response = await fetch(`${API_BASE_URL}/teller_service_cart/${cartId}/${teller_id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -248,6 +250,11 @@ const ProfilePage = () => {
       return;
     }
     
+    if (!transferReason.trim()) {
+      alert('Please provide a reason for transferring the service');
+      return;
+    }
+    
     setIsTransferring(true);
     
     try {
@@ -261,7 +268,7 @@ const ProfilePage = () => {
           service_id: selectedTransferService.service_id,
           from_teller_id: customer?.user_id || JSON.parse(localStorage.getItem('user') || '{}').id,
           to_teller_id: selectedTeller.id,
-          transfer_reason: 'Service reassigned',
+          transfer_reason: transferReason,
           status: 'TO_BE_PROCESSED'
         })
       });
@@ -284,6 +291,7 @@ const ProfilePage = () => {
       setSelectedTransferService(null);
       setSelectedTeller(null);
       setTellers([]);
+      setTransferReason('');
       
     } catch (err) {
       console.error('Error transferring service:', err);
@@ -302,6 +310,7 @@ const ProfilePage = () => {
     }
     
     setSelectedTransferService(service);
+    setTransferReason(''); // Reset reason when opening modal
     setIsTransferModalOpen(true);
     await fetchTellersByBranch();
   };
@@ -501,6 +510,7 @@ const ProfilePage = () => {
                 setSelectedTransferService(null);
                 setSelectedTeller(null);
                 setTellers([]);
+                setTransferReason('');
               }}
               className="text-gray-500 hover:text-gray-700 transition-colors"
             >
@@ -533,11 +543,28 @@ const ProfilePage = () => {
               </div>
             )}
 
+            {/* Transfer Reason Input */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Transfer Reason <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={transferReason}
+                onChange={(e) => setTransferReason(e.target.value)}
+                placeholder="Please provide a reason for transferring this service..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                rows="3"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                This reason will be logged for audit purposes
+              </p>
+            </div>
+
             {/* Tellers List */}
             <div>
               <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <User className="h-4 w-4" />
-                Select Teller to Transfer To
+                Select Teller to Transfer To <span className="text-red-500">*</span>
               </h4>
               
               {isLoadingTellers ? (
@@ -593,13 +620,14 @@ const ProfilePage = () => {
                 setSelectedTransferService(null);
                 setSelectedTeller(null);
                 setTellers([]);
+                setTransferReason('');
               }}
             >
               Cancel
             </Button>
             <Button
               onClick={transferService}
-              disabled={!selectedTeller || isTransferring}
+              disabled={!selectedTeller || !transferReason.trim() || isTransferring}
               className="bg-purple-600 hover:bg-purple-700"
             >
               {isTransferring ? (
