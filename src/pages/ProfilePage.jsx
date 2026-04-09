@@ -250,13 +250,13 @@ const ProfilePage = () => {
     }
   };
 
-  // Function to fetch service history - ONLY for TO_BE_PROCESSED status
+  // Function to fetch service history - FIXED FOR ARRAY RESPONSE
   const fetchServiceHistory = async (serviceId) => {
     setIsLoadingHistory(true);
     setHistoryData(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/service_history/${serviceId}/`, {
+      const response = await fetch(`${API_BASE_URL}/referral_history/${serviceId}/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -269,7 +269,28 @@ const ProfilePage = () => {
       
       const data = await response.json();
       console.log("Service history response:", data);
-      setHistoryData(data);
+      
+      // Check if data is an array and has items
+      if (Array.isArray(data) && data.length > 0) {
+        // Get all transfers for timeline
+        const allTransfers = data;
+        // Get the latest transfer (first item in array)
+        const latestTransfer = data[0];
+        
+        setHistoryData({
+          previous_teller: latestTransfer.previous_teller,
+          new_teller: latestTransfer.new_teller,
+          remarks: latestTransfer.remarks,
+          created_at: latestTransfer.created_at,
+          action: latestTransfer.action,
+          service: latestTransfer.service,
+          id: latestTransfer.id,
+          transfer_history: allTransfers // Store full array for timeline
+        });
+      } else {
+        setHistoryData(null);
+      }
+      
       setIsHistoryOpen(true);
       
     } catch (err) {
@@ -543,7 +564,7 @@ const ProfilePage = () => {
     return `KSh ${parseFloat(amount).toFixed(2)}`;
   };
 
-  // History Modal Component
+  // History Modal Component - FIXED FOR ARRAY RESPONSE
   const HistoryModal = () => {
     if (!isHistoryOpen) return null;
     
@@ -574,75 +595,69 @@ const ProfilePage = () => {
               </div>
             ) : historyData ? (
               <div className="space-y-4">
-                {/* Service Information */}
+                {/* Latest Transfer Details */}
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-700 mb-3">Service Information</h3>
+                  <h3 className="font-semibold text-gray-700 mb-3">Transfer Details</h3>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <span className="text-gray-500">Service ID:</span>
-                      <span className="ml-2 font-mono font-semibold">{historyData.service_id}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Service Name:</span>
-                      <span className="ml-2 font-semibold">{historyData.service_name}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Current Status:</span>
-                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${getServiceStatusColor(historyData.status)}`}>
-                        {getStatusText(historyData.status)}
-                      </span>
+                      <span className="text-gray-500">Action:</span>
+                      <span className="ml-2 font-medium">{historyData.action || "N/A"}</span>
                     </div>
                     <div>
                       <span className="text-gray-500">Previous Teller:</span>
                       <span className="ml-2">{historyData.previous_teller || "N/A"}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Current Teller:</span>
-                      <span className="ml-2">{historyData.current_teller || "N/A"}</span>
+                      <span className="text-gray-500">New Teller:</span>
+                      <span className="ml-2">{historyData.new_teller || "N/A"}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Transfer Reason:</span>
-                      <span className="ml-2">{historyData.transfer_reason || "N/A"}</span>
+                      <span className="text-gray-500">Remarks/Reason:</span>
+                      <span className="ml-2">{historyData.remarks || "N/A"}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Transferred By:</span>
-                      <span className="ml-2">{historyData.transferred_by || "N/A"}</span>
+                      <span className="text-gray-500">Date:</span>
+                      <span className="ml-2">{formatDate(historyData.created_at)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Transferred At:</span>
-                      <span className="ml-2">{formatDate(historyData.transferred_at)}</span>
+                      <span className="text-gray-500">Service ID:</span>
+                      <span className="ml-2">{historyData.service || "N/A"}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Transfer History Timeline */}
+                {/* Transfer History Timeline - Show all transfers */}
                 {historyData.transfer_history && historyData.transfer_history.length > 0 && (
                   <div className="border rounded-lg overflow-hidden">
                     <div className="bg-blue-50 px-4 py-2 border-b">
-                      <h3 className="font-semibold text-blue-900">Transfer Timeline</h3>
+                      <h3 className="font-semibold text-blue-900">All Transfers</h3>
                     </div>
-                    <div className="p-4">
-                      <div className="space-y-4">
-                        {historyData.transfer_history.map((transfer, index) => (
-                          <div key={index} className="relative pl-6 pb-4 border-l-2 border-blue-200 last:border-l-0">
-                            <div className="absolute left-[-6px] top-0 w-3 h-3 rounded-full bg-blue-500"></div>
-                            <div className="text-sm">
-                              <div className="font-semibold text-gray-800">
-                                Transferred to {transfer.to_teller}
-                              </div>
-                              <div className="text-gray-600 text-xs mt-1">
-                                {formatDate(transfer.transferred_at)}
-                              </div>
-                              <div className="text-gray-500 text-xs mt-1">
-                                Reason: {transfer.reason || "N/A"}
-                              </div>
-                              <div className="text-gray-500 text-xs">
-                                Transferred by: {transfer.transferred_by || "N/A"}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="p-4 space-y-4">
+                      {historyData.transfer_history.map((item, index) => (
+                        <div key={item.id || index} className="border-l-2 border-blue-300 pl-4 pb-3">
+                          <p className="text-sm font-semibold text-gray-800">
+                            Transfer #{index + 1}
+                          </p>
+                          <p className="text-sm">
+                            <span className="text-gray-500">From:</span> {item.previous_teller}
+                          </p>
+                          <p className="text-sm">
+                            <span className="text-gray-500">To:</span> {item.new_teller}
+                          </p>
+                          <p className="text-sm">
+                            <span className="text-gray-500">Reason:</span> {item.remarks || "N/A"}
+                          </p>
+                          <p className="text-sm">
+                            <span className="text-gray-500">Date:</span> {formatDate(item.created_at)}
+                          </p>
+                          <p className="text-sm">
+                            <span className="text-gray-500">Action:</span> 
+                            <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700">
+                              {item.action}
+                            </span>
+                          </p>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -656,9 +671,7 @@ const ProfilePage = () => {
 
           {/* Footer */}
           <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end">
-            <Button onClick={() => setIsHistoryOpen(false)}>
-              Close
-            </Button>
+            <Button onClick={() => setIsHistoryOpen(false)}>Close</Button>
           </div>
         </div>
       </div>
@@ -726,12 +739,12 @@ const ProfilePage = () => {
               <textarea
                 value={transferReason}
                 onChange={(e) => setTransferReason(e.target.value)}
-                placeholder="Please provide a reason for transferring this service... (any length allowed)"
+                placeholder="Please provide a reason for transferring this service..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
                 rows="3"
               />
               <p className="mt-1 text-xs text-gray-500">
-                This reason will be logged for audit purposes (minimum 1 character required)
+                This reason will be logged for audit purposes
               </p>
             </div>
 
