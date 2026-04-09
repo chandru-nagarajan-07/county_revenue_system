@@ -219,9 +219,11 @@ const QRScannerPage = () => {
       }
       
       // Store verification data
-      localStorage.setItem("verifiedUser", JSON.stringify(data));
-      sessionStorage.setItem("userData1", JSON.stringify(localUserData));
-      
+      // localStorage.setItem("verifiedUser", JSON.stringify(data));
+      // sessionStorage.setItem("userData1", JSON.stringify(localUserData));
+      sessionStorage.setItem("customerData", JSON.stringify(localUserData));
+      localStorage.setItem("verifiedCustomer", JSON.stringify(data));
+
       // OTP verified successfully - now show the cart data
       setShowOtpModal(false);
       resetOtpState();

@@ -31,14 +31,27 @@ const ProfilePage = () => {
   const cartData = location.state;
   const customer = location.state?.customer;
   const branch = customer?.teller_info;
-  const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
+  // const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
+  const sessionUser = JSON.parse(sessionStorage.getItem("customerData") || "{}");
+  const tellerUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
   console.log("ProfilePage session user:", sessionUser);
+  console.log("ProfilePage teller user:", tellerUser);
   
   // Get branch code from session storage
-  const branchCode = JSON.parse(sessionStorage.getItem("teller"));
+  const branchCode = tellerUser?.teller_info || null;
+  
+  // Option 2: If stored separately as 'teller' in sessionStorage
+  const tellerFromSession = JSON.parse(sessionStorage.getItem("teller") || "null");
+  const branchCodeAlt = tellerFromSession || branchCode;
+  
   console.log("Branch Code:", branchCode);
-
+  console.log("Branch Code Alternative:", branchCodeAlt);
+  
+  // Use the branch code that's available
+  const finalBranchCode = branchCode || branchCodeAlt;
+  console.log("Final Branch Code:", finalBranchCode);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [serviceCart, setServiceCart] = useState(null);
@@ -160,7 +173,7 @@ const ProfilePage = () => {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          // 'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
       });
       
