@@ -276,9 +276,9 @@ const QRScannerPage = () => {
     setIsLoading(true);
     setError(null);
     setUserDetails(null);
-    
+    const teller_id = JSON.parse(sessionStorage.getItem("userData1"))?.teller_id;
     try {
-      const response = await fetch(`${API_BASE_URL}/service_cart/${cartId}/`, {
+      const response = await fetch(`${API_BASE_URL}/service_cart/${cartId}/${teller_id}/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

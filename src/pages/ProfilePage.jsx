@@ -21,7 +21,8 @@ import {
   ThumbsUp,
   ThumbsDown,
   Info,
-  Send
+  Send,
+  History
 } from 'lucide-react';
 import { DashboardHeader } from '@/components/banking/DashboardHeader1';
 
@@ -40,8 +41,8 @@ const ProfilePage = () => {
   
   // Get branch code from session storage
   const branchCode = tellerUser?.teller_info || null;
-  const teller_id = tellerUser?.teller_id| null;
-  
+  const teller_id = tellerUser?.teller_id|| null;
+  console.log("Branch code from session:", branchCode);
   // Option 2: If stored separately as 'teller' in sessionStorage
   const tellerFromSession = JSON.parse(sessionStorage.getItem("teller") || "null");
   const branchCodeAlt = tellerFromSession || branchCode;
@@ -72,6 +73,11 @@ const ProfilePage = () => {
   const [isTransferring, setIsTransferring] = useState(false);
   const [transferReason, setTransferReason] = useState('');
 
+  // History modal states
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyData, setHistoryData] = useState(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
   // API base URL
   const API_BASE_URL = 'http://localhost:8000/api';
 
@@ -79,7 +85,8 @@ const ProfilePage = () => {
   const STATUS_OPTIONS = {
     ON_HOLD: 'ON_HOLD',
     COMPLETED: 'COMPLETED',
-    TRANSFERRED: 'TRANSFERRED'
+    TRANSFERRED: 'TRANSFERRED',
+    TO_BE_PROCESSED: 'TO_BE_PROCESSED'
   };
 
   // Function to fetch service cart from backend
@@ -243,6 +250,36 @@ const ProfilePage = () => {
     }
   };
 
+  // Function to fetch service history - ONLY for TO_BE_PROCESSED status
+  const fetchServiceHistory = async (serviceId) => {
+    setIsLoadingHistory(true);
+    setHistoryData(null);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/service_history/${serviceId}/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Service history response:", data);
+      setHistoryData(data);
+      setIsHistoryOpen(true);
+      
+    } catch (err) {
+      console.error('Error fetching service history:', err);
+      alert(`Failed to fetch service history: ${err.message}`);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
   // Function to transfer service to another teller
   const transferService = async () => {
     if (!selectedTransferService || !selectedTeller) {
@@ -250,6 +287,7 @@ const ProfilePage = () => {
       return;
     }
     
+    // Just check if reason is not empty (any length allowed, even single character)
     if (!transferReason.trim()) {
       alert('Please provide a reason for transferring the service');
       return;
@@ -266,9 +304,9 @@ const ProfilePage = () => {
         },
         body: JSON.stringify({
           service_id: selectedTransferService.service_id,
-          from_teller_id: customer?.user_id || JSON.parse(localStorage.getItem('user') || '{}').id,
           to_teller_id: selectedTeller.id,
-          transfer_reason: transferReason,
+          teller_id: teller_id,
+          transfer_reason: transferReason.trim(),
           status: 'TO_BE_PROCESSED'
         })
       });
@@ -278,11 +316,17 @@ const ProfilePage = () => {
       }
       
       const data = await response.json();
+      console.log('Service transfer response:', data);
       
-      // Refresh the cart data to get updated statuses
-      if (serviceCart && serviceCart.cartId) {
-        await fetchServiceCart(serviceCart.cartId);
-      }
+      // Update UI immediately
+      setServiceCart(prev => ({
+        ...prev,
+        services: prev.services.map(s =>
+          s.service_id === data.service.service_id
+            ? { ...s, ...data.service }
+            : s
+        )
+      }));
       
       alert(`Service successfully transferred to ${selectedTeller.name}`);
       
@@ -313,6 +357,14 @@ const ProfilePage = () => {
     setTransferReason(''); // Reset reason when opening modal
     setIsTransferModalOpen(true);
     await fetchTellersByBranch();
+  };
+
+  // Handle history button click - Only call if status is TO_BE_PROCESSED
+  const handleHistoryClick = (service) => {
+    const currentStatus = service.status?.toUpperCase();
+    if (currentStatus === 'TO_BE_PROCESSED') {
+      fetchServiceHistory(service.service_id);
+    }
   };
 
   // Handle service ID click
@@ -347,6 +399,7 @@ const ProfilePage = () => {
         },
         body: JSON.stringify({
           service_id: serviceId,
+          teller_id:teller_id,
           status: status
         })
       });
@@ -490,6 +543,128 @@ const ProfilePage = () => {
     return `KSh ${parseFloat(amount).toFixed(2)}`;
   };
 
+  // History Modal Component
+  const HistoryModal = () => {
+    if (!isHistoryOpen) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          
+          {/* Header */}
+          <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <History className="h-5 w-5 text-blue-600" />
+              Transfer History
+            </h2>
+            <button
+              onClick={() => setIsHistoryOpen(false)}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <XCircle className="h-6 w-6" />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="p-6">
+            {isLoadingHistory ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+                <p className="mt-2 text-gray-600">Loading history...</p>
+              </div>
+            ) : historyData ? (
+              <div className="space-y-4">
+                {/* Service Information */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-700 mb-3">Service Information</h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-gray-500">Service ID:</span>
+                      <span className="ml-2 font-mono font-semibold">{historyData.service_id}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Service Name:</span>
+                      <span className="ml-2 font-semibold">{historyData.service_name}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Current Status:</span>
+                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${getServiceStatusColor(historyData.status)}`}>
+                        {getStatusText(historyData.status)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Previous Teller:</span>
+                      <span className="ml-2">{historyData.previous_teller || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Current Teller:</span>
+                      <span className="ml-2">{historyData.current_teller || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Transfer Reason:</span>
+                      <span className="ml-2">{historyData.transfer_reason || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Transferred By:</span>
+                      <span className="ml-2">{historyData.transferred_by || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Transferred At:</span>
+                      <span className="ml-2">{formatDate(historyData.transferred_at)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Transfer History Timeline */}
+                {historyData.transfer_history && historyData.transfer_history.length > 0 && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="bg-blue-50 px-4 py-2 border-b">
+                      <h3 className="font-semibold text-blue-900">Transfer Timeline</h3>
+                    </div>
+                    <div className="p-4">
+                      <div className="space-y-4">
+                        {historyData.transfer_history.map((transfer, index) => (
+                          <div key={index} className="relative pl-6 pb-4 border-l-2 border-blue-200 last:border-l-0">
+                            <div className="absolute left-[-6px] top-0 w-3 h-3 rounded-full bg-blue-500"></div>
+                            <div className="text-sm">
+                              <div className="font-semibold text-gray-800">
+                                Transferred to {transfer.to_teller}
+                              </div>
+                              <div className="text-gray-600 text-xs mt-1">
+                                {formatDate(transfer.transferred_at)}
+                              </div>
+                              <div className="text-gray-500 text-xs mt-1">
+                                Reason: {transfer.reason || "N/A"}
+                              </div>
+                              <div className="text-gray-500 text-xs">
+                                Transferred by: {transfer.transferred_by || "N/A"}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No history data available for this service
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end">
+            <Button onClick={() => setIsHistoryOpen(false)}>
+              Close
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Transfer Modal Component
   const TransferModal = () => {
     if (!isTransferModalOpen) return null;
@@ -543,7 +718,7 @@ const ProfilePage = () => {
               </div>
             )}
 
-            {/* Transfer Reason Input */}
+            {/* Transfer Reason Input - No minimum length restriction */}
             <div className="mb-6">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Transfer Reason <span className="text-red-500">*</span>
@@ -551,12 +726,12 @@ const ProfilePage = () => {
               <textarea
                 value={transferReason}
                 onChange={(e) => setTransferReason(e.target.value)}
-                placeholder="Please provide a reason for transferring this service..."
+                placeholder="Please provide a reason for transferring this service... (any length allowed)"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
                 rows="3"
               />
               <p className="mt-1 text-xs text-gray-500">
-                This reason will be logged for audit purposes
+                This reason will be logged for audit purposes (minimum 1 character required)
               </p>
             </div>
 
@@ -1046,6 +1221,7 @@ const ProfilePage = () => {
                   {serviceCart.services.map((service) => {
                     const currentStatus = service.status?.toUpperCase();
                     const isUpdating = updatingServiceId === service.service_id;
+                    const showHistoryButton = currentStatus === 'TO_BE_PROCESSED';
                     
                     return (
                       <tr key={service.service_id} className="hover:bg-gray-50 transition">
@@ -1076,7 +1252,7 @@ const ProfilePage = () => {
                               <span className="text-xs text-gray-500">Updating...</span>
                             </div>
                           ) : (
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 flex-wrap">
                               {currentStatus !== STATUS_OPTIONS.COMPLETED && (
                                 <Button
                                   size="sm"
@@ -1108,6 +1284,18 @@ const ProfilePage = () => {
                                   title="Transfer Service"
                                 >
                                   <Send className="h-4 w-4 mr-1" /> Transfer Deck
+                                </Button>
+                              )}
+                              {/* History Button - ONLY for TO_BE_PROCESSED status */}
+                              {showHistoryButton && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                                  onClick={() => handleHistoryClick(service)}
+                                  title="View History"
+                                >
+                                  <History className="h-4 w-4 mr-1" /> History
                                 </Button>
                               )}
                             </div>
@@ -1164,6 +1352,9 @@ const ProfilePage = () => {
 
       {/* Service Details Modal */}
       <ServiceDetailsModal />
+
+      {/* History Modal */}
+      <HistoryModal />
     </div>
   );
 };
