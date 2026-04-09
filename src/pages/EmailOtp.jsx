@@ -11,7 +11,7 @@ const EmailOtp = () => {
   const location = useLocation();
 
   const email = location.state?.email;
-
+console.log("Email from state:", email); // Debugging line
   // If page refreshed and email missing → go back to login
   if (!email) {
     navigate("/");

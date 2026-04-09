@@ -1,17 +1,16 @@
+// Register.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Mail, UserPlus, Phone, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader';
-
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -28,50 +27,33 @@ const Register = () => {
   const [errors, setErrors] = useState({});
   const [branches, setBranches] = useState([]);
 
-  // Fetch Branch API
   useEffect(() => {
     const fetchBranches = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/branches/");
+        const response = await fetch('http://127.0.0.1:8000/api/branches/');
         const data = await response.json();
-        console.log("branches:", data);
         setBranches(data);
       } catch (error) {
-        console.error("Branch fetch error:", error);
+        console.error('Branch fetch error:', error);
       }
     };
-
     fetchBranches();
   }, []);
 
-  // Branch Options
   const BRANCH_OPTIONS = branches.map((branch) => ({
     value: branch.branch_id,
     label: branch.branch_name,
-    location: branch.location,
   }));
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-
-    if (errors[name]) {
-      setErrors({ ...errors, [name]: null });
-    }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
   };
 
   const handleBranchChange = (value) => {
-    setFormData({
-      ...formData,
-      branch: value
-    });
-
-    if (errors.branch) {
-      setErrors({ ...errors, branch: null });
-    }
+    setFormData((prev) => ({ ...prev, branch: value }));
+    if (errors.branch) setErrors((prev) => ({ ...prev, branch: null }));
   };
 
   const validate = () => {
@@ -79,57 +61,63 @@ const Register = () => {
     let isValid = true;
 
     if (!formData.firstName) {
-      tempErrors.firstName = "First name is required";
+      tempErrors.firstName = 'First name is required';
       isValid = false;
     }
-
     if (!formData.phone) {
-      tempErrors.phone = "Phone number is required";
+      tempErrors.phone = 'Phone number is required';
       isValid = false;
     }
-
     if (!formData.email) {
-      tempErrors.email = "Email is required";
+      tempErrors.email = 'Email is required';
       isValid = false;
     }
-
     if (!formData.userName) {
-      tempErrors.userName = "User name is required";
+      tempErrors.userName = 'Username is required';
       isValid = false;
     }
-
     if (!formData.branch) {
-      tempErrors.branch = "Please select branch";
+      tempErrors.branch = 'Please select a branch';
       isValid = false;
     }
-
     setErrors(tempErrors);
     return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!validate()) return;
+
+    // Email validation
+    if (!formData.email || !formData.email.includes('@')) {
+      alert('A valid email address is required to register.');
+      navigate('/create-account');
+      return;
+    }
+
+    // Optional: check if email exists
     try {
-      const response = await fetch(`https://saccobe.zecosdk.com/account_fetch/${formData.email}`, {
-        method: "GET",
-      }); 
-      if (!response.ok) {
-        alert(data1.message || "OTP verification failed");
-        navigate('/create-account')
+      const checkResponse = await fetch(
+        `https://saccobe.zecosdk.com/account_fetch/${formData.email}`,
+        { method: 'GET' }
+      );
+      if (!checkResponse.ok) {
+        alert('No account found with this email. Please create an account.');
+        navigate('/create-account');
         return;
-      }}catch (error) {
-      console.error(error);
-      alert("Something went wrong");
-     navigate('/create-account')
-    };
+      }
+    } catch (err) {
+      console.error('Email check failed:', err);
+      alert('Unable to verify email. Please try again.');
+      navigate('/create-account');
+      return;
+    }
+
+    // Proceed with registration
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/sign-up/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await fetch('http://127.0.0.1:8000/api/sign-up/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           first_name: formData.firstName,
           last_name: formData.lastName,
@@ -139,43 +127,30 @@ const Register = () => {
           branch: formData.branch,
         }),
       });
-
-      const data = await response.json(); 
-
-
+      const data = await response.json();
       if (!response.ok) {
-        alert("Registration Failed");
+        alert(`Registration failed: ${data.message || 'Unknown error'}`);
         return;
       }
-
-      navigate("/verify-otp", {
-        state: { email: formData.email }
-      });
-
+      // Navigate to verification flow (loader + actual async steps)
+      navigate('/verify-flow', { state: { email: formData.email, phone: formData.phone } });
     } catch (error) {
-      console.error(error);
-      alert("Something went wrong");
+      console.error('Registration error:', error);
+      alert('Something went wrong during registration.');
     }
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <DashboardHeader />
-
       <main className="flex-1 flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-lg bg-card rounded-xl shadow-card border p-8"
         >
-
-          <h2 className="text-2xl font-bold text-center mb-6">
-            Create Account
-          </h2>
-
+          <h2 className="text-2xl font-bold text-center mb-6">Create Account</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-
-            {/* First Name */}
             <input
               type="text"
               name="firstName"
@@ -184,8 +159,6 @@ const Register = () => {
               onChange={handleChange}
               className="w-full border p-3 rounded-lg"
             />
-
-            {/* Last Name */}
             <input
               type="text"
               name="lastName"
@@ -194,18 +167,14 @@ const Register = () => {
               onChange={handleChange}
               className="w-full border p-3 rounded-lg"
             />
-
-            {/* Phone */}
             <input
-              type="text"
+              type="tel"
               name="phone"
               placeholder="Phone"
               value={formData.phone}
               onChange={handleChange}
               className="w-full border p-3 rounded-lg"
             />
-
-            {/* Email */}
             <input
               type="email"
               name="email"
@@ -214,8 +183,6 @@ const Register = () => {
               onChange={handleChange}
               className="w-full border p-3 rounded-lg"
             />
-
-            {/* Username */}
             <input
               type="text"
               name="userName"
@@ -224,33 +191,22 @@ const Register = () => {
               onChange={handleChange}
               className="w-full border p-3 rounded-lg"
             />
-
-            {/* Branch Dropdown */}
-            <Select
-              value={formData.branch}
-              onValueChange={handleBranchChange}
-            >
+            <Select value={formData.branch} onValueChange={handleBranchChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Select Branch" />
               </SelectTrigger>
-
               <SelectContent>
                 {BRANCH_OPTIONS.map((branch) => (
-                  <SelectItem
-                    key={branch.value}
-                    value={branch.value}
-                  >
+                  <SelectItem key={branch.value} value={branch.value}>
                     {branch.label}
                   </SelectItem>
                 ))}
               </SelectContent>
-
             </Select>
-
+            {errors.branch && <p className="text-red-500 text-sm">{errors.branch}</p>}
             <Button type="submit" className="w-full">
               Create Account
             </Button>
-
           </form>
         </motion.div>
       </main>

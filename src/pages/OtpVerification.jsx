@@ -202,7 +202,7 @@ const OtpVerification = () => {
     
     if (otpValue.length === 6) {
       alert("Successfully Verified!");
-      console.log('',email)
+      console.log('kii',email)
       // Move to Login page
       navigate('/email-otp',{
         state: { email: email }
