@@ -702,7 +702,7 @@ const CartPage = () => {
                             <tr>
                               <th className="px-4 py-2 text-left font-medium text-gray-600">Service Code</th>
                               <th className="px-4 py-2 text-left font-medium text-gray-600">Service Name</th>
-                              <th className="px-4 py-2 text-left font-medium text-gray-600">Amount</th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Reason</th>
                               <th className="px-4 py-2 text-left font-medium text-gray-600">Status</th>
                               <th className="px-4 py-2 text-left font-medium text-gray-600">Transfer History</th>
                             </tr>
@@ -712,7 +712,7 @@ const CartPage = () => {
                               <tr key={idx} className="hover:bg-gray-50">
                                 <td className="px-4 py-2 font-mono text-xs">{service.service_code || '-'}</td>
                                 <td className="px-4 py-2">{service.service_name || '-'}</td>
-                                <td className="px-4 py-2">{service.service_amount ? `${service.service_amount} Ksh` : '-'}</td>
+                                <td className="px-4 py-2">{service.transfer_reason || '-'}</td>
                                 <td className="px-4 py-2">
                                   <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
                                     service.service_status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
