@@ -11,7 +11,9 @@ const EmailOtp = () => {
   const location = useLocation();
 
   const email = location.state?.email;
+  const register_by = location.state?.register_by;
 console.log("Email from state:", email); // Debugging line
+console.log("Register by from state:", register_by); // Debugging line
   // If page refreshed and email missing → go back to login
   if (!email) {
     navigate("/");
@@ -44,8 +46,9 @@ console.log("Email from state:", email); // Debugging line
       alert("Please enter a valid 6-digit OTP");
       return;
     }
-
+    
     try {
+      if (register_by !== 'By using App') {
       const response1 = await fetch(
         `https://saccobe.zecosdk.com/account_fetch/${email}`,
         {
@@ -59,8 +62,8 @@ console.log("Email from state:", email); // Debugging line
         alert(data1.message || "OTP verification failed");
         return;
       }
-      console.log('hjgsdjgdsaj',data1)
-
+      console.log('hjgsdjgdsaj',data1)}
+      const data1='done'
       const response = await fetch(
         "http://127.0.0.1:8000/api/email-verification/",
         {
@@ -86,7 +89,7 @@ console.log("Email from state:", email); // Debugging line
       // ✅ Store full response safely
       localStorage.setItem("verifiedUser", JSON.stringify(data));
       sessionStorage.setItem("userData1", JSON.stringify(data1));
-      navigate("/verify", { state: { userData1: data1 , userData: data } });
+      navigate("/verify", { state: {userData: data } });
 
     } catch (error) {
       console.error("OTP error:", error);

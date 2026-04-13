@@ -11,8 +11,9 @@ const VerifyPage = () => {
   // Get full API response
   const stateData = location.state?.userData;
   const savedData = JSON.parse(localStorage.getItem("verifiedUser"));
+  console.log("State data:", stateData); // Debugging line
   const data = stateData || savedData;
-  const stateData1 = location.state?.userData1;
+  const stateData1 = location.state?.userData;
   const savedData1 = JSON.parse(localStorage.getItem("verifiedUser"));
   const data1 = stateData1 || savedData1;
   useEffect(() => {
@@ -30,7 +31,7 @@ const VerifyPage = () => {
   if (!data) return null;
 
   const user = data.user_basic_info;
-  const accounts = data1 ? [data1] : [];
+  const accounts = data1 ?.accounts ;
   console.log("Accounts data:", accounts);
   const handleChangeCustomer = () => {
     localStorage.removeItem("verifiedUser");
@@ -103,7 +104,7 @@ const VerifyPage = () => {
                 {/* Row 1 */}
                 <div className="flex justify-between items-center">
                   <p className="text-sm font-semibold text-gray-800">
-                    {acc.account_no}
+                    {acc.account_number}
                   </p>
 
                   <p className="text-sm font-bold text-gray-900">
@@ -114,7 +115,7 @@ const VerifyPage = () => {
                 {/* Row 2 */}
                 <div className="flex justify-between items-center mt-1">
                   <p className="text-xs text-gray-500">
-                    {acc.account_type_name || "Savings Account"}
+                    {acc.account_type.name || "Savings Account"}
                   </p>
 
                   <span
