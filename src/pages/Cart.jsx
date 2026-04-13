@@ -493,9 +493,119 @@ const CartPage = () => {
 
                 <div className="mt-6 flex justify-end gap-3">
                   <Button variant="outline" onClick={() => setShowConfirmModal(false)}>Cancel</Button>
-                  <Button onClick={executeCompleteOrders} className="bg-green-600 hover:bg-green-700">
-                    Complete Orders
-                  </Button>
+                  <Button onClick={executeCompleteOrders} className="bg-green-600 hover:bg-green-700">Complete Orders</Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* View Cart Details Modal with Transfer History for each service */}
+      <AnimatePresence>
+        {isViewModalOpen && selectedCartForView && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
+            onClick={closeViewModal}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+                <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                  <Eye className="h-5 w-5 text-indigo-600" />
+                  Cart Details
+                </h3>
+                <button onClick={closeViewModal} className="text-gray-500 hover:text-gray-700">
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="p-6">
+                <div className="space-y-6">
+                  {/* Cart Information */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="bg-indigo-50 px-4 py-2 border-b">
+                      <h4 className="font-semibold text-indigo-900">Cart Information</h4>
+                    </div>
+                    <div className="p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Cart ID</span><p className="text-sm font-mono font-semibold text-gray-900 mt-1">{selectedCartForView.cart_id || '-'}</p></div>
+                        <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Cart Status</span><p className="mt-1"><span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getCartStatusColor(selectedCartForView.cart_status)}`}>{selectedCartForView.cart_status || '-'}</span></p></div>
+                        <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.created_at ? new Date(selectedCartForView.created_at).toLocaleString() : '-'}</p></div>
+                        <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.branch || '-'}</p></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Services List with Transfer History Button */}
+                  {selectedCartForView.services && selectedCartForView.services.length > 0 && (
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="bg-green-50 px-4 py-2 border-b">
+                        <h4 className="font-semibold text-green-900">Services ({selectedCartForView.total_services || 0})</h4>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200 text-sm">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Service Code</th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Service Name</th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Reason</th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Status</th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Transfer History</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {selectedCartForView.services.map((service, idx) => (
+                              <tr key={idx} className="hover:bg-gray-50">
+                                <td className="px-4 py-2 font-mono text-xs">{service.service_code || '-'}</td>
+                                <td className="px-4 py-2">{service.service_name || '-'}</td>
+                                <td className="px-4 py-2">{service.transfer_reason || '-'}</td>
+                                <td className="px-4 py-2">
+                                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                                    service.service_status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                                    service.service_status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                    service.service_status === 'TO_BE_PROCESSED' ? 'bg-purple-100 text-purple-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {service.service_status || 'Pending'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2">
+                                  <button
+                                    onClick={() => handleHistoryClick(service)}
+                                    className="text-blue-600 hover:text-blue-800 p-1 transition-colors"
+                                    title="View transfer history"
+                                  >
+                                    <History size={16} />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Summary */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="text-sm text-gray-600">Progress:</span>
+                        <span className="ml-2 font-semibold text-gray-800">
+                          {selectedCartForView.completed_services || 0} / {selectedCartForView.total_services || 0} completed
+                        </span>
+                      </div>
+                      <Button onClick={closeViewModal}>Close</Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>
