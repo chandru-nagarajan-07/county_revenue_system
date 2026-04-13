@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, ArrowLeft, QrCode, Download, X, Eye, History } from 'lucide-react';
+import { Trash2, ArrowLeft, QrCode, Download, X, Eye, History, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
+import { XCircle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -31,11 +32,10 @@ const CartPage = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedCartForView, setSelectedCartForView] = useState(null);
 
-  // State for history modal
+  // State for transfer history modal
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [historyData, setHistoryData] = useState(null);
+  const [transferHistory, setTransferHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [selectedServiceForHistory, setSelectedServiceForHistory] = useState(null);
 
   // Get session user
   let sessionUser;
@@ -260,76 +260,74 @@ const CartPage = () => {
     }
   };
 
-  // History functions
-  const fetchServiceHistory = async (serviceId) => {
+  // Fetch transfer history only
+  const fetchTransferHistory = async (serviceId) => {
     setIsLoadingHistory(true);
-    setHistoryData(null);
+    setTransferHistory([]);
     
     try {
-      const response = await fetch(`http://127.0.0.1:8000/referral_history/${serviceId}/`, {
+      const response = await fetch(`http://127.0.0.1:8000/api/service_history/${serviceId}/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-      });
+      }); 
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
-      console.log("Service history response:", data);
+      console.log("Transfer history response:", data);
       
       if (Array.isArray(data) && data.length > 0) {
-        const allTransfers = data;
-        const latestTransfer = data[0];
-        
-        setHistoryData({
-          previous_teller: latestTransfer.previous_teller,
-          new_teller: latestTransfer.new_teller,
-          remarks: latestTransfer.remarks,
-          created_at: latestTransfer.created_at,
-          action: latestTransfer.action,
-          service: latestTransfer.service,
-          id: latestTransfer.id,
-          transfer_history: allTransfers
-        });
+        // Extract only transfer-related information
+        const transfers = data.map(record => ({
+          id: record.id,
+          from_teller: record.previous_teller || "Initial",
+          to_teller: record.teller,
+          status: record.service_status,
+          transferred_at: record.created_at,
+          remarks: record.rejection_reason || "Transfer completed"
+        }));
+        setTransferHistory(transfers);
       } else {
-        setHistoryData(null);
+        setTransferHistory([]);
       }
       
       setIsHistoryOpen(true);
       
     } catch (err) {
-      console.error('Error fetching service history:', err);
-      alert(`Failed to fetch service history: ${err.message}`);
+      console.error('Error fetching transfer history:', err);
+      alert(`Failed to fetch transfer history: ${err.message}`);
     } finally {
       setIsLoadingHistory(false);
     }
   };
 
   const handleHistoryClick = (service) => {
-    fetchServiceHistory(service.service_id || service.id);
-    setSelectedServiceForHistory(service);
+    const serviceId = service.service_request_id || service.id;
+    console.log('Fetching transfer history for service ID:', service);
+    fetchTransferHistory(serviceId);
   };
-
+  
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleString();
   };
 
-  // History Modal Component (inline inside return)
-  const HistoryModal = () => {
+  // Transfer History Modal Component
+  const TransferHistoryModal = () => {
     if (!isHistoryOpen) return null;
     
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
           <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
             <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
               <History className="h-5 w-5 text-blue-600" />
-              Referral History
+              Service History
             </h2>
             <button
               onClick={() => setIsHistoryOpen(false)}
@@ -342,60 +340,52 @@ const CartPage = () => {
             {isLoadingHistory ? (
               <div className="text-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
-                <p className="mt-2 text-gray-600">Loading history...</p>
+                <p className="mt-2 text-gray-600">Loading transfer history...</p>
               </div>
-            ) : historyData ? (
+            ) : transferHistory.length > 0 ? (
               <div className="space-y-4">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-700 mb-3">Transfer Details</h3>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <span className="text-gray-500">Action:</span>
-                      <span className="ml-2 font-medium">{historyData.action || "N/A"}</span>
+                {transferHistory.map((transfer, index) => (
+                  <div key={transfer.id || index} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
+                        History #{index + 1}
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        transfer.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                        transfer.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {transfer.status || 'N/A'}
+                      </span>
                     </div>
-                    <div>
-                      <span className="text-gray-500">Previous Teller:</span>
-                      <span className="ml-2">{historyData.previous_teller || "N/A"}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">New Teller:</span>
-                      <span className="ml-2">{historyData.new_teller || "N/A"}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Remarks/Reason:</span>
-                      <span className="ml-2">{historyData.remarks || "N/A"}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Date:</span>
-                      <span className="ml-2">{formatDate(historyData.created_at)}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Service ID:</span>
-                      <span className="ml-2">{historyData.service || "N/A"}</span>
-                    </div>
-                  </div>
-                </div>
-                {historyData.transfer_history && historyData.transfer_history.length > 0 && (
-                  <div className="border rounded-lg overflow-hidden">
-                    <div className="bg-blue-50 px-4 py-2 border-b">
-                      <h3 className="font-semibold text-blue-900">All Transfers</h3>
-                    </div>
-                    <div className="p-4 space-y-4">
-                      {historyData.transfer_history.map((item, index) => (
-                        <div key={item.id || index} className="border-l-2 border-blue-300 pl-4 pb-3">
-                          <p className="text-sm font-semibold text-gray-800">Transfer #{index + 1}</p>
-                          <p className="text-sm">From: {item.previous_teller}</p>
-                          <p className="text-sm">To: {item.new_teller}</p>
-                          <p className="text-sm">Reason: {item.remarks || "N/A"}</p>
-                          <p className="text-sm">Date: {formatDate(item.created_at)}</p>
-                        </div>
-                      ))}
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 w-24">Previous Teller:</span>
+                        <span className="font-mono font-medium">{transfer.from_teller}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 w-24">Current Teller:</span>
+                        <span className="font-mono font-medium">{transfer.to_teller}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 w-24">Transferred At:</span>
+                        <span>{formatDate(transfer.transferred_at)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 w-24">Remarks:</span>
+                        <span className="text-gray-600">{transfer.remarks}</span>
+                      </div>
                     </div>
                   </div>
-                )}
+                ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">No history data available for this service</div>
+              <div className="text-center py-8">
+                <div className="text-gray-400 mb-2">
+                  <History className="h-12 w-12 mx-auto" />
+                </div>
+                <p className="text-gray-500">No transfer history available for this service</p>
+              </div>
             )}
           </div>
           <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end">
@@ -431,13 +421,13 @@ const CartPage = () => {
         <div className="max-w-6xl mx-auto">
           <Tabs defaultValue="pending" onValueChange={(value) => setActiveTab(value)}>
             <TabsList className="grid grid-cols-2 mb-4">
-              <TabsTrigger value="pending">Cart Items ({pendingItems.length})</TabsTrigger>
-              <TabsTrigger value="completed">Requests ({completedItems.length})</TabsTrigger>
+              <TabsTrigger value="pending">Cart Items </TabsTrigger>
+              <TabsTrigger value="completed">Requests</TabsTrigger>
             </TabsList>
 
             {/* Pending Tab */}
-            <TabsContent value="pending">
-              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+              <TabsContent value="pending">
+                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-slate-200">
                     <thead className="bg-slate-50">
@@ -460,7 +450,7 @@ const CartPage = () => {
                               onChange={() => toggleSelection(item.id)}
                               className="rounded border-slate-300"
                             />
-                          </td>
+                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{item.service_request_id}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{item.service_code}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{item.service_name}</td>
@@ -657,7 +647,7 @@ const CartPage = () => {
         )}
       </AnimatePresence>
 
-      {/* View Cart Details Modal with History for each service */}
+      {/* View Cart Details Modal with Transfer History for each service */}
       <AnimatePresence>
         {isViewModalOpen && selectedCartForView && (
           <motion.div
@@ -694,19 +684,13 @@ const CartPage = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Cart ID</span><p className="text-sm font-mono font-semibold text-gray-900 mt-1">{selectedCartForView.cart_id || '-'}</p></div>
                         <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Cart Status</span><p className="mt-1"><span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getCartStatusColor(selectedCartForView.cart_status)}`}>{selectedCartForView.cart_status || '-'}</span></p></div>
-                        <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.service_amount ? `${selectedCartForView.service_amount} Ksh` : '-'}</p></div>
                         <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.created_at ? new Date(selectedCartForView.created_at).toLocaleString() : '-'}</p></div>
-                        <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Expires At</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.expires_at ? new Date(selectedCartForView.expires_at).toLocaleString() : '-'}</p></div>
-                        <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Name</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.customer_name || '-'}</p></div>
-                        <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile Number</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.mobile_number || '-'}</p></div>
                         <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.branch || '-'}</p></div>
-                        <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Account</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.account || '-'}</p></div>
-                        <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Teller</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.teller || '-'}</p></div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Services List with History Button */}
+                  {/* Services List with Transfer History Button */}
                   {selectedCartForView.services && selectedCartForView.services.length > 0 && (
                     <div className="border rounded-lg overflow-hidden">
                       <div className="bg-green-50 px-4 py-2 border-b">
@@ -720,7 +704,7 @@ const CartPage = () => {
                               <th className="px-4 py-2 text-left font-medium text-gray-600">Service Name</th>
                               <th className="px-4 py-2 text-left font-medium text-gray-600">Amount</th>
                               <th className="px-4 py-2 text-left font-medium text-gray-600">Status</th>
-                              <th className="px-4 py-2 text-left font-medium text-gray-600">History</th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Transfer History</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
@@ -731,19 +715,19 @@ const CartPage = () => {
                                 <td className="px-4 py-2">{service.service_amount ? `${service.service_amount} Ksh` : '-'}</td>
                                 <td className="px-4 py-2">
                                   <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    service.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                                    service.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                                    service.status === 'TO_BE_PROCESSED' ? 'bg-purple-100 text-purple-800' :
+                                    service.service_status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                                    service.service_status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                    service.service_status === 'TO_BE_PROCESSED' ? 'bg-purple-100 text-purple-800' :
                                     'bg-gray-100 text-gray-800'
                                   }`}>
-                                    {service.status || 'Pending'}
+                                    {service.service_status || 'Pending'}
                                   </span>
                                 </td>
                                 <td className="px-4 py-2">
                                   <button
                                     onClick={() => handleHistoryClick(service)}
-                                    className="text-blue-600 hover:text-blue-800 p-1"
-                                    title="View referral history"
+                                    className="text-blue-600 hover:text-blue-800 p-1 transition-colors"
+                                    title="View transfer history"
                                   >
                                     <History size={16} />
                                   </button>
@@ -775,10 +759,10 @@ const CartPage = () => {
         )}
       </AnimatePresence>
 
-      {/* History Modal */}
-      <HistoryModal />
+      {/* Transfer History Modal */}
+      <TransferHistoryModal />
     </div>
   );
 };
 
-export default CartPage;
+export default CartPage;  
