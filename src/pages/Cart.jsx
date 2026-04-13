@@ -264,8 +264,8 @@ const CartPage = () => {
 
           <Tabs defaultValue="pending" onValueChange={(value) => setActiveTab(value)}>
             <TabsList className="grid grid-cols-2 mb-4">
-              <TabsTrigger value="pending">Pending ({pendingItems.length})</TabsTrigger>
-              <TabsTrigger value="completed">Completed ({completedItems.length})</TabsTrigger>
+              <TabsTrigger value="pending">Cart Items ({pendingItems.length})</TabsTrigger>
+              <TabsTrigger value="completed">Requests ({completedItems.length})</TabsTrigger>
             </TabsList>
 
             {/* Pending Tab */}
@@ -379,7 +379,7 @@ const CartPage = () => {
                       ))}
                       {completedItems.length === 0 && (
                         <tr>
-                          <td colSpan="5" className="px-6 py-8 text-center text-slate-500">No completed items</td>
+                          <td colSpan="5" className="px-6 py-8 text-center text-slate-500">No request</td>
                         </tr>
                       )}
                     </tbody>

@@ -1296,7 +1296,7 @@ const ProfilePage = () => {
                                   onClick={() => handleTransferClick(service)}
                                   title="Transfer Service"
                                 >
-                                  <Send className="h-4 w-4 mr-1" /> Transfer Deck
+                                  <Send className="h-4 w-4 mr-1" /> Transfer Desk
                                 </Button>
                               )}
                               {/* History Button - ONLY for TO_BE_PROCESSED status */}
