@@ -196,6 +196,7 @@ const OtpVerification = () => {
   };
   const location = useLocation();
   const email = location.state?.email;
+  const register_by = location.state?.register_by;
   const handleVerify = (e) => {
     e.preventDefault();
     const otpValue = otp.join('');
@@ -205,7 +206,7 @@ const OtpVerification = () => {
       console.log('kii',email)
       // Move to Login page
       navigate('/email-otp',{
-        state: { email: email }
+        state: { email: email , register_by: register_by}
       });
     } else {
       alert("Please enter a valid 6-digit OTP");

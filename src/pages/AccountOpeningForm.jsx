@@ -52,7 +52,7 @@ const ThemeSelect = React.memo(({ label, name, options, icon: Icon, value, onCha
 const AccountOpeningForm = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [serverError, setServerError] = useState(''); // NEW: show server errors
+  const [serverError, setServerError] = useState('');
 
   const [formData, setFormData] = useState({
     userName: '',
@@ -68,8 +68,6 @@ const AccountOpeningForm = () => {
     currency: 'USD',
     occupation: '',
     nationalId: '',
-    password: '',
-    confirmPassword: '',
     termsAccepted: false
   });
 
@@ -84,7 +82,7 @@ const AccountOpeningForm = () => {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
     }
-    setServerError(''); // clear server error when user types
+    setServerError('');
   };
 
   const validate = () => {
@@ -109,9 +107,6 @@ const AccountOpeningForm = () => {
     if (!formData.city) tempErrors.city = "Required";
     if (!formData.occupation) tempErrors.occupation = "Required";
     if (!formData.nationalId) tempErrors.nationalId = "Required";
-    if (!formData.password) tempErrors.password = "Required";
-    else if (formData.password.length < 6) tempErrors.password = "Min 6 characters";
-    if (formData.password !== formData.confirmPassword) tempErrors.confirmPassword = "Passwords do not match";
     if (!formData.termsAccepted) tempErrors.termsAccepted = "You must accept the terms";
 
     setErrors(tempErrors);
@@ -122,28 +117,24 @@ const AccountOpeningForm = () => {
     e.preventDefault();
     setServerError('');
 
-    // 1. Validate local form
     if (!validate()) {
       alert("Please fix the errors in the form");
       return;
     }
 
-    // 2. Ensure username is a non-empty string
     let safeUsername = formData.userName?.trim();
     if (!safeUsername) {
       setErrors(prev => ({ ...prev, userName: "Username cannot be empty" }));
       alert("Username is required");
       return;
     }
-  const email = formData.email.trim();
+    const email = formData.email.trim();
 
     setIsSubmitting(true);
 
-    // 3. Build payload – double-check types
     const payload = {
       userName: safeUsername,
       email: formData.email.trim(),
-      password: formData.password,
       first_name: formData.firstName.trim(),
       last_name: formData.lastName.trim(),
       phone_number: formData.phone.trim(),
@@ -157,9 +148,7 @@ const AccountOpeningForm = () => {
       national_id: formData.nationalId.trim(),
     };
 
-    // 🔍 VERIFY what is being sent
     console.log("📤 FINAL PAYLOAD:", JSON.stringify(payload, null, 2));
-    console.log("Username type:", typeof payload.userName, "value:", payload.userName);
 
     try {
       const response = await fetch("http://127.0.0.1:8000/api/sign-up/", {
@@ -172,11 +161,9 @@ const AccountOpeningForm = () => {
       console.log("📥 Response status:", response.status, data);
 
       if (!response.ok) {
-        // Handle backend errors – DO NOT NAVIGATE
         const fieldLabels = {
           userName: 'Username',
           email: 'Email',
-          password: 'Password',
           first_name: 'First Name',
           last_name: 'Last Name',
           phone_number: 'Phone Number',
@@ -189,7 +176,7 @@ const AccountOpeningForm = () => {
           occupation: 'Occupation',
           national_id: 'National ID',
         };
- console.log('Email for OTP step:', email);
+
         let errorMsg = "Registration failed:\n";
         let hasErrors = false;
 
@@ -205,25 +192,24 @@ const AccountOpeningForm = () => {
           errorMsg += `\nServer error: ${JSON.stringify(data)}`;
         }
 
-        // Show error in UI and alert
         setServerError(errorMsg);
         alert(errorMsg);
-        return; // ✅ STOP – do NOT navigate
+        return;
       }
 
-      // Success: clear errors and navigate
       setServerError('');
       console.log("✅ Account created, navigating to /verify-otp");
-      navigate('/verify-otp',{
-      
-        state: { email: email }});
+      navigate('/verify-otp', {
+        state: { email: email ,
+          register_by:'By using App'
+        }
+      });
 
     } catch (error) {
       console.error("Network error:", error);
       const networkError = "Cannot connect to server. Please make sure your backend is running at http://127.0.0.1:8000";
       setServerError(networkError);
       alert(networkError);
-      // ✅ Do NOT navigate
     } finally {
       setIsSubmitting(false);
     }
@@ -247,7 +233,6 @@ const AccountOpeningForm = () => {
             <p className="text-muted-foreground">Complete your profile to get started</p>
           </div>
 
-          {/* Display server error prominently */}
           {serverError && (
             <div className="bg-destructive/10 border border-destructive text-destructive rounded-lg p-3 text-sm">
               {serverError}
@@ -312,19 +297,6 @@ const AccountOpeningForm = () => {
                   value={formData.occupation} onChange={handleChange} error={errors.occupation} />
                 <ThemeInput label="National ID / SSN" name="nationalId" icon={IdCard} placeholder="ID Number"
                   value={formData.nationalId} onChange={handleChange} error={errors.nationalId} />
-              </div>
-            </div>
-
-            {/* Security */}
-            <div className="space-y-4 pt-2">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                <Lock className="h-4 w-4"/> Security
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <ThemeInput label="Password" name="password" type="password" icon={Lock} placeholder="Min 6 characters"
-                  value={formData.password} onChange={handleChange} error={errors.password} />
-                <ThemeInput label="Confirm Password" name="confirmPassword" type="password" icon={Lock} placeholder="********"
-                  value={formData.confirmPassword} onChange={handleChange} error={errors.confirmPassword} />
               </div>
             </div>
 
