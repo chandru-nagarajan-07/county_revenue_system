@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, ArrowLeft, QrCode, Download, X, Eye, History, Loader2 } from 'lucide-react';
+import { Trash2, ArrowLeft, QrCode, Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
-import { XCircle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -28,16 +27,7 @@ const CartPage = () => {
   const [selectedBranch, setSelectedBranch] = useState('');
   const [branchError, setBranchError] = useState('');
 
-  // State for view details modal
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [selectedCartForView, setSelectedCartForView] = useState(null);
-
-  // State for transfer history modal
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [transferHistory, setTransferHistory] = useState([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-
-  // Get session user
+  // Get session user once (no reassignment errors)
   let sessionUser;
   try {
     sessionUser = JSON.parse(sessionStorage.getItem('userData1') || '{}');
@@ -46,6 +36,7 @@ const CartPage = () => {
     sessionUser = {};
   }
 
+  const accounts = sessionUser?.account || [];
   const branches = sessionUser?.branch || [];
 
   const BRANCH_OPTIONS = useMemo(() => {
@@ -240,165 +231,9 @@ const CartPage = () => {
     setSelectedCompletedItem(null);
   };
 
-  // View details modal functions
-  const openViewModal = (item) => {
-    setSelectedCartForView(item);
-    setIsViewModalOpen(true);
-  };
-
-  const closeViewModal = () => {
-    setIsViewModalOpen(false);
-    setSelectedCartForView(null);
-  };
-
-  const getCartStatusColor = (status) => {
-    switch(status?.toUpperCase()) {
-      case 'ACTIVE': return 'bg-green-100 text-green-800';
-      case 'COMPLETED': return 'bg-blue-100 text-blue-800';
-      case 'PARTIALLY_SERVED': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  // Fetch transfer history only
-  const fetchTransferHistory = async (serviceId) => {
-    setIsLoadingHistory(true);
-    setTransferHistory([]);
-    
-    try {
-      const response = await fetch(`http://127.0.0.1:8000/api/service_history/${serviceId}/`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }); 
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log("Transfer history response:", data);
-      
-      if (Array.isArray(data) && data.length > 0) {
-        // Extract only transfer-related information
-        const transfers = data.map(record => ({
-          id: record.id,
-          from_teller: record.previous_teller || "Initial",
-          to_teller: record.teller,
-          status: record.service_status,
-          transferred_at: record.created_at,
-          remarks: record.rejection_reason || "Transfer completed"
-        }));
-        setTransferHistory(transfers);
-      } else {
-        setTransferHistory([]);
-      }
-      
-      setIsHistoryOpen(true);
-      
-    } catch (err) {
-      console.error('Error fetching transfer history:', err);
-      alert(`Failed to fetch transfer history: ${err.message}`);
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  };
-
-  const handleHistoryClick = (service) => {
-    const serviceId = service.service_request_id || service.id;
-    console.log('Fetching transfer history for service ID:', service);
-    fetchTransferHistory(serviceId);
-  };
-  
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  };
-
-  // Transfer History Modal Component
-  const TransferHistoryModal = () => {
-    if (!isHistoryOpen) return null;
-    
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-          <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-              <History className="h-5 w-5 text-blue-600" />
-              Service History
-            </h2>
-            <button
-              onClick={() => setIsHistoryOpen(false)}
-              className="text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              <XCircle className="h-6 w-6" />
-            </button>
-          </div>
-          <div className="p-6">
-            {isLoadingHistory ? (
-              <div className="text-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
-                <p className="mt-2 text-gray-600">Loading transfer history...</p>
-              </div>
-            ) : transferHistory.length > 0 ? (
-              <div className="space-y-4">
-                {transferHistory.map((transfer, index) => (
-                  <div key={transfer.id || index} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
-                        History #{index + 1}
-                      </span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        transfer.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                        transfer.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {transfer.status || 'N/A'}
-                      </span>
-                    </div>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500 w-24">Previous Teller:</span>
-                        <span className="font-mono font-medium">{transfer.from_teller}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500 w-24">Current Teller:</span>
-                        <span className="font-mono font-medium">{transfer.to_teller}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500 w-24">Transferred At:</span>
-                        <span>{formatDate(transfer.transferred_at)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500 w-24">Remarks:</span>
-                        <span className="text-gray-600">{transfer.remarks}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <div className="text-gray-400 mb-2">
-                  <History className="h-12 w-12 mx-auto" />
-                </div>
-                <p className="text-gray-500">No transfer history available for this service</p>
-              </div>
-            )}
-          </div>
-          <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end">
-            <Button onClick={() => setIsHistoryOpen(false)}>Close</Button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
-      <header className="flex items-center justify-between px-8 py-5 navy-gradient">
+     <header className="flex items-center justify-between px-8 py-5 navy-gradient">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -417,17 +252,25 @@ const CartPage = () => {
         </div>
       </header>
 
+
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
+          {/* <div className="flex items-center gap-4 mb-6">
+            <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-2xl font-bold">Cart</h1>
+          </div> */}
+
           <Tabs defaultValue="pending" onValueChange={(value) => setActiveTab(value)}>
             <TabsList className="grid grid-cols-2 mb-4">
-              <TabsTrigger value="pending">Cart Items </TabsTrigger>
-              <TabsTrigger value="completed">Requests</TabsTrigger>
+              <TabsTrigger value="pending">Cart Items ({pendingItems.length})</TabsTrigger>
+              <TabsTrigger value="completed">Requests ({completedItems.length})</TabsTrigger>
             </TabsList>
 
             {/* Pending Tab */}
-              <TabsContent value="pending">
-                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+            <TabsContent value="pending">
+              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-slate-200">
                     <thead className="bg-slate-50">
@@ -450,7 +293,7 @@ const CartPage = () => {
                               onChange={() => toggleSelection(item.id)}
                               className="rounded border-slate-300"
                             />
-                           </td>
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{item.service_request_id}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{item.service_code}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{item.service_name}</td>
@@ -471,9 +314,14 @@ const CartPage = () => {
                   </table>
                 </div>
               </div>
+
               {selectedIds.length > 0 && (
                 <div className="mt-4 text-right">
-                  <Button onClick={prepareCompleteOrders} className="bg-green-600 hover:bg-green-700" disabled={loading}>
+                  <Button
+                    onClick={prepareCompleteOrders}
+                    className="bg-green-600 hover:bg-green-700"
+                    disabled={loading}
+                  >
                     {loading ? 'Processing...' : `Complete Selected Orders (${selectedIds.length})`}
                   </Button>
                 </div>
@@ -501,23 +349,24 @@ const CartPage = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{item.service_amount ? `${item.service_amount} Ksh` : '-'}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              item.cart_status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                              item.cart_status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
+                              item.cart_status === 'ACTIVE' 
+                                ? 'bg-green-100 text-green-800'
+                                : item.cart_status === 'COMPLETED'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-gray-100 text-gray-800'
                             }`}>
                               {item.cart_status || '-'}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              {item.completed_services || 0} / {item.total_services || 0}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                {item.completed_services || 0} / {item.total_services || 0}
+                              </span>
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                             <div className="flex items-center gap-2">
-                              <button onClick={() => openViewModal(item)} className="text-indigo-600 hover:text-indigo-800 p-1" aria-label="View details">
-                                <Eye size={18} />
-                              </button>
                               <button onClick={() => openQrModal(item)} className="text-blue-600 hover:text-blue-800 p-1" aria-label="View QR code">
                                 <QrCode size={18} />
                               </button>
@@ -610,6 +459,7 @@ const CartPage = () => {
                   <X size={20} />
                 </button>
               </div>
+
               <div className="p-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -631,12 +481,16 @@ const CartPage = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                    {branchError && <p className="text-xs text-destructive">{branchError}</p>}
+                    {branchError && (
+                      <p className="text-xs text-destructive">{branchError}</p>
+                    )}
                   </div>
+
                   <div className="mt-2 text-sm text-slate-500">
                     <p>You have selected {selectedIds.length} service(s). Please choose where you want to collect the card(s).</p>
                   </div>
                 </div>
+
                 <div className="mt-6 flex justify-end gap-3">
                   <Button variant="outline" onClick={() => setShowConfirmModal(false)}>Cancel</Button>
                   <Button onClick={executeCompleteOrders} className="bg-green-600 hover:bg-green-700">Complete Orders</Button>
@@ -758,11 +612,8 @@ const CartPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Transfer History Modal */}
-      <TransferHistoryModal />
     </div>
   );
 };
 
-export default CartPage;  
+export default CartPage;
