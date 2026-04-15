@@ -279,6 +279,10 @@ const ProfilePage = () => {
       const response = await fetch(`${API_BASE_URL}/teller_service_cart/${cartId}/${teller_id}`, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
+<<<<<<< HEAD
+      console.log('Service cart data:', data);
+=======
+>>>>>>> bb37afc5a430e8fcb9671d55e0bb2d6c4623768f
       if (data) {
         const totalCharge = data.total_services * 10;
         setServiceCart({
@@ -297,6 +301,11 @@ const ProfilePage = () => {
       const response = await fetch(`${API_BASE_URL}/ServiceCartItemsDetail/${cartId}/`, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
+<<<<<<< HEAD
+      console.log('Service cart item details:', data);
+      // The API returns an object with 'cart' and 'service_data' fields
+=======
+>>>>>>> bb37afc5a430e8fcb9671d55e0bb2d6c4623768f
       setSelectedServiceDetails(data);
       setIsDetailsModalOpen(true);
     } catch (err) { console.error(err); alert(`Failed to fetch service details: ${err.message}`); } 
@@ -310,6 +319,52 @@ const ProfilePage = () => {
       const response = await fetch(`${API_BASE_URL}/fetch_tellers/${encodeURIComponent(branchCode)}/`, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
+<<<<<<< HEAD
+      console.log("Tellers fetched:", data);
+      
+      // Transform the data - map teller IDs to user details
+      // Since the API returns TellerAllocation data with teller IDs
+      const formattedTellers = data.map((allocation) => {
+        // You can either fetch user details here or have backend include them
+        // For now, we'll use the teller ID and try to get user info from session/local storage
+        return {
+          id: allocation.teller,
+          name: `Teller ${allocation.teller}`, // Temporary name
+          email: 'Loading...',
+          employee_id: allocation.teller,
+          branch_id: allocation.branch,
+          allocation_id: allocation.id,
+          allocated_at: allocation.allocated_at
+        };
+      });
+      
+      setTellers(formattedTellers);
+      
+      // Fetch user details for each teller
+      const tellersWithDetails = await Promise.all(
+        formattedTellers.map(async (teller) => {
+          try {
+            // Try to get user details from your user endpoint
+            const userResponse = await fetch(`${API_BASE_URL}/users/${teller.id}/`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+            });
+            
+            if (userResponse.ok) {
+              const userData = await userResponse.json();
+              return {
+                ...teller,
+                name: userData.user?.name || userData.full_name || `Teller ${teller.id}`,
+                email: userData.user?.email || 'N/A',
+                employee_id: userData.user?.user_ID || userData.employee_id || teller.id,
+              };
+            }
+          } catch (err) {
+            console.error(`Error fetching user ${teller.id}:`, err);
+=======
       const formattedTellers = data.map(allocation => ({ id: allocation.teller, name: `Teller ${allocation.teller}`, email: 'Loading...', employee_id: allocation.teller, branch_id: allocation.branch, allocation_id: allocation.id, allocated_at: allocation.allocated_at }));
       const tellersWithDetails = await Promise.all(formattedTellers.map(async (teller) => {
         try {
@@ -317,6 +372,7 @@ const ProfilePage = () => {
           if (userResponse.ok) {
             const userData = await userResponse.json();
             return { ...teller, name: userData.name || userData.full_name || `Teller ${teller.id}`, email: userData.email || 'N/A', employee_id: userData.user_ID || userData.employee_id || teller.id };
+>>>>>>> bb37afc5a430e8fcb9671d55e0bb2d6c4623768f
           }
         } catch (err) { console.error(err); }
         return teller;
@@ -326,6 +382,58 @@ const ProfilePage = () => {
     finally { setIsLoadingTellers(false); }
   };
 
+<<<<<<< HEAD
+  // Function to fetch service history - FIXED FOR ARRAY RESPONSE
+    const fetchServiceHistory = async (serviceId) => {
+      setIsLoadingHistory(true);
+      setHistoryData(null);
+        
+      try {
+        const response = await fetch(`${API_BASE_URL}/referral_history/${serviceId}/`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log("Service history response:", data);
+        
+        // Check if data is an array and has items
+        if (Array.isArray(data) && data.length > 0) {
+          // Get all transfers for timeline
+          const allTransfers = data;
+          // Get the latest transfer (first item in array)
+          const latestTransfer = data[0];
+          
+          setHistoryData({
+            previous_teller: `${latestTransfer?.previous_teller?.name} (${latestTransfer?.previous_teller?.user_ID})`,
+            new_teller: `${latestTransfer?.new_teller?.name} (${latestTransfer?.new_teller?.user_ID})`,
+            remarks: latestTransfer.remarks,
+            created_at: latestTransfer.created_at,
+            action: latestTransfer.action,
+            service: latestTransfer.service,
+            id: latestTransfer.id,
+            transfer_history: allTransfers // Store full array for timeline
+          });
+        } else {
+          setHistoryData(null);
+        }
+        
+        setIsHistoryOpen(true);
+        
+      } catch (err) {
+        console.error('Error fetching service history:', err);
+        alert(`Failed to fetch service history: ${err.message}`);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+=======
   const fetchServiceHistory = async (serviceId) => {
     setIsLoadingHistory(true);
     try {
@@ -340,6 +448,7 @@ const ProfilePage = () => {
     } catch (err) { console.error(err); alert(`Failed to fetch service history: ${err.message}`); } 
     finally { setIsLoadingHistory(false); }
   };
+>>>>>>> bb37afc5a430e8fcb9671d55e0bb2d6c4623768f
 
   const transferService = async () => {
     if (!selectedTransferService || !selectedTeller) { alert('Please select a teller'); return; }
@@ -436,8 +545,587 @@ const ProfilePage = () => {
   const completedServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'COMPLETED').length || 0;
   const onHoldServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'ON_HOLD').length || 0;
   const transferredServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'TRANSFERRED').length || 0;
+<<<<<<< HEAD
+  const pendingServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'PENDING' || s.status?.toUpperCase() === 'PROCESSING' || s.status?.toUpperCase() === 'IN_PROGRESS').length || 0;
+  const progressPercentage = (completedServicesCount / (serviceCart?.totalServices || 1)) * 100 || 0;
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleString();
+  };
+
+  // Format currency
+  const formatCurrency = (amount) => {
+    if (!amount) return 'N/A';
+    return `KSh ${parseFloat(amount).toFixed(2)}`;
+  };
+
+  // History Modal Component - FIXED FOR ARRAY RESPONSE
+  const HistoryModal = () => {
+    if (!isHistoryOpen) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          
+          {/* Header */}
+          <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <History className="h-5 w-5 text-blue-600" />
+              Referral History
+            </h2>
+            <button
+              onClick={() => setIsHistoryOpen(false)}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <XCircle className="h-6 w-6" />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="p-6">
+            {isLoadingHistory ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+                <p className="mt-2 text-gray-600">Loading history...</p>
+              </div>
+            ) : historyData ? (
+              <div className="space-y-4">
+                {/* Latest Transfer Details */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-700 mb-3">Transfer Details</h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-gray-500">Action:</span>
+                      <span className="ml-2 font-medium">{historyData.action || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Previous Teller:</span>
+                      <span className="ml-2">{historyData.previous_teller || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">New Teller:</span>
+                      <span className="ml-2">{historyData.new_teller || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Remarks/Reason:</span>
+                      <span className="ml-2">{historyData.remarks || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Date:</span>
+                      <span className="ml-2">{formatDate(historyData.created_at)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Service ID:</span>
+                      <span className="ml-2">{historyData.service || "N/A"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Transfer History Timeline - Show all transfers */}
+                {historyData.transfer_history && historyData.transfer_history.length > 0 && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="bg-blue-50 px-4 py-2 border-b">
+                      <h3 className="font-semibold text-blue-900">All Transfers</h3>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      {historyData.transfer_history.map((item, index) => (
+                        <div key={item.id || index} className="border-l-2 border-blue-300 pl-4 pb-3">
+                          <p className="text-sm font-semibold text-gray-800">
+                            Transfer #{index + 1}
+                          </p>
+                          <p className="text-sm">
+                            <span className="text-gray-500">From:</span> {item.previous_teller?.name + ` (${item.previous_teller?.user_ID})` || "N/A"}
+                          </p>
+                          <p className="text-sm">
+                            <span className="text-gray-500">To:</span> {item.new_teller?.name + ` (${item.new_teller?.user_ID})` || "N/A"}
+                          </p>
+                          <p className="text-sm">
+                            <span className="text-gray-500">Reason:</span> {item.remarks || "N/A"}
+                          </p>
+                          <p className="text-sm">
+                            <span className="text-gray-500">Date:</span> {formatDate(item.created_at)}
+                          </p>
+                          <p className="text-sm">
+                            <span className="text-gray-500">Action:</span> 
+                            <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700">
+                              {item.action}
+                            </span>
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No history data available for this service
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end">
+            <Button onClick={() => setIsHistoryOpen(false)}>Close</Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Transfer Modal Component
+  const TransferModal = () => {
+    if (!isTransferModalOpen) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          
+          {/* Header */}
+          <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+            <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <Send className="h-5 w-5 text-purple-600" />
+              Transfer Service
+            </h3>
+            <button
+              onClick={() => {
+                setIsTransferModalOpen(false);
+                setSelectedTransferService(null);
+                setSelectedTeller(null);
+                setTellers([]);
+                setTransferReason('');
+              }}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <XCircle className="h-6 w-6" />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="p-6">
+            {/* Service Information */}
+            {selectedTransferService && (
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-semibold text-gray-700 mb-2">Service to Transfer</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Service ID:</span>
+                    <span className="ml-2 font-mono font-semibold">{selectedTransferService.service_id}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Service Name:</span>
+                    <span className="ml-2 font-semibold">{selectedTransferService.service_name}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Current Status:</span>
+                    <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${getServiceStatusColor(selectedTransferService.status)}`}>
+                      {getStatusText(selectedTransferService.status)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Transfer Reason Input - No minimum length restriction */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Transfer Reason <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={transferReason}
+                onChange={(e) => setTransferReason(e.target.value)}
+                placeholder="Please provide a reason for transferring this service..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                rows="3"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                This reason will be logged for audit purposes
+              </p>
+            </div>
+
+            {/* Tellers List */}
+            <div>
+              <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Select Teller to Transfer To <span className="text-red-500">*</span>
+              </h4>
+              
+              {isLoadingTellers ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto" />
+                  <p className="mt-2 text-gray-600">Loading tellers...</p>
+                </div>
+              ) : tellers.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-600">No tellers found in your branch</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {tellers.map((teller) => (
+                    <div
+                      key={teller.id}
+                      onClick={() => setSelectedTeller(teller)}
+                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                        selectedTeller?.id === teller.id
+                          ? 'border-purple-500 bg-purple-50'
+                          : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <User className="h-4 w-4 text-gray-500" />
+                            <span className="font-semibold text-gray-800">{teller.name}</span>
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            <div>Email: {teller.email || 'N/A'}</div>
+                            <div>Employee ID: {teller.employee_id || 'N/A'}</div>
+                          </div>
+                        </div>
+                        {selectedTeller?.id === teller.id && (
+                          <CheckCircle className="h-5 w-5 text-purple-600" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsTransferModalOpen(false);
+                setSelectedTransferService(null);
+                setSelectedTeller(null);
+                setTellers([]);
+                setTransferReason('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={transferService}
+              disabled={!selectedTeller || !transferReason.trim() || isTransferring}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {isTransferring ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Transferring...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Transfer Service
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Service Details Modal Component
+  const ServiceDetailsModal = () => {
+    if (!isDetailsModalOpen) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          
+          {/* Header */}
+          <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+            <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <Info className="h-5 w-5 text-blue-600" />
+              Service Cart Item Details
+            </h3>
+
+            <button
+              onClick={() => setIsDetailsModalOpen(false)}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <XCircle className="h-6 w-6" />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="p-6">
+            {isLoadingDetails ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+                <p className="mt-2 text-gray-600">Loading details...</p>
+              </div>
+
+            ) : selectedServiceDetails ? (
+
+              <div className="space-y-6">
+
+                {/* Cart Item Information */}
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="bg-blue-50 px-4 py-2 border-b">
+                    <h4 className="font-semibold text-blue-900">
+                      Cart Item Information
+                    </h4>
+                  </div>
+
+                  <div className="p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                      {selectedServiceDetails.cart &&
+                        Object.entries(selectedServiceDetails.cart).map(
+                          ([key, value]) => {
+
+                            // Remove unwanted fields
+                            if (
+                              key === "service_data" ||
+                              key === "created_at" ||
+                              key === "documents" ||
+                              key === "core_banking_ref" ||
+                              key === "rejection_reason" ||
+                              key === "customer_notified" ||
+                              key === "processed_at" ||
+                              key === "completed_at" ||
+                              key === "teller"
+                            ) return null;
+
+                            let displayValue = value;
+
+                            if (key === "amount") {
+                              displayValue = formatCurrency(value);
+                            } 
+                            else if (value === null || value === undefined) {
+                              displayValue = "N/A";
+                            } 
+                            else if (typeof value === "boolean") {
+                              displayValue = value ? "Yes" : "No";
+                            }
+
+                            return (
+                              <div key={key} className="flex flex-col">
+                                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  {key.replace(/_/g, " ")}
+                                </span>
+
+                                <span className="text-sm text-gray-900 mt-1 font-medium">
+                                  {String(displayValue)}
+                                </span>
+                              </div>
+                            );
+                          }
+                        )}
+
+                    </div>
+                  </div>
+                </div>
+
+                {/* Service Data Section */}
+                {selectedServiceDetails.service_data && (
+                  <div className="border rounded-lg overflow-hidden">
+
+                    <div className="bg-green-50 px-4 py-2 border-b">
+                      <h4 className="font-semibold text-green-900">
+                        Service Data Details
+                      </h4>
+                    </div>
+
+                    <div className="p-4">
+
+                      {selectedServiceDetails.service_data.error ? (
+                        <div className="text-red-600 p-2 bg-red-50 rounded">
+                          Error: {selectedServiceDetails.service_data.error}
+                        </div>
+
+                      ) : (
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                          {Object.entries(
+                            selectedServiceDetails.service_data
+                          ).map(([key, value]) => {
+
+                            // Remove QR image
+                            if (key === "qr_img") return null;
+
+                            let displayValue = value;
+
+                            if (key === "created_at") {
+                              displayValue = formatDate(value);
+                            } 
+                            else if (key === "amount") {
+                              displayValue = formatCurrency(value);
+                            } 
+                            else if (value === null || value === undefined) {
+                              displayValue = "N/A";
+                            }
+
+                            return (
+                              <div key={key} className="flex flex-col">
+                                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  {key.replace(/_/g, " ")}
+                                </span>
+
+                                <span className="text-sm text-gray-900 mt-1">
+                                  {displayValue}
+                                </span>
+                              </div>
+                            );
+                          })}
+
+                        </div>
+                      )}
+
+                    </div>
+                  </div>
+                )}
+
+                {/* Summary */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+
+                    <div>
+                      <span className="text-sm text-gray-600">
+                        Service Status:
+                      </span>
+
+                      <span
+                        className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusColor(
+                          selectedServiceDetails.cart?.service_status
+                        )}`}
+                      >
+                        {getStatusText(
+                          selectedServiceDetails.cart?.service_status
+                        )}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-sm text-gray-600">
+                        Service Code:
+                      </span>
+
+                      <span className="ml-2 font-mono text-sm font-semibold text-gray-800">
+                        {selectedServiceDetails.cart?.service_code}
+                      </span>
+                    </div>
+
+                  </div>
+                </div>
+
+              </div>
+
+            ) : (
+
+              <div className="text-center py-8 text-gray-500">
+                No details available for this service
+              </div>
+
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end">
+            <Button
+              onClick={() => setIsDetailsModalOpen(false)}
+            >
+              Close
+            </Button>
+          </div>
+
+        </div>
+      </div>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-slate-50">
+        <DashboardHeader
+          customerName="Teller"
+          isDropdownOpen={navDropdownOpen}
+          setIsDropdownOpen={setNavDropdownOpen}
+          onResetPassword={handleResetPassword}
+          onLogout={handleLogout}
+        />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
+            <p className="mt-4 text-gray-600">Loading service cart details...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col min-h-screen bg-slate-50">
+        <DashboardHeader
+          customerName="Teller"
+          isDropdownOpen={navDropdownOpen}
+          setIsDropdownOpen={setNavDropdownOpen}
+          onResetPassword={handleResetPassword}
+          onLogout={handleLogout}
+        />
+        <main className="flex-1 p-4 md:p-8">
+          <div className="max-w-6xl mx-auto">
+            <Button variant="outline" size="sm" onClick={handleBack} className="mb-4">
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Dashboard
+            </Button>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
+              <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Data</h3>
+              <p className="text-red-600">{error}</p>
+              <Button onClick={handleBack} className="mt-4">
+                Go Back
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!serviceCart) {
+    return (
+      <div className="flex flex-col min-h-screen bg-slate-50">
+        <DashboardHeader
+          customerName="Teller"
+          isDropdownOpen={navDropdownOpen}
+          setIsDropdownOpen={setNavDropdownOpen}
+          onResetPassword={handleResetPassword}
+          onLogout={handleLogout}
+        />
+        <main className="flex-1 p-4 md:p-8">
+          <div className="max-w-6xl mx-auto">
+            <Button variant="outline" size="sm" onClick={handleBack} className="mb-4">
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Dashboard
+            </Button>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+              <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-3" />
+              <h3 className="text-lg font-semibold text-yellow-800 mb-2">No Service Cart Data</h3>
+              <p className="text-yellow-600">Please scan a QR code first to view service details.</p>
+              <Button onClick={() => navigate('/qr-scanner')} className="mt-4">
+                Go to Scanner
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+=======
   const pendingServicesCount = serviceCart?.services?.filter(s => ['PENDING','PROCESSING','IN_PROGRESS'].includes(s.status?.toUpperCase()))?.length || 0;
   const progressPercentage = (completedServicesCount / (serviceCart?.totalServices || 1)) * 100;
+>>>>>>> bb37afc5a430e8fcb9671d55e0bb2d6c4623768f
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">

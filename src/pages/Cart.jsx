@@ -231,6 +231,165 @@ const CartPage = () => {
     setSelectedCompletedItem(null);
   };
 
+<<<<<<< HEAD
+  // View details modal functions
+  const openViewModal = (item) => {
+    setSelectedCartForView(item);
+    setIsViewModalOpen(true);
+  };
+
+  const closeViewModal = () => {
+    setIsViewModalOpen(false);
+    setSelectedCartForView(null);
+  };
+
+  const getCartStatusColor = (status) => {
+    switch(status?.toUpperCase()) {
+      case 'ACTIVE': return 'bg-green-100 text-green-800';
+      case 'COMPLETED': return 'bg-blue-100 text-blue-800';
+      case 'PARTIALLY_SERVED': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Fetch transfer history only
+  const fetchTransferHistory = async (serviceId) => {
+    setIsLoadingHistory(true);
+    setTransferHistory([]);
+    
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/service_history/${serviceId}/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }); 
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Transfer history response:", data);
+      
+      if (Array.isArray(data) && data.length > 0) {
+        // Extract only transfer-related information
+        const transfers = data.map(record => ({
+          id: record.id,
+          from_teller: record.previous_teller?.name + ` (${record.previous_teller?.user_ID})` || "Initial",
+          to_teller: record.teller?.name + ` (${record.teller?.user_ID})` || "N/A",
+          status: record.service_status,
+          transferred_at: record.created_at,
+          remarks: record.rejection_reason || "Transfer completed"
+        }));
+        setTransferHistory(transfers);
+      } else {
+        setTransferHistory([]);
+      }
+      
+      setIsHistoryOpen(true);
+      
+    } catch (err) {
+      console.error('Error fetching transfer history:', err);
+      alert(`Failed to fetch transfer history: ${err.message}`);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const handleHistoryClick = (service) => {
+    const serviceId = service.service_request_id || service.id;
+    console.log('Fetching transfer history for service ID:', service);
+    fetchTransferHistory(serviceId);
+  };
+  
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleString();
+  };
+
+  // Transfer History Modal Component
+  const TransferHistoryModal = () => {
+    if (!isHistoryOpen) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+          <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <History className="h-5 w-5 text-blue-600" />
+              Service History
+            </h2>
+            <button
+              onClick={() => setIsHistoryOpen(false)}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <XCircle className="h-6 w-6" />
+            </button>
+          </div>
+          <div className="p-6">
+            {isLoadingHistory ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+                <p className="mt-2 text-gray-600">Loading transfer history...</p>
+              </div>
+            ) : transferHistory.length > 0 ? (
+              <div className="space-y-4">
+                {transferHistory.map((transfer, index) => (
+                  <div key={transfer.id || index} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
+                        History #{index + 1}
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        transfer.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                        transfer.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {transfer.status || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 w-24">Previous Teller:</span>
+                        <span className="font-mono font-medium">{transfer.from_teller}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 w-24">Current Teller:</span>
+                        <span className="font-mono font-medium">{transfer.to_teller}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 w-24">Transferred At:</span>
+                        <span>{formatDate(transfer.transferred_at)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 w-24">Remarks:</span>
+                        <span className="text-gray-600">{transfer.remarks}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-gray-400 mb-2">
+                  <History className="h-12 w-12 mx-auto" />
+                </div>
+                <p className="text-gray-500">No transfer history available for this service</p>
+              </div>
+            )}
+          </div>
+          <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end">
+            <Button onClick={() => setIsHistoryOpen(false)}>Close</Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+=======
+>>>>>>> bb37afc5a430e8fcb9671d55e0bb2d6c4623768f
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
      <header className="flex items-center justify-between px-8 py-5 navy-gradient">
@@ -539,7 +698,7 @@ const CartPage = () => {
                         <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Cart ID</span><p className="text-sm font-mono font-semibold text-gray-900 mt-1">{selectedCartForView.cart_id || '-'}</p></div>
                         <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Cart Status</span><p className="mt-1"><span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getCartStatusColor(selectedCartForView.cart_status)}`}>{selectedCartForView.cart_status || '-'}</span></p></div>
                         <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.created_at ? new Date(selectedCartForView.created_at).toLocaleString() : '-'}</p></div>
-                        <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.branch || '-'}</p></div>
+                        <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.branch?.branch_name + ` (${selectedCartForView.branch?.branch_id})` || '-'}</p></div>
                       </div>
                     </div>
                   </div>
