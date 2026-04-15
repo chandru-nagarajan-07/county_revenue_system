@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, ArrowLeft, QrCode, Download, X, Eye, History, Loader2 } from 'lucide-react';
+import { Trash2, ArrowLeft, QrCode, Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
-import { XCircle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -28,16 +27,7 @@ const CartPage = () => {
   const [selectedBranch, setSelectedBranch] = useState('');
   const [branchError, setBranchError] = useState('');
 
-  // State for view details modal
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [selectedCartForView, setSelectedCartForView] = useState(null);
-
-  // State for transfer history modal
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [transferHistory, setTransferHistory] = useState([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-
-  // Get session user
+  // Get session user once (no reassignment errors)
   let sessionUser;
   try {
     sessionUser = JSON.parse(sessionStorage.getItem('userData1') || '{}');
@@ -46,6 +36,7 @@ const CartPage = () => {
     sessionUser = {};
   }
 
+  const accounts = sessionUser?.account || [];
   const branches = sessionUser?.branch || [];
 
   const BRANCH_OPTIONS = useMemo(() => {
@@ -240,6 +231,7 @@ const CartPage = () => {
     setSelectedCompletedItem(null);
   };
 
+<<<<<<< HEAD
   // View details modal functions
   const openViewModal = (item) => {
     setSelectedCartForView(item);
@@ -396,9 +388,11 @@ const CartPage = () => {
     );
   };
 
+=======
+>>>>>>> bb37afc5a430e8fcb9671d55e0bb2d6c4623768f
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
-      <header className="flex items-center justify-between px-8 py-5 navy-gradient">
+     <header className="flex items-center justify-between px-8 py-5 navy-gradient">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -417,17 +411,25 @@ const CartPage = () => {
         </div>
       </header>
 
+
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
+          {/* <div className="flex items-center gap-4 mb-6">
+            <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-2xl font-bold">Cart</h1>
+          </div> */}
+
           <Tabs defaultValue="pending" onValueChange={(value) => setActiveTab(value)}>
             <TabsList className="grid grid-cols-2 mb-4">
-              <TabsTrigger value="pending">Cart Items </TabsTrigger>
-              <TabsTrigger value="completed">Requests</TabsTrigger>
+              <TabsTrigger value="pending">Cart Items ({pendingItems.length})</TabsTrigger>
+              <TabsTrigger value="completed">Requests ({completedItems.length})</TabsTrigger>
             </TabsList>
 
             {/* Pending Tab */}
-              <TabsContent value="pending">
-                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+            <TabsContent value="pending">
+              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-slate-200">
                     <thead className="bg-slate-50">
@@ -450,7 +452,7 @@ const CartPage = () => {
                               onChange={() => toggleSelection(item.id)}
                               className="rounded border-slate-300"
                             />
-                           </td>
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{item.service_request_id}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{item.service_code}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{item.service_name}</td>
@@ -471,9 +473,14 @@ const CartPage = () => {
                   </table>
                 </div>
               </div>
+
               {selectedIds.length > 0 && (
                 <div className="mt-4 text-right">
-                  <Button onClick={prepareCompleteOrders} className="bg-green-600 hover:bg-green-700" disabled={loading}>
+                  <Button
+                    onClick={prepareCompleteOrders}
+                    className="bg-green-600 hover:bg-green-700"
+                    disabled={loading}
+                  >
                     {loading ? 'Processing...' : `Complete Selected Orders (${selectedIds.length})`}
                   </Button>
                 </div>
@@ -501,23 +508,24 @@ const CartPage = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{item.service_amount ? `${item.service_amount} Ksh` : '-'}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              item.cart_status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                              item.cart_status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
+                              item.cart_status === 'ACTIVE' 
+                                ? 'bg-green-100 text-green-800'
+                                : item.cart_status === 'COMPLETED'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-gray-100 text-gray-800'
                             }`}>
                               {item.cart_status || '-'}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              {item.completed_services || 0} / {item.total_services || 0}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                {item.completed_services || 0} / {item.total_services || 0}
+                              </span>
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                             <div className="flex items-center gap-2">
-                              <button onClick={() => openViewModal(item)} className="text-indigo-600 hover:text-indigo-800 p-1" aria-label="View details">
-                                <Eye size={18} />
-                              </button>
                               <button onClick={() => openQrModal(item)} className="text-blue-600 hover:text-blue-800 p-1" aria-label="View QR code">
                                 <QrCode size={18} />
                               </button>
@@ -610,6 +618,7 @@ const CartPage = () => {
                   <X size={20} />
                 </button>
               </div>
+
               <div className="p-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -631,12 +640,16 @@ const CartPage = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                    {branchError && <p className="text-xs text-destructive">{branchError}</p>}
+                    {branchError && (
+                      <p className="text-xs text-destructive">{branchError}</p>
+                    )}
                   </div>
+
                   <div className="mt-2 text-sm text-slate-500">
                     <p>You have selected {selectedIds.length} service(s). Please choose where you want to collect the card(s).</p>
                   </div>
                 </div>
+
                 <div className="mt-6 flex justify-end gap-3">
                   <Button variant="outline" onClick={() => setShowConfirmModal(false)}>Cancel</Button>
                   <Button onClick={executeCompleteOrders} className="bg-green-600 hover:bg-green-700">Complete Orders</Button>
@@ -758,11 +771,8 @@ const CartPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Transfer History Modal */}
-      <TransferHistoryModal />
     </div>
   );
 };
 
-export default CartPage;  
+export default CartPage;
