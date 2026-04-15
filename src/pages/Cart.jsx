@@ -284,8 +284,8 @@ const CartPage = () => {
         // Extract only transfer-related information
         const transfers = data.map(record => ({
           id: record.id,
-          from_teller: record.previous_teller || "Initial",
-          to_teller: record.teller,
+          from_teller: record.previous_teller?.name + ` (${record.previous_teller?.user_ID})` || "Initial",
+          to_teller: record.teller?.name + ` (${record.teller?.user_ID})` || "N/A",
           status: record.service_status,
           transferred_at: record.created_at,
           remarks: record.rejection_reason || "Transfer completed"
@@ -685,7 +685,7 @@ const CartPage = () => {
                         <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Cart ID</span><p className="text-sm font-mono font-semibold text-gray-900 mt-1">{selectedCartForView.cart_id || '-'}</p></div>
                         <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Cart Status</span><p className="mt-1"><span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getCartStatusColor(selectedCartForView.cart_status)}`}>{selectedCartForView.cart_status || '-'}</span></p></div>
                         <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.created_at ? new Date(selectedCartForView.created_at).toLocaleString() : '-'}</p></div>
-                        <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.branch || '-'}</p></div>
+                        <div><span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</span><p className="text-sm text-gray-900 mt-1">{selectedCartForView.branch?.branch_name + ` (${selectedCartForView.branch?.branch_id})` || '-'}</p></div>
                       </div>
                     </div>
                   </div>

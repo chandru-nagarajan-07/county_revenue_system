@@ -107,7 +107,7 @@ const ProfilePage = () => {
       }
       
       const data = await response.json();
-      
+      console.log('Service cart data:', data);
       if (data) {
         // Calculate total charge (adjust based on your actual pricing)
         const totalCharge = data.total_services * 10;
@@ -155,7 +155,7 @@ const ProfilePage = () => {
       }
       
       const data = await response.json();
-      
+      console.log('Service cart item details:', data);
       // The API returns an object with 'cart' and 'service_data' fields
       setSelectedServiceDetails(data);
       setIsDetailsModalOpen(true);
@@ -228,9 +228,9 @@ const ProfilePage = () => {
               const userData = await userResponse.json();
               return {
                 ...teller,
-                name: userData.name || userData.full_name || `Teller ${teller.id}`,
-                email: userData.email || 'N/A',
-                employee_id: userData.user_ID || userData.employee_id || teller.id,
+                name: userData.user?.name || userData.full_name || `Teller ${teller.id}`,
+                email: userData.user?.email || 'N/A',
+                employee_id: userData.user?.user_ID || userData.employee_id || teller.id,
               };
             }
           } catch (err) {
@@ -251,55 +251,55 @@ const ProfilePage = () => {
   };
 
   // Function to fetch service history - FIXED FOR ARRAY RESPONSE
-  const fetchServiceHistory = async (serviceId) => {
-    setIsLoadingHistory(true);
-    setHistoryData(null);
-    
-    try {
-      const response = await fetch(`${API_BASE_URL}/referral_history/${serviceId}/`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log("Service history response:", data);
-      
-      // Check if data is an array and has items
-      if (Array.isArray(data) && data.length > 0) {
-        // Get all transfers for timeline
-        const allTransfers = data;
-        // Get the latest transfer (first item in array)
-        const latestTransfer = data[0];
+    const fetchServiceHistory = async (serviceId) => {
+      setIsLoadingHistory(true);
+      setHistoryData(null);
         
-        setHistoryData({
-          previous_teller: latestTransfer.previous_teller,
-          new_teller: latestTransfer.new_teller,
-          remarks: latestTransfer.remarks,
-          created_at: latestTransfer.created_at,
-          action: latestTransfer.action,
-          service: latestTransfer.service,
-          id: latestTransfer.id,
-          transfer_history: allTransfers // Store full array for timeline
+      try {
+        const response = await fetch(`${API_BASE_URL}/referral_history/${serviceId}/`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         });
-      } else {
-        setHistoryData(null);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log("Service history response:", data);
+        
+        // Check if data is an array and has items
+        if (Array.isArray(data) && data.length > 0) {
+          // Get all transfers for timeline
+          const allTransfers = data;
+          // Get the latest transfer (first item in array)
+          const latestTransfer = data[0];
+          
+          setHistoryData({
+            previous_teller: `${latestTransfer?.previous_teller?.name} (${latestTransfer?.previous_teller?.user_ID})`,
+            new_teller: `${latestTransfer?.new_teller?.name} (${latestTransfer?.new_teller?.user_ID})`,
+            remarks: latestTransfer.remarks,
+            created_at: latestTransfer.created_at,
+            action: latestTransfer.action,
+            service: latestTransfer.service,
+            id: latestTransfer.id,
+            transfer_history: allTransfers // Store full array for timeline
+          });
+        } else {
+          setHistoryData(null);
+        }
+        
+        setIsHistoryOpen(true);
+        
+      } catch (err) {
+        console.error('Error fetching service history:', err);
+        alert(`Failed to fetch service history: ${err.message}`);
+      } finally {
+        setIsLoadingHistory(false);
       }
-      
-      setIsHistoryOpen(true);
-      
-    } catch (err) {
-      console.error('Error fetching service history:', err);
-      alert(`Failed to fetch service history: ${err.message}`);
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  };
+    };
 
   // Function to transfer service to another teller
   const transferService = async () => {
@@ -639,10 +639,10 @@ const ProfilePage = () => {
                             Transfer #{index + 1}
                           </p>
                           <p className="text-sm">
-                            <span className="text-gray-500">From:</span> {item.previous_teller}
+                            <span className="text-gray-500">From:</span> {item.previous_teller?.name + ` (${item.previous_teller?.user_ID})` || "N/A"}
                           </p>
                           <p className="text-sm">
-                            <span className="text-gray-500">To:</span> {item.new_teller}
+                            <span className="text-gray-500">To:</span> {item.new_teller?.name + ` (${item.new_teller?.user_ID})` || "N/A"}
                           </p>
                           <p className="text-sm">
                             <span className="text-gray-500">Reason:</span> {item.remarks || "N/A"}
