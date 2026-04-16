@@ -54,7 +54,7 @@ const CartPage = () => {
   } catch {
     sessionUser = {};
   }
-
+console.log("Session User in CartPage:", sessionUser);
   const branches = sessionUser?.branch || [];
 
   const BRANCH_OPTIONS = useMemo(() => {
@@ -628,8 +628,8 @@ const CartPage = () => {
             </TabsList>
 
             {/* Pending Tab */}
-            <TabsContent value="pending">
-              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+              <TabsContent value="pending">
+                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-slate-200">
                     <thead className="bg-slate-50">
@@ -985,4 +985,4 @@ const CartPage = () => {
   );
 };
 
-export default CartPage;
+export default CartPage;                     
