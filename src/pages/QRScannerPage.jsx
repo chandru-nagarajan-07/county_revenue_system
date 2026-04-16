@@ -4,8 +4,6 @@ import { Html5Qrcode } from 'html5-qrcode';
 import {
   ArrowLeft,
   QrCode,
-  XCircle,
-  CheckCircle,
   KeyRound,
   X,
   Camera,
@@ -18,9 +16,7 @@ import {
   AlertCircle,
   FileText,
   User,
-  Mail,
-  Phone,
-  MapPin,
+  Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader1';
@@ -41,9 +37,9 @@ const QRScannerPage = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState('');
-  const [pendingCartData, setPendingCartData] = useState(null); // Store cart data until OTP verified
-  const [userEmail, setUserEmail] = useState(''); // Will be fetched from backend using mobile number
-  const [userData, setUserData] = useState(null); // Store user data from local API
+  const [pendingCartData, setPendingCartData] = useState(null);
+  const [userEmail, setUserEmail] = useState('');
+  const [userData, setUserData] = useState(null);
   
   const [scanResult, setScanResult] = useState(null);
   const [showApprovalDetails, setShowApprovalDetails] = useState(false);
@@ -71,10 +67,8 @@ const QRScannerPage = () => {
   const qrCodeRegionRef = useRef(null);
   const html5QrCodeRef = useRef(null);
 
-  // API base URL
   const API_BASE_URL = 'http://localhost:8000/api';
 
-  // Function to fetch user details by mobile number from local API
   const fetchUserByMobile = async (mobileNumber) => {
     if (!mobileNumber) {
       console.log('No mobile number provided');
@@ -99,10 +93,22 @@ const QRScannerPage = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const userData = await response.json();
-      console.log('Fetched user details from local API:', userData);
-      setUserDetails(userData);
-      return userData;
+      const data = await response.json();
+      console.log('Fetched user details from local API:', data);
+      
+      const userInfo = data.serializer;
+      const accountInfo = data.acoount_data;
+      
+      const combinedUserData = {
+        ...userInfo,
+        account_number: accountInfo?.account_number || 'N/A',
+        account_type: accountInfo?.account_category || 'N/A',
+        account_balance: accountInfo?.balance || '0.00',
+        account_status: accountInfo?.status || 'N/A',
+      };
+      
+      setUserDetails(combinedUserData);
+      return combinedUserData;
       
     } catch (err) {
       console.error('Error fetching user details:', err);
@@ -112,7 +118,6 @@ const QRScannerPage = () => {
     }
   };
 
-  // Send OTP function using local API
   const sendOtp = async () => {
     if (!userEmail) {
       setOtpError('User email not found. Please try scanning again.');
@@ -123,60 +128,78 @@ const QRScannerPage = () => {
     setOtpError('');
     
     try {
-      // First, fetch user data from your local API (already have userData from fetchUserByMobile)
-      // If userData is not available, we should have it from previous step
-      if (!userData) {
-        throw new Error('User data not available. Please try scanning again.');
-      }
-
-      // Send OTP through your backend
       const response = await fetch(`${API_BASE_URL}/send-otp/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ email: userEmail }),
       });
       
       const data = await response.json();
+      console.log('Send OTP response:', data);
       
-      if (!response.ok) {
-        return;
+      if (response.ok) {
+        setOtpSent(true);
+        setOtpError('');
+        console.log('OTP sent successfully to:', userEmail);
+      } else {
+        setOtpError(data.message || data.error || 'Failed to send OTP. Please try again.');
       }
       
-      setOtpSent(true);
-      setOtpError('');
-      console.log('OTP sent successfully to:', userEmail);
-      
     } catch (err) {
-      setOtpError(err.message || 'Could not send OTP. Please check your email address.');
       console.error('Send OTP error:', err);
+      setOtpError('Network error. Could not send OTP. Please check your connection.');
     } finally {
       setOtpLoading(false);
     }
   };
 
-  // Handle OTP input change
-  const handleOtpChange = (element, index) => {
-    if (isNaN(element.value)) return;
-
+  const handleOtpChange = (e, index) => {
+    const value = e.target.value;
+    // Allow only single digit
+    if (value.length > 1) return;
+    if (value && !/^\d+$/.test(value)) return;
+    
     const newOtp = [...otpCode];
-    newOtp[index] = element.value;
+    newOtp[index] = value;
     setOtpCode(newOtp);
 
-    if (element.value && index < 5) {
+    // Move to next input if value is entered
+    if (value && index < 5) {
       inputRefs.current[index + 1].focus();
     }
   };
 
-  // Handle OTP key down for backspace
   const handleOtpKeyDown = (e, index) => {
     if (e.key === 'Backspace' && !otpCode[index] && index > 0) {
       inputRefs.current[index - 1].focus();
     }
   };
 
-  // Verify OTP function using local API
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text');
+    const pastedDigits = pastedData.replace(/\D/g, '').slice(0, 6);
+    
+    if (pastedDigits) {
+      const newOtp = [...otpCode];
+      for (let i = 0; i < pastedDigits.length; i++) {
+        newOtp[i] = pastedDigits[i];
+      }
+      setOtpCode(newOtp);
+      
+      // Focus on the next empty input or last filled
+      const nextIndex = Math.min(pastedDigits.length, 5);
+      if (nextIndex <= 5) {
+        inputRefs.current[nextIndex]?.focus();
+      }
+    }
+  };
+
   const verifyOtp = async () => {
     const otpValue = otpCode.join('');
+    console.log('Verifying OTP:', otpValue, 'for email:', userEmail);
     
     if (otpValue.length !== 6) {
       setOtpError('Please enter a valid 6-digit OTP');
@@ -187,66 +210,54 @@ const QRScannerPage = () => {
     setOtpError('');
     
     try {
-      // Get user data if not already available
-      let localUserData = userData;
-      if (!localUserData && pendingCartData?.mobile_number) {
-        localUserData = await fetchUserByMobile(pendingCartData.mobile_number);
-        if (localUserData) {
-          setUserData(localUserData);
-        }
-      }
-      
-      if (!localUserData) {
-        throw new Error('User data not found. Please try scanning again.');
-      }
-      
-      // Verify OTP with your backend
       const response = await fetch(`${API_BASE_URL}/otp-verification/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           email: userEmail,
           otp: otpValue,
-          userData1: localUserData // Send the local user data to backend
         }),
       });
       
       const data = await response.json();
       console.log('OTP verification response:', data);
       
-      if (!response.ok) {
-        throw new Error(data.message || 'Invalid OTP. Please try again.');
-      }
-      
-      // Store verification data
-      // localStorage.setItem("verifiedUser", JSON.stringify(data));
-      // sessionStorage.setItem("userData1", JSON.stringify(localUserData));
-      sessionStorage.setItem("customerData", JSON.stringify(localUserData));
-      localStorage.setItem("verifiedCustomer", JSON.stringify(data));
-
-      // OTP verified successfully - now show the cart data
-      setShowOtpModal(false);
-      resetOtpState();
-      
-      // Display the cart data that was stored
-      if (pendingCartData) {
-        displayCartData(pendingCartData);
-        setPendingCartData(null);
+      if (response.ok) {
+        if (userData) {
+          sessionStorage.setItem("customerData", JSON.stringify(userData));
+        }
+        localStorage.setItem("verifiedCustomer", JSON.stringify(data));
+        
+        setShowOtpModal(false);
+        resetOtpState();
+        
+        if (pendingCartData) {
+          displayCartData(pendingCartData);
+          setPendingCartData(null);
+        }
+      } else {
+        setOtpError(data.message || data.error || 'Invalid OTP. Please try again.');
       }
       
     } catch (err) {
-      setOtpError(err.message || 'Verification failed. Please check your OTP.');
       console.error('OTP verification error:', err);
+      setOtpError('Network error. Could not verify OTP. Please check your connection.');
     } finally {
       setOtpLoading(false);
     }
   };
 
-  // Function to display cart data after OTP verification
+  const handleResendOtp = () => {
+    setOtpSent(false);
+    setOtpCode(['', '', '', '', '', '']);
+    sendOtp();
+  };
+
   const displayCartData = (data) => {
     if (data) {
-      // Calculate total charge
-      const totalCharge = data.total_services * 10; // Example calculation - modify as needed
+      const totalCharge = data.total_services * 10;
       
       setApprovalData({
         cartId: data.cart_id,
@@ -260,7 +271,6 @@ const QRScannerPage = () => {
         date: new Date().toISOString().split('T')[0],
       });
       
-      // Set processing services
       const processing = data.services.filter(s => 
         s.status === 'pending' || s.status === 'processing'
       );
@@ -271,14 +281,15 @@ const QRScannerPage = () => {
     }
   };
 
-  // Function to fetch service cart data from backend
   const fetchServiceCart = async (cartId) => {
     setIsLoading(true);
     setError(null);
     setUserDetails(null);
-    const teller_id = JSON.parse(sessionStorage.getItem("userData1"))?.teller_id;
+    
     try {
-      const response = await fetch(`${API_BASE_URL}/service_cart/${cartId}/${teller_id}/`, {
+      const teller_id = JSON.parse(sessionStorage.getItem("userData1"))?.teller_id;
+      
+      const response = await fetch(`${API_BASE_URL}/service_cart/${cartId}/${teller_id || ''}/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -296,19 +307,16 @@ const QRScannerPage = () => {
       console.log('Fetched service cart data:', data);
       
       if (data && data.mobile_number) {
-        // Step 1: Get user details from local API using mobile number
         const userDataFromLocal = await fetchUserByMobile(data.mobile_number);
         
         if (userDataFromLocal && userDataFromLocal.email) {
-          // Step 2: Store cart data and user data, then show OTP modal
           setUserEmail(userDataFromLocal.email);
-          setUserData(userDataFromLocal); // Store user data for OTP verification
+          setUserData(userDataFromLocal);
           setPendingCartData(data);
           setShowOtpModal(true);
-          setOtpSent(false); // Reset OTP sent status to trigger auto-send
-          setOtpCode(['', '', '', '', '', '']); // Reset OTP input
+          setOtpSent(false);
+          setOtpCode(['', '', '', '', '', '']);
         } else {
-          // No email found for this mobile number
           setError('No user account found for this mobile number. Please contact support.');
           setShowApprovalDetails(false);
         }
@@ -326,7 +334,6 @@ const QRScannerPage = () => {
     }
   };
 
-  // Reset OTP state
   const resetOtpState = () => {
     setOtpCode(['', '', '', '', '', '']);
     setOtpSent(false);
@@ -336,12 +343,11 @@ const QRScannerPage = () => {
     setUserData(null);
   };
 
-  // Auto-send OTP when modal opens
   useEffect(() => {
-    if (showOtpModal && userEmail && userData && !otpSent && !otpLoading) {
+    if (showOtpModal && userEmail && !otpSent && !otpLoading) {
       sendOtp();
     }
-  }, [showOtpModal, userEmail, userData, otpSent, otpLoading]);
+  }, [showOtpModal, userEmail, otpSent, otpLoading]);
 
   const handleScanSuccess = async (decodedText) => {
     if (isScanning) return;
@@ -350,16 +356,13 @@ const QRScannerPage = () => {
     setError(null);
     
     try {
-      // Try to parse the QR data as JSON
       let qrData;
       try {
         qrData = JSON.parse(decodedText);
       } catch (parseError) {
-        // If not JSON, treat the whole text as cart_id
         qrData = { cart_id: decodedText };
       }
       
-      // Extract cart_id from QR data
       const cartId = qrData.cart_id || qrData.cartId || decodedText;
       
       if (!cartId) {
@@ -367,8 +370,6 @@ const QRScannerPage = () => {
       }
       
       console.log('Extracted cart ID:', cartId);
-      
-      // Fetch service cart details from backend
       await fetchServiceCart(cartId);
       
     } catch (err) {
@@ -382,7 +383,6 @@ const QRScannerPage = () => {
   };
 
   const handleScanFailure = (error) => {
-    // Only log meaningful errors
     if (error && !error.includes('No QR code found') && !error.includes('NotFoundException')) {
       console.warn('QR scan error:', error);
     }
@@ -412,7 +412,6 @@ const QRScannerPage = () => {
           fps: 10,
           qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0,
-          formatsToSupport: ['QR_CODE'],
         },
         handleScanSuccess,
         handleScanFailure
@@ -431,7 +430,7 @@ const QRScannerPage = () => {
         } else if (err.name === 'NotFoundError') {
           errorMsg += 'No camera found on this device.';
         } else {
-          errorMsg += 'Please check your device settings and ensure you are using HTTPS.';
+          errorMsg += 'Please check your device settings.';
         }
         alert(errorMsg);
         setCameraActive(false);
@@ -508,8 +507,6 @@ const QRScannerPage = () => {
         const decodedText = await tempScanner.scanFile(file, {
           fps: 10,
           qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
-          formatsToSupport: ['QR_CODE'],
         });
         
         await tempScanner.clear();
@@ -571,7 +568,7 @@ const QRScannerPage = () => {
       alert('Please scan a QR code first.');
       return;
     }
-    
+    console.log('Navigating to profile page with data:',userDetails)
     navigate('/profilepage', {
       state: {
         cartId: approvalData.cartId,
@@ -617,26 +614,6 @@ const QRScannerPage = () => {
     setShowResetModal(false);
   };
 
-  const completedServicesCount = approvalData.services.filter(s => s.status === 'completed').length;
-  const pendingServicesCount = approvalData.services.filter(s => s.status === 'pending').length;
-  const processingServicesCount = approvalData.services.filter(s => s.status === 'processing').length;
-  const progressPercentage = (completedServicesCount / approvalData.totalServices) * 100 || 0;
-
-  const getServiceStatusIcon = (status) => {
-    switch(status?.toLowerCase()) {
-      case 'completed':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      case 'processing':
-        return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
-      case 'failed':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return <ClipboardList className="h-4 w-4 text-gray-500" />;
-    }
-  };
-
   const getServiceStatusColor = (status) => {
     switch(status?.toLowerCase()) {
       case 'completed':
@@ -650,6 +627,11 @@ const QRScannerPage = () => {
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const formatAccountType = (type) => {
+    if (!type || type === 'N/A') return 'N/A';
+    return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
   };
 
   return (
@@ -696,8 +678,6 @@ const QRScannerPage = () => {
               style={{ minHeight: cameraActive ? '300px' : '0px' }}
             />
 
-            <div id="qr-reader-file" className="hidden" />
-
             {cameraActive && (
               <div className="flex justify-center mt-4 space-x-2">
                 <Button
@@ -742,13 +722,6 @@ const QRScannerPage = () => {
               </div>
             )}
 
-            {isLoadingUserDetails && (
-              <div className="flex items-center justify-center mt-2">
-                <Loader2 className="h-4 w-4 animate-spin text-blue-600 mr-2" />
-                <p className="text-xs text-slate-500">Fetching user details...</p>
-              </div>
-            )}
-
             {error && (
               <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                 <div className="flex items-start gap-2">
@@ -770,29 +743,81 @@ const QRScannerPage = () => {
 
             {showApprovalDetails && !isLoading && (
               <div className="mt-6 space-y-4 border-t pt-4">
-                {/* Customer Information */}
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-lg mb-2">Customer Information</h3>
-                  <div className="space-y-2">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                    <User className="h-5 w-5 text-blue-600" />
+                    Customer Information
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-blue-100">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700">Cart ID</label>
-                      <p className="text-lg font-semibold">{approvalData.cartId}</p>
+                      <label className="block text-xs font-medium text-slate-600">Cart ID</label>
+                      <p className="text-sm font-semibold text-gray-800">{approvalData.cartId}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700">Customer Name</label>
-                      <p className="text-lg">{approvalData.customerName}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700">Mobile Number</label>
-                      <p className="text-lg">{approvalData.mobileNumber || 'N/A'}</p>
+                      <label className="block text-xs font-medium text-slate-600">Customer Name</label>
+                      <p className="text-sm text-gray-800">{approvalData.customerName}</p>
                     </div>
                   </div>
+                  
+                  {userDetails && (
+                    <div className="mb-3 pb-3 border-b border-blue-100">
+                      <div className="flex items-center gap-1 mb-2">
+                        <Wallet className="h-4 w-4 text-blue-600" />
+                        <label className="text-xs font-semibold text-blue-700">Account Details</label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs text-slate-500">Account Number</label>
+                          <p className="text-sm font-mono font-semibold text-gray-800">
+                            {userDetails.account_number}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500">Account Type</label>
+                          <p className="text-sm font-semibold text-gray-800">
+                            {formatAccountType(userDetails.account_type)}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500">Account Balance</label>
+                          <p className="text-sm font-semibold text-green-600">
+                            KSh {parseFloat(userDetails.account_balance).toLocaleString()}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500">Account Status</label>
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                            userDetails.account_status === 'ACTIVE' 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {userDetails.account_status}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600">Mobile Number</label>
+                    <p className="text-sm text-gray-800">{approvalData.mobileNumber || 'N/A'}</p>
+                  </div>
+                  
+                  {userDetails?.email && (
+                    <div className="mt-2">
+                      <label className="block text-xs font-medium text-slate-600">Email</label>
+                      <p className="text-sm text-gray-800">{userDetails.email}</p>
+                    </div>
+                  )}
                 </div>
 
-                {/* Services List Preview */}
                 {approvalData.services.length > 0 && (
                   <div className="border rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Services Preview</h3>
+                    <h3 className="font-semibold mb-2 flex items-center gap-2">
+                      <ClipboardList className="h-4 w-4 text-blue-600" />
+                      Services Preview
+                    </h3>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
                       {approvalData.services.slice(0, 3).map((service, idx) => (
                         <div key={idx} className="flex justify-between items-center text-sm">
@@ -811,7 +836,6 @@ const QRScannerPage = () => {
                   </div>
                 )}
 
-                {/* Cart Summary */}
                 <div className="border-t pt-3">
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Total Services:</span>
@@ -827,7 +851,7 @@ const QRScannerPage = () => {
                   </div>
                   <div className="flex justify-between items-center mt-2">
                     <span className="font-medium">Total Charge:</span>
-                    <span className="text-xl font-bold text-blue-600">KSh{approvalData.charge}</span>
+                    <span className="text-xl font-bold text-blue-600">KSh {approvalData.charge}</span>
                   </div>
                   <div className="flex justify-between items-center mt-2">
                     <span className="font-medium">Date:</span>
@@ -907,7 +931,7 @@ const QRScannerPage = () => {
         </div>
       )}
 
-      {/* OTP Verification Modal - With 6-digit input fields */}
+      {/* OTP Verification Modal - Fixed typing */}
       {showOtpModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 relative">
@@ -930,7 +954,7 @@ const QRScannerPage = () => {
             </p>
             
             <div className="space-y-4">
-              <div className="flex justify-center gap-3">
+              <div className="flex justify-center gap-3" onPaste={handleOtpPaste}>
                 {otpCode.map((value, index) => (
                   <input
                     key={index}
@@ -938,23 +962,24 @@ const QRScannerPage = () => {
                     inputMode="numeric"
                     maxLength="1"
                     value={value}
-                    onChange={(e) => handleOtpChange(e.target, index)}
+                    onChange={(e) => handleOtpChange(e, index)}
                     onKeyDown={(e) => handleOtpKeyDown(e, index)}
                     onFocus={(e) => e.target.select()}
                     ref={(el) => (inputRefs.current[index] = el)}
-                    className="w-12 h-14 text-center text-xl font-semibold border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-12 h-14 text-center text-xl font-semibold border-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    autoComplete="off"
                   />
                 ))}
               </div>
               
               {otpError && (
                 <div className="p-2 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-xs text-red-600">{otpError}</p>
+                  <p className="text-xs text-red-600 text-center">{otpError}</p>
                 </div>
               )}
               
               <Button 
-                className="w-full" 
+                className="w-full bg-blue-600 hover:bg-blue-700" 
                 onClick={verifyOtp}
                 disabled={otpLoading || otpCode.join('').length !== 6}
               >
@@ -970,12 +995,16 @@ const QRScannerPage = () => {
               
               <div className="text-center">
                 <button
-                  onClick={sendOtp}
+                  onClick={handleResendOtp}
                   disabled={otpLoading}
                   className="text-sm text-blue-600 hover:text-blue-700 disabled:text-gray-400"
                 >
                   Resend OTP
                 </button>
+              </div>
+              
+              <div className="text-center text-xs text-gray-400">
+                <p>Can't find OTP? Check your spam folder</p>
               </div>
             </div>
           </div>
@@ -1027,7 +1056,7 @@ const QRScannerPage = () => {
                   className="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              <Button className="w-full" onClick={handlePasswordUpdate}>
+              <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={handlePasswordUpdate}>
                 Update Password
               </Button>
             </div>
