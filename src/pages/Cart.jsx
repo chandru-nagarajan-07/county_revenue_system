@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, ArrowLeft, QrCode, Download, X, Eye, History, Loader2 } from 'lucide-react';
+import { Trash2, ArrowLeft, QrCode, Download, X, Eye, History, Loader2, Star, MessageSquare, ThumbsUp, Clock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardHeader } from '@/components/banking/DashboardHeader';
 import { useNavigate } from 'react-router-dom';
@@ -36,6 +36,15 @@ const CartPage = () => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [transferHistory, setTransferHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // State for feedback modal
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [selectedServiceForFeedback, setSelectedServiceForFeedback] = useState(null);
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackSpeed, setFeedbackSpeed] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   // Get session user
   let sessionUser;
@@ -281,7 +290,6 @@ console.log("Session User in CartPage:", sessionUser);
       console.log("Transfer history response:", data);
       
       if (Array.isArray(data) && data.length > 0) {
-        // Extract only transfer-related information
         const transfers = data.map(record => ({
           id: record.id,
           from_teller: record.previous_teller?.name + ` (${record.previous_teller?.user_ID})` || "Initial",
@@ -310,7 +318,68 @@ console.log("Session User in CartPage:", sessionUser);
     console.log('Fetching transfer history for service ID:', service);
     fetchTransferHistory(serviceId);
   };
-  
+
+  // Feedback functions
+  const openFeedbackModal = (service) => {
+    setSelectedServiceForFeedback(service);
+    setFeedbackRating(0);
+    setHoverRating(0);
+    setFeedbackComment('');
+    setFeedbackSpeed('');
+    setIsFeedbackOpen(true);
+  };
+
+  const closeFeedbackModal = () => {
+    setIsFeedbackOpen(false);
+    setSelectedServiceForFeedback(null);
+    setFeedbackRating(0);
+    setFeedbackComment('');
+    setFeedbackSpeed('');
+  };
+
+  const submitFeedback = async () => {
+    if (feedbackRating === 0) {
+      alert('Please select a rating');
+      return;
+    }
+    if (!feedbackSpeed) {
+      alert('Please select teller speed');
+      return;
+    }
+
+    setIsSubmittingFeedback(true);
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/service_feedback/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service_id: selectedServiceForFeedback.id || selectedServiceForFeedback.id,
+          rating: feedbackRating,
+          comment: feedbackComment,
+          teller_speed: feedbackSpeed,
+          user_id: sessionUser.user_id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit feedback');
+      }
+
+      const data = await response.json();
+      console.log('Feedback submitted:', data);
+      alert('Thank you for your feedback!');
+      closeFeedbackModal();
+    } catch (err) {
+      console.error('Error submitting feedback:', err);
+      alert('Failed to submit feedback. Please try again.');
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -396,6 +465,139 @@ console.log("Session User in CartPage:", sessionUser);
     );
   };
 
+  // Feedback Modal Component
+  const FeedbackModal = () => {
+    if (!isFeedbackOpen) return null;
+
+    const speedOptions = [
+      { value: 'fast', label: '⚡ Fast', icon: Zap, color: 'text-green-600' },
+      { value: 'medium', label: '⏱️ Medium', icon: Clock, color: 'text-yellow-600' },
+      { value: 'slow', label: '🐢 Slow', icon: Clock, color: 'text-red-600' },
+    ];
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+          <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-yellow-600" />
+              Service Feedback
+            </h2>
+            <button
+              onClick={closeFeedbackModal}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <XCircle className="h-6 w-6" />
+            </button>
+          </div>
+          <div className="p-6">
+            {selectedServiceForFeedback && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">Service:</p>
+                <p className="font-semibold text-gray-800">{selectedServiceForFeedback.service_name || 'N/A'}</p>
+                <p className="text-xs text-gray-500 mt-1">Service Code: {selectedServiceForFeedback.service_code || 'N/A'}</p>
+              </div>
+            )}
+
+            {/* Rating Stars */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Rating <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setFeedbackRating(star)}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(0)}
+                    className="focus:outline-none transition-transform hover:scale-110"
+                  >
+                    <Star
+                      className={`h-8 w-8 ${
+                        (hoverRating || feedbackRating) >= star
+                          ? 'fill-yellow-400 text-yellow-400'
+                          : 'text-gray-300'
+                      } transition-colors`}
+                    />
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {feedbackRating === 1 && 'Very Poor'}
+                {feedbackRating === 2 && 'Poor'}
+                {feedbackRating === 3 && 'Average'}
+                {feedbackRating === 4 && 'Good'}
+                {feedbackRating === 5 && 'Excellent'}
+              </p>
+            </div>
+
+            {/* Teller Speed Dropdown */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Teller Speed <span className="text-red-500">*</span>
+              </label>
+              <Select value={feedbackSpeed} onValueChange={setFeedbackSpeed}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select teller speed" />
+                </SelectTrigger>
+                <SelectContent>
+                  {speedOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex items-center gap-2">
+                        <option.icon className={`h-4 w-4 ${option.color}`} />
+                        <span>{option.label}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Comment Textarea */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Additional Comments
+              </label>
+              <textarea
+                value={feedbackComment}
+                onChange={(e) => setFeedbackComment(e.target.value)}
+                placeholder="Share your experience with this service..."
+                rows="4"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent resize-none"
+              />
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={closeFeedbackModal}>
+                Cancel
+              </Button>
+              <Button
+                onClick={submitFeedback}
+                disabled={isSubmittingFeedback || feedbackRating === 0 || !feedbackSpeed}
+                className="bg-yellow-600 hover:bg-yellow-700"
+              >
+                {isSubmittingFeedback ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <ThumbsUp className="h-4 w-4 mr-2" />
+                    Submit Feedback
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
       <header className="flex items-center justify-between px-8 py-5 navy-gradient">
@@ -450,7 +652,7 @@ console.log("Session User in CartPage:", sessionUser);
                               onChange={() => toggleSelection(item.id)}
                               className="rounded border-slate-300"
                             />
-                           </td>
+                            </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{item.service_request_id}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{item.service_code}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{item.service_name}</td>
@@ -647,7 +849,7 @@ console.log("Session User in CartPage:", sessionUser);
         )}
       </AnimatePresence>
 
-      {/* View Cart Details Modal with Transfer History for each service */}
+      {/* View Cart Details Modal with Transfer History and Feedback for each service */}
       <AnimatePresence>
         {isViewModalOpen && selectedCartForView && (
           <motion.div
@@ -690,7 +892,7 @@ console.log("Session User in CartPage:", sessionUser);
                     </div>
                   </div>
 
-                  {/* Services List with Transfer History Button */}
+                  {/* Services List with Transfer History and Feedback Buttons */}
                   {selectedCartForView.services && selectedCartForView.services.length > 0 && (
                     <div className="border rounded-lg overflow-hidden">
                       <div className="bg-green-50 px-4 py-2 border-b">
@@ -704,36 +906,51 @@ console.log("Session User in CartPage:", sessionUser);
                               <th className="px-4 py-2 text-left font-medium text-gray-600">Service Name</th>
                               <th className="px-4 py-2 text-left font-medium text-gray-600">Reason</th>
                               <th className="px-4 py-2 text-left font-medium text-gray-600">Status</th>
-                              <th className="px-4 py-2 text-left font-medium text-gray-600">Transfer History</th>
+                              <th className="px-4 py-2 text-left font-medium text-gray-600">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
-                            {selectedCartForView.services.map((service, idx) => (
-                              <tr key={idx} className="hover:bg-gray-50">
-                                <td className="px-4 py-2 font-mono text-xs">{service.service_code || '-'}</td>
-                                <td className="px-4 py-2">{service.service_name || '-'}</td>
-                                <td className="px-4 py-2">{service.transfer_reason || '-'}</td>
-                                <td className="px-4 py-2">
-                                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    service.service_status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                                    service.service_status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                                    service.service_status === 'TO_BE_PROCESSED' ? 'bg-purple-100 text-purple-800' :
-                                    'bg-gray-100 text-gray-800'
-                                  }`}>
-                                    {service.service_status || 'Pending'}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-2">
-                                  <button
-                                    onClick={() => handleHistoryClick(service)}
-                                    className="text-blue-600 hover:text-blue-800 p-1 transition-colors"
-                                    title="View transfer history"
-                                  >
-                                    <History size={16} />
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
+                            {selectedCartForView.services.map((service, idx) => {
+                              const isCompleted = service.service_status?.toUpperCase() === 'COMPLETED';
+                              return (
+                                <tr key={idx} className="hover:bg-gray-50">
+                                  <td className="px-4 py-2 font-mono text-xs">{service.service_code || '-'}</td>
+                                  <td className="px-4 py-2">{service.service_name || '-'}</td>
+                                  <td className="px-4 py-2">{service.transfer_reason || '-'}</td>
+                                  <td className="px-4 py-2">
+                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                                      service.service_status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                                      service.service_status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                      service.service_status === 'TO_BE_PROCESSED' ? 'bg-purple-100 text-purple-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {service.service_status || 'Pending'}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => handleHistoryClick(service)}
+                                        className="text-blue-600 hover:text-blue-800 p-1 transition-colors"
+                                        title="View transfer history"
+                                      >
+                                        <History size={16} />
+                                      </button>
+                                      {/* Feedback button - only show for completed services */}
+                                      {isCompleted && (
+                                        <button
+                                          onClick={() => openFeedbackModal(service)}
+                                          className="text-yellow-600 hover:text-yellow-800 p-1 transition-colors"
+                                          title="Give feedback"
+                                        >
+                                          <MessageSquare size={16} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -761,6 +978,9 @@ console.log("Session User in CartPage:", sessionUser);
 
       {/* Transfer History Modal */}
       <TransferHistoryModal />
+
+      {/* Feedback Modal */}
+      <FeedbackModal />
     </div>
   );
 };

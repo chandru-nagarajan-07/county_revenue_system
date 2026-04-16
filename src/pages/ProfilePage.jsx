@@ -22,7 +22,9 @@ import {
   ThumbsDown,
   Info,
   Send,
-  History
+  History,
+  Wallet,
+  CreditCard
 } from 'lucide-react';
 import { DashboardHeader } from '@/components/banking/DashboardHeader1';
 
@@ -36,8 +38,17 @@ const ProfilePage = () => {
   const sessionUser = JSON.parse(sessionStorage.getItem("customerData") || "{}");
   const tellerUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
+  
+  // Get account details from sessionUser
+  const accountNumber = sessionUser?.account_number || 'N/A';
+  const accountType = sessionUser?.account_type || 'N/A';
+  const accountBalance = sessionUser?.account_balance || '0.00';
+  const accountStatus = sessionUser?.account_status || 'N/A';
+  
   console.log("ProfilePage session user:", sessionUser);
   console.log("ProfilePage teller user:", tellerUser);
+  console.log("Account Number:", accountNumber);
+  console.log("Account Type:", accountType);
   
   // Get branch code from session storage
   const branchCode = tellerUser?.teller_info || null;
@@ -393,6 +404,18 @@ const ProfilePage = () => {
     fetchServiceCartItemDetails(serviceId);
   };
 
+  // Format account type for display
+  const formatAccountType = (type) => {
+    if (!type || type === 'N/A') return 'N/A';
+    return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+  };
+
+  // Format currency
+  const formatCurrency = (amount) => {
+    if (!amount) return 'N/A';
+    return `KSh ${parseFloat(amount).toLocaleString()}`;
+  };
+
   // Load data on component mount
   useEffect(() => {
     if (cartData && cartData.cartId) {
@@ -556,12 +579,6 @@ const ProfilePage = () => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleString();
-  };
-
-  // Format currency
-  const formatCurrency = (amount) => {
-    if (!amount) return 'N/A';
-    return `KSh ${parseFloat(amount).toFixed(2)}`;
   };
 
   // History Modal Component - FIXED FOR ARRAY RESPONSE
@@ -1147,15 +1164,53 @@ const ProfilePage = () => {
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-            {/* Header Section */}
+            {/* Header Section with Account Details */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-6 border-b">
               <div className="flex items-start justify-between">
-                <div>
+                <div className="flex-1">
                   <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                     <FileText className="h-6 w-6 text-blue-600" />
                     Service Cart Details
                   </h2>
-                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  
+                  {/* Account Details Card - NEW */}
+                  {accountNumber !== 'N/A' && (
+                    <div className="mt-4 bg-white rounded-lg p-4 shadow-sm border border-blue-100">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Wallet className="h-5 w-5 text-blue-600" />
+                        <h3 className="font-semibold text-gray-800">Customer Account Details</h3>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                          <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+                            <CreditCard className="h-3 w-3" />
+                            Account Number
+                          </div>
+                          <p className="text-sm font-mono font-semibold text-gray-800">{accountNumber}</p>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Account Type</div>
+                          <p className="text-sm font-semibold text-gray-800">{formatAccountType(accountType)}</p>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Account Balance</div>
+                          <p className="text-sm font-bold text-green-600">{formatCurrency(accountBalance)}</p>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Account Status</div>
+                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                            accountStatus === 'ACTIVE' 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {accountStatus}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-center gap-2">
                       <Hash className="h-4 w-4 text-gray-500" />
                       <span className="text-sm text-gray-600">Cart ID:</span>
