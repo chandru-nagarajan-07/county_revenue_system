@@ -64,7 +64,7 @@ const TransferHistoryModal = ({ isOpen, onClose, history, isLoading }) => {
                     <div><span className="text-gray-500 w-24 inline-block">Previous Teller:</span> {transfer.from_teller}</div>
                     <div><span className="text-gray-500 w-24 inline-block">Current Teller:</span> {transfer.to_teller}</div>
                     <div><span className="text-gray-500 w-24 inline-block">Transferred At:</span> {formatDate(transfer.transferred_at)}</div>
-                    <div><span className="text-gray-500 w-24 inline-block">Remarks:</span> {transfer.remarks}</div>
+                    <div><span className="text-gray-500 w-24 inline-block">Remarks:</span> {transfer.status}</div>
                   </div>
                 </div>
               ))}
