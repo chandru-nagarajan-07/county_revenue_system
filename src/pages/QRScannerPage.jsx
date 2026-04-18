@@ -779,12 +779,12 @@ const QRScannerPage = () => {
                             {formatAccountType(userDetails.account_type)}
                           </p>
                         </div>
-                        <div>
+                        {/* <div>
                           <label className="block text-xs text-slate-500">Account Balance</label>
                           <p className="text-sm font-semibold text-green-600">
                             KSh {parseFloat(userDetails.account_balance).toLocaleString()}
                           </p>
-                        </div>
+                        </div> */}
                         <div>
                           <label className="block text-xs text-slate-500">Account Status</label>
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
