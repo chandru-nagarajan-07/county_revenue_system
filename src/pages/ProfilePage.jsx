@@ -24,7 +24,9 @@ import {
   Send,
   History,
   Wallet,
-  CreditCard
+  CreditCard,
+  PlayCircle,
+  Play
 } from 'lucide-react';
 import { DashboardHeader } from '@/components/banking/DashboardHeader1';
 
@@ -34,36 +36,17 @@ const ProfilePage = () => {
   const cartData = location.state;
   const customer = location.state?.customer;
   const branch = customer?.teller_info;
-  // const sessionUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const sessionUser = JSON.parse(sessionStorage.getItem("customerData") || "{}");
   const tellerUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
   
-  // Get account details from sessionUser
   const accountNumber = sessionUser?.account_number || 'N/A';
   const accountType = sessionUser?.account_type || 'N/A';
   const accountBalance = sessionUser?.account_balance || '0.00';
   const accountStatus = sessionUser?.account_status || 'N/A';
   
-  console.log("ProfilePage session user:", sessionUser);
-  console.log("ProfilePage teller user:", tellerUser);
-  console.log("Account Number:", accountNumber);
-  console.log("Account Type:", accountType);
-  
-  // Get branch code from session storage
   const branchCode = tellerUser?.teller_info || null;
-  const teller_id = tellerUser?.teller_id|| null;
-  console.log("Branch code from session:", branchCode);
-  // Option 2: If stored separately as 'teller' in sessionStorage
-  const tellerFromSession = JSON.parse(sessionStorage.getItem("teller") || "null");
-  const branchCodeAlt = tellerFromSession || branchCode;
-  
-  console.log("Branch Code:", branchCode);
-  console.log("Branch Code Alternative:", teller_id);
-  
-  // Use the branch code that's available
-  const finalBranchCode = branchCode || branchCodeAlt;
-  console.log("Final Branch Code:", finalBranchCode);
+  const teller_id = tellerUser?.teller_id || null;
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -75,7 +58,6 @@ const ProfilePage = () => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   
-  // Transfer modal states
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [selectedTransferService, setSelectedTransferService] = useState(null);
   const [tellers, setTellers] = useState([]);
@@ -84,23 +66,22 @@ const ProfilePage = () => {
   const [isTransferring, setIsTransferring] = useState(false);
   const [transferReason, setTransferReason] = useState('');
 
-  // History modal states
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyData, setHistoryData] = useState(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
-  // API base URL
   const API_BASE_URL = 'http://localhost:8000/api';
 
-  // Status options
   const STATUS_OPTIONS = {
+    INITIATED: 'INITIATED',
     ON_HOLD: 'ON_HOLD',
     COMPLETED: 'COMPLETED',
-    TRANSFERRED: 'TRANSFERRED',
-    TO_BE_PROCESSED: 'TO_BE_PROCESSED'
+    TO_BE_PROCESSED: 'TO_BE_PROCESSED',
+    PROCESSING: 'PROCESSING',
+    IN_PROGRESS: 'IN_PROGRESS',
+    PENDING: 'PENDING'
   };
 
-  // Function to fetch service cart from backend
   const fetchServiceCart = async (cartId) => {
     setIsLoading(true);
     setError(null);
@@ -118,9 +99,8 @@ const ProfilePage = () => {
       }
       
       const data = await response.json();
-      console.log(' ', data);
+      console.log('Fetched cart data:', data);
       if (data) {
-        // Calculate total charge (adjust based on your actual pricing)
         const totalCharge = data.total_services * 10;
         
         setServiceCart({
@@ -134,9 +114,8 @@ const ProfilePage = () => {
           date: new Date().toISOString().split('T')[0],
         });
         
-        // Set processing services (services that are pending, on hold, or in progress)
         const processing = data.services.filter(s => 
-          s.status === 'pending' || s.status === 'processing' || s.status === 'ON_HOLD'
+          s.status === 'PENDING' || s.status === 'IN_PROGRESS' || s.status === 'INITIATED' || s.status === 'ON_HOLD'
         );
         setProcessingServices(processing);
       }
@@ -148,7 +127,6 @@ const ProfilePage = () => {
     }
   };
 
-  // Function to fetch service cart item details
   const fetchServiceCartItemDetails = async (cartId) => {
     setIsLoadingDetails(true);
     setSelectedServiceDetails(null);
@@ -167,7 +145,6 @@ const ProfilePage = () => {
       
       const data = await response.json();
       console.log('Service cart item details:', data);
-      // The API returns an object with 'cart' and 'service_data' fields
       setSelectedServiceDetails(data);
       setIsDetailsModalOpen(true);
       
@@ -179,7 +156,6 @@ const ProfilePage = () => {
     }
   };
 
-  // Function to fetch tellers of the current branch
   const fetchTellersByBranch = async () => {
     setIsLoadingTellers(true);
     setTellers([]);
@@ -193,7 +169,6 @@ const ProfilePage = () => {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          // 'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
       });
       
@@ -204,14 +179,10 @@ const ProfilePage = () => {
       const data = await response.json();
       console.log("Tellers fetched:", data);
       
-      // Transform the data - map teller IDs to user details
-      // Since the API returns TellerAllocation data with teller IDs
       const formattedTellers = data.map((allocation) => {
-        // You can either fetch user details here or have backend include them
-        // For now, we'll use the teller ID and try to get user info from session/local storage
         return {
           id: allocation.teller,
-          name: `Teller ${allocation.teller}`, // Temporary name
+          name: `Teller ${allocation.teller}`,
           email: 'Loading...',
           employee_id: allocation.teller,
           branch_id: allocation.branch,
@@ -222,11 +193,9 @@ const ProfilePage = () => {
       
       setTellers(formattedTellers);
       
-      // Fetch user details for each teller
       const tellersWithDetails = await Promise.all(
         formattedTellers.map(async (teller) => {
           try {
-            // Try to get user details from your user endpoint
             const userResponse = await fetch(`${API_BASE_URL}/users/${teller.id}/`, {
               method: 'GET',
               headers: {
@@ -261,65 +230,59 @@ const ProfilePage = () => {
     }
   };
 
-  // Function to fetch service history - FIXED FOR ARRAY RESPONSE
-    const fetchServiceHistory = async (serviceId) => {
-      setIsLoadingHistory(true);
-      setHistoryData(null);
-        
-      try {
-        const response = await fetch(`${API_BASE_URL}/referral_history/${serviceId}/`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log("Service history response:", data);
-        
-        // Check if data is an array and has items
-        if (Array.isArray(data) && data.length > 0) {
-          // Get all transfers for timeline
-          const allTransfers = data;
-          // Get the latest transfer (first item in array)
-          const latestTransfer = data[0];
-          
-          setHistoryData({
-            previous_teller: `${latestTransfer?.previous_teller?.name} (${latestTransfer?.previous_teller?.user_ID})`,
-            new_teller: `${latestTransfer?.new_teller?.name} (${latestTransfer?.new_teller?.user_ID})`,
-            remarks: latestTransfer.remarks,
-            created_at: latestTransfer.created_at,
-            action: latestTransfer.action,
-            service: latestTransfer.service,
-            id: latestTransfer.id,
-            transfer_history: allTransfers // Store full array for timeline
-          });
-        } else {
-          setHistoryData(null);
-        }
-        
-        setIsHistoryOpen(true);
-        
-      } catch (err) {
-        console.error('Error fetching service history:', err);
-        alert(`Failed to fetch service history: ${err.message}`);
-      } finally {
-        setIsLoadingHistory(false);
+  const fetchServiceHistory = async (serviceId) => {
+    setIsLoadingHistory(true);
+    setHistoryData(null);
+      
+    try {
+      const response = await fetch(`${API_BASE_URL}/referral_history/${serviceId}/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
+      
+      const data = await response.json();
+      console.log("Service history response:", data);
+      
+      if (Array.isArray(data) && data.length > 0) {
+        const allTransfers = data;
+        const latestTransfer = data[0];
+        
+        setHistoryData({
+          previous_teller: `${latestTransfer?.previous_teller?.name} (${latestTransfer?.previous_teller?.user_ID})`,
+          new_teller: `${latestTransfer?.new_teller?.name} (${latestTransfer?.new_teller?.user_ID})`,
+          remarks: latestTransfer.remarks,
+          created_at: latestTransfer.created_at,
+          action: latestTransfer.action,
+          service: latestTransfer.service,
+          id: latestTransfer.id,
+          transfer_history: allTransfers
+        });
+      } else {
+        setHistoryData(null);
+      }
+      
+      setIsHistoryOpen(true);
+      
+    } catch (err) {
+      console.error('Error fetching service history:', err);
+      alert(`Failed to fetch service history: ${err.message}`);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
 
-  // Function to transfer service to another teller
   const transferService = async () => {
     if (!selectedTransferService || !selectedTeller) {
       alert('Please select a teller to transfer the service');
       return;
     }
     
-    // Just check if reason is not empty (any length allowed, even single character)
     if (!transferReason.trim()) {
       alert('Please provide a reason for transferring the service');
       return;
@@ -336,7 +299,7 @@ const ProfilePage = () => {
         },
         body: JSON.stringify({
           service_id: selectedTransferService.service_id,
-          to_teller_id: selectedTeller.id,
+          to_teller_id: selectedTeller.id, 
           teller_id: teller_id,
           transfer_reason: transferReason.trim(),
           status: 'TO_BE_PROCESSED'
@@ -350,19 +313,12 @@ const ProfilePage = () => {
       const data = await response.json();
       console.log('Service transfer response:', data);
       
-      // Update UI immediately
-      setServiceCart(prev => ({
-        ...prev,
-        services: prev.services.map(s =>
-          s.service_id === data.service.service_id
-            ? { ...s, ...data.service }
-            : s
-        )
-      }));
+      if (serviceCart && serviceCart.cartId) {
+        await fetchServiceCart(serviceCart.cartId);
+      }
       
       alert(`Service successfully transferred to ${selectedTeller.name}`);
       
-      // Close modal and reset states
       setIsTransferModalOpen(false);
       setSelectedTransferService(null);
       setSelectedTeller(null);
@@ -377,21 +333,18 @@ const ProfilePage = () => {
     }
   };
 
-  // Handle transfer button click
   const handleTransferClick = async (service) => {
-    // Check if branch code is available
     if (!branchCode) {
       alert('Branch information not available. Please refresh and try again.');
       return;
     }
     
     setSelectedTransferService(service);
-    setTransferReason(''); // Reset reason when opening modal
+    setTransferReason('');
     setIsTransferModalOpen(true);
     await fetchTellersByBranch();
   };
 
-  // Handle history button click - Only call if status is TO_BE_PROCESSED
   const handleHistoryClick = (service) => {
     const currentStatus = service.status?.toUpperCase();
     if (currentStatus === 'TO_BE_PROCESSED') {
@@ -399,43 +352,113 @@ const ProfilePage = () => {
     }
   };
 
-  // Handle service ID click
   const handleServiceIdClick = (serviceId) => {
     fetchServiceCartItemDetails(serviceId);
   };
 
-  // Format account type for display
-  const formatAccountType = (type) => {
-    if (!type || type === 'N/A') return 'N/A';
-    return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
-  };
-
-  // Format currency
-  const formatCurrency = (amount) => {
-    if (!amount) return 'N/A';
-    return `KSh ${parseFloat(amount).toLocaleString()}`;
-  };
-
-  // Load data on component mount
-  useEffect(() => {
-    if (cartData && cartData.cartId) {
-      // If data was passed from QR scanner, use it directly
-      setServiceCart(cartData);
-      const processing = cartData.services.filter(s => 
-        s.status === 'pending' || s.status === 'processing' || s.status === 'ON_HOLD'
-      );
-      setProcessingServices(processing);
-    } else {
-      // If no data was passed, you might want to redirect or show a message
-      setError('No service cart data found. Please scan a QR code first.');
+  // NEW FUNCTION: Complete Service - Calls BOTH APIs
+  const completeService = async (serviceId) => {
+    setUpdatingServiceId(serviceId);
+    
+    try {
+      // FIRST API CALL: Old service_cart_status endpoint with COMPLETED
+      console.log('📞 Calling 1st API (OLD): /api/service_cart_status/ with COMPLETED');
+      const response1 = await fetch(`${API_BASE_URL}/service_cart_status/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service_id: serviceId,
+          teller_id: teller_id,
+          status: 'COMPLETED'
+        })
+      });
+      
+      if (!response1.ok) {
+        throw new Error(`First API failed! status: ${response1.status}`);
+      }
+      
+      const data1 = await response1.json();
+      console.log('✅ 1st API (OLD) response:', data1);
+      
+      // SECOND API CALL: service_initiate endpoint with COMPLETED status
+      console.log('📞 Calling 2nd API: /api/service_initiate/${serviceId}/ with COMPLETED');
+      const response2 = await fetch(`${API_BASE_URL}/service_initiate/${serviceId}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'COMPLETED'
+        })
+      });
+      
+      if (!response2.ok) {
+        throw new Error(`Second API failed! status: ${response2.status}`);
+      }
+      
+      const data2 = await response2.json();
+      console.log('✅ 2nd API response:', data2);
+      
+      // Refresh the cart data to get updated status
+      if (serviceCart && serviceCart.cartId) {
+        await fetchServiceCart(serviceCart.cartId);
+      }
+      
+      alert('✅ Service completed successfully! (Both APIs called)');
+      
+    } catch (err) {
+      console.error('❌ Error completing service:', err);
+      alert(`Failed to complete service: ${err.message}`);
+    } finally {
+      setUpdatingServiceId(null);
     }
-  }, [cartData]);
+  };
 
-  // Function to update service status
+  // Initiate Service - Calls ONLY the service_initiate API with INITIATED status
+  const initiateService = async (serviceId) => {
+    setUpdatingServiceId(serviceId);
+    
+    try {
+      console.log('📞 Calling initiate API: /api/service_initiate/${serviceId}/ with INITIATED');
+      const response = await fetch(`${API_BASE_URL}/service_initiate/${serviceId}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'INITIATED'
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Initiate response:', data);
+      
+      if (serviceCart && serviceCart.cartId) {
+        await fetchServiceCart(serviceCart.cartId);
+      }
+      
+      alert(`✅ Service initiated successfully! Status: INITIATED`);
+      
+    } catch (err) {
+      console.error('❌ Error initiating service:', err);
+      alert(`Failed to initiate service: ${err.message}`);
+    } finally {
+      setUpdatingServiceId(null);
+    }
+  };
+
+  // Update Service Status (for HOLD and RESUME) - Uses OLD API
   const updateServiceStatus = async (serviceId, status) => {
     setUpdatingServiceId(serviceId);
     
     try {
+      console.log(`📞 Calling OLD API: /api/service_cart_status/ with ${status}`);
       const response = await fetch(`${API_BASE_URL}/service_cart_status/`, {
         method: 'POST',
         headers: {
@@ -443,7 +466,7 @@ const ProfilePage = () => {
         },
         body: JSON.stringify({
           service_id: serviceId,
-          teller_id:teller_id,
+          teller_id: teller_id,
           status: status
         })
       });
@@ -453,41 +476,37 @@ const ProfilePage = () => {
       }
       
       const data = await response.json();
+      console.log('✅ Status update response:', data);
       
-      // Refresh the cart data to get updated statuses
       if (serviceCart && serviceCart.cartId) {
         await fetchServiceCart(serviceCart.cartId);
       }
       
-      // Show success message based on status
       let message = '';
       switch(status) {
-        case STATUS_OPTIONS.COMPLETED:
-          message = 'Service marked as completed successfully!';
-          break;
         case STATUS_OPTIONS.ON_HOLD:
-          message = 'Service put on hold successfully!';
+          message = '✅ Service put on hold successfully!';
           break;
-        case STATUS_OPTIONS.TRANSFERRED:
-          message = 'Service transferred successfully!';
+        case STATUS_OPTIONS.INITIATED:
+          message = '✅ Service resumed from hold!';
           break;
         default:
-          message = 'Service status updated successfully!';
+          message = '✅ Service status updated successfully!';
       }
       
       alert(message);
       
     } catch (err) {
-      console.error('Error updating service status:', err);
+      console.error('❌ Error updating service status:', err);
       alert(`Failed to update service status: ${err.message}`);
     } finally {
       setUpdatingServiceId(null);
     }
   };
 
-  // Function to get service status icon
   const getServiceStatusIcon = (status) => {
-    switch(status?.toUpperCase()) {
+    const upperStatus = status?.toUpperCase() || '';
+    switch(upperStatus) {
       case 'COMPLETED':
         return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case 'ON_HOLD':
@@ -496,55 +515,56 @@ const ProfilePage = () => {
         return <Send className="h-4 w-4 text-purple-500" />;
       case 'PENDING':
         return <Clock className="h-4 w-4 text-yellow-500" />;
-      case 'PROCESSING':
+      case 'INITIATED':
       case 'IN_PROGRESS':
-        return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
+      case 'PROCESSING':
+        return <PlayCircle className="h-4 w-4 text-blue-500" />;
       default:
         return <ClipboardList className="h-4 w-4 text-gray-500" />;
     }
   };
 
-  // Function to get service status color
   const getServiceStatusColor = (status) => {
-    switch(status?.toUpperCase()) {
+    const upperStatus = status?.toUpperCase() || '';
+    switch(upperStatus) {
       case 'COMPLETED':
         return 'bg-green-100 text-green-800';
       case 'ON_HOLD':
         return 'bg-orange-100 text-orange-800';
-      case 'TRANSFERRED':
-        return 'bg-purple-100 text-purple-800';
+      case 'TO_BE_PROCESSED':
+        return 'bg-indigo-100 text-indigo-800';
       case 'PENDING':
         return 'bg-yellow-100 text-yellow-800';
+      case 'INITIATED':
+      case 'IN_PROGRESS':
       case 'PROCESSING':
-      case 'TO_BE_PROCESSED':
         return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
-  // Function to get human-readable status text
   const getStatusText = (status) => {
-    switch(status?.toUpperCase()) {
+    const upperStatus = status?.toUpperCase() || '';
+    switch(upperStatus) {
       case 'COMPLETED':
         return 'Completed';
       case 'ON_HOLD':
         return 'On Hold';
-      case 'TRANSFERRED':
-        return 'Transferred';
-      case 'PENDING':
-        return 'Pending';
-      case 'PROCESSING':
-      case 'IN_PROGRESS':
-        return 'In Progress';
       case 'TO_BE_PROCESSED':
         return 'To Be Processed';
+      case 'PENDING':
+        return 'Pending';
+      case 'INITIATED':
+        return 'Initiated';
+      case 'IN_PROGRESS':
+      case 'PROCESSING':
+        return 'In Progress';
       default:
         return status || 'Unknown';
     }
   };
 
-  // Handle refresh
   const handleRefresh = async () => {
     if (serviceCart && serviceCart.cartId) {
       await fetchServiceCart(serviceCart.cartId);
@@ -567,21 +587,42 @@ const ProfilePage = () => {
     navigate('/');
   };
 
-  // Calculate service statistics
-  const completedServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'COMPLETED').length || 0;
-  const onHoldServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'ON_HOLD').length || 0;
-  const transferredServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'TRANSFERRED').length || 0;
-  const pendingServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'PENDING' || s.status?.toUpperCase() === 'PROCESSING' || s.status?.toUpperCase() === 'IN_PROGRESS').length || 0;
-  const progressPercentage = (completedServicesCount / (serviceCart?.totalServices || 1)) * 100 || 0;
+  const formatAccountType = (type) => {
+    if (!type || type === 'N/A') return 'N/A';
+    return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+  };
 
-  // Format date for display
+  const formatCurrency = (amount) => {
+    if (!amount) return 'N/A';
+    return `KSh ${parseFloat(amount).toLocaleString()}`;
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleString();
   };
 
-  // History Modal Component - FIXED FOR ARRAY RESPONSE
+  useEffect(() => {
+    if (cartData && cartData.cartId) {
+      setServiceCart(cartData);
+      const processing = cartData.services.filter(s => 
+        s.status === 'PENDING' || s.status === 'IN_PROGRESS' || s.status === 'INITIATED' || s.status === 'ON_HOLD'
+      );
+      setProcessingServices(processing);
+    } else {
+      setError('No service cart data found. Please scan a QR code first.');
+    }
+  }, [cartData]);
+
+  const completedServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'COMPLETED').length || 0;
+  const onHoldServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'ON_HOLD').length || 0;
+  const transferredServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'TO_BE_PROCESSED').length || 0;
+  const pendingServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'PENDING').length || 0;
+  const initiatedServicesCount = serviceCart?.services?.filter(s => s.status?.toUpperCase() === 'INITIATED' || s.status?.toUpperCase() === 'IN_PROGRESS').length || 0;
+  const progressPercentage = (completedServicesCount / (serviceCart?.totalServices || 1)) * 100 || 0;
+
+  // History Modal Component
   const HistoryModal = () => {
     if (!isHistoryOpen) return null;
     
@@ -589,7 +630,6 @@ const ProfilePage = () => {
       <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
         <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
           
-          {/* Header */}
           <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
             <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
               <History className="h-5 w-5 text-blue-600" />
@@ -603,7 +643,6 @@ const ProfilePage = () => {
             </button>
           </div>
 
-          {/* Body */}
           <div className="p-6">
             {isLoadingHistory ? (
               <div className="text-center py-8">
@@ -612,7 +651,6 @@ const ProfilePage = () => {
               </div>
             ) : historyData ? (
               <div className="space-y-4">
-                {/* Latest Transfer Details */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h3 className="font-semibold text-gray-700 mb-3">Transfer Details</h3>
                   <div className="grid grid-cols-2 gap-3 text-sm">
@@ -643,7 +681,6 @@ const ProfilePage = () => {
                   </div>
                 </div>
 
-                {/* Transfer History Timeline - Show all transfers */}
                 {historyData.transfer_history && historyData.transfer_history.length > 0 && (
                   <div className="border rounded-lg overflow-hidden">
                     <div className="bg-blue-50 px-4 py-2 border-b">
@@ -686,7 +723,6 @@ const ProfilePage = () => {
             )}
           </div>
 
-          {/* Footer */}
           <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end">
             <Button onClick={() => setIsHistoryOpen(false)}>Close</Button>
           </div>
@@ -703,7 +739,6 @@ const ProfilePage = () => {
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
           
-          {/* Header */}
           <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
             <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
               <Send className="h-5 w-5 text-purple-600" />
@@ -723,9 +758,7 @@ const ProfilePage = () => {
             </button>
           </div>
 
-          {/* Body */}
           <div className="p-6">
-            {/* Service Information */}
             {selectedTransferService && (
               <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                 <h4 className="font-semibold text-gray-700 mb-2">Service to Transfer</h4>
@@ -748,7 +781,6 @@ const ProfilePage = () => {
               </div>
             )}
 
-            {/* Transfer Reason Input - No minimum length restriction */}
             <div className="mb-6">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Transfer Reason <span className="text-red-500">*</span>
@@ -765,7 +797,6 @@ const ProfilePage = () => {
               </p>
             </div>
 
-            {/* Tellers List */}
             <div>
               <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <User className="h-4 w-4" />
@@ -816,7 +847,6 @@ const ProfilePage = () => {
             </div>
           </div>
 
-          {/* Footer */}
           <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end gap-3">
             <Button
               variant="outline"
@@ -861,13 +891,11 @@ const ProfilePage = () => {
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
           
-          {/* Header */}
           <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
             <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
               <Info className="h-5 w-5 text-blue-600" />
               Service Cart Item Details
             </h3>
-
             <button
               onClick={() => setIsDetailsModalOpen(false)}
               className="text-gray-500 hover:text-gray-700 transition-colors"
@@ -876,64 +904,43 @@ const ProfilePage = () => {
             </button>
           </div>
 
-          {/* Body */}
           <div className="p-6">
             {isLoadingDetails ? (
               <div className="text-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
                 <p className="mt-2 text-gray-600">Loading details...</p>
               </div>
-
             ) : selectedServiceDetails ? (
-
               <div className="space-y-6">
-
-                {/* Cart Item Information */}
                 <div className="border rounded-lg overflow-hidden">
                   <div className="bg-blue-50 px-4 py-2 border-b">
-                    <h4 className="font-semibold text-blue-900">
-                      Cart Item Information
-                    </h4>
+                    <h4 className="font-semibold text-blue-900">Cart Item Information</h4>
                   </div>
-
                   <div className="p-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
                       {selectedServiceDetails.cart &&
                         Object.entries(selectedServiceDetails.cart).map(
                           ([key, value]) => {
-
-                            // Remove unwanted fields
                             if (
                               key === "service_data" ||
-                              key === "created_at" ||
                               key === "documents" ||
                               key === "core_banking_ref" ||
                               key === "rejection_reason" ||
-                              key === "customer_notified" ||
-                              key === "processed_at" ||
-                              key === "completed_at" ||
-                              key === "teller"
+                              key === "customer_notified"
                             ) return null;
-
                             let displayValue = value;
-
                             if (key === "amount") {
                               displayValue = formatCurrency(value);
-                            } 
-                            else if (value === null || value === undefined) {
+                            } else if (value === null || value === undefined) {
                               displayValue = "N/A";
-                            } 
-                            else if (typeof value === "boolean") {
+                            } else if (typeof value === "boolean") {
                               displayValue = value ? "Yes" : "No";
                             }
-
                             return (
                               <div key={key} className="flex flex-col">
                                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   {key.replace(/_/g, " ")}
                                 </span>
-
                                 <span className="text-sm text-gray-900 mt-1 font-medium">
                                   {String(displayValue)}
                                 </span>
@@ -941,124 +948,74 @@ const ProfilePage = () => {
                             );
                           }
                         )}
-
                     </div>
                   </div>
                 </div>
 
-                {/* Service Data Section */}
                 {selectedServiceDetails.service_data && (
                   <div className="border rounded-lg overflow-hidden">
-
                     <div className="bg-green-50 px-4 py-2 border-b">
-                      <h4 className="font-semibold text-green-900">
-                        Service Data Details
-                      </h4>
+                      <h4 className="font-semibold text-green-900">Service Data Details</h4>
                     </div>
-
                     <div className="p-4">
-
                       {selectedServiceDetails.service_data.error ? (
                         <div className="text-red-600 p-2 bg-red-50 rounded">
                           Error: {selectedServiceDetails.service_data.error}
                         </div>
-
                       ) : (
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                          {Object.entries(
-                            selectedServiceDetails.service_data
-                          ).map(([key, value]) => {
-
-                            // Remove QR image
+                          {Object.entries(selectedServiceDetails.service_data).map(([key, value]) => {
                             if (key === "qr_img") return null;
-
                             let displayValue = value;
-
                             if (key === "created_at") {
                               displayValue = formatDate(value);
-                            } 
-                            else if (key === "amount") {
+                            } else if (key === "amount") {
                               displayValue = formatCurrency(value);
-                            } 
-                            else if (value === null || value === undefined) {
+                            } else if (value === null || value === undefined) {
                               displayValue = "N/A";
                             }
-
                             return (
                               <div key={key} className="flex flex-col">
                                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   {key.replace(/_/g, " ")}
                                 </span>
-
-                                <span className="text-sm text-gray-900 mt-1">
-                                  {displayValue}
-                                </span>
+                                <span className="text-sm text-gray-900 mt-1">{displayValue}</span>
                               </div>
                             );
                           })}
-
                         </div>
                       )}
-
                     </div>
                   </div>
                 )}
 
-                {/* Summary */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex justify-between items-center">
-
                     <div>
-                      <span className="text-sm text-gray-600">
-                        Service Status:
-                      </span>
-
-                      <span
-                        className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusColor(
-                          selectedServiceDetails.cart?.service_status
-                        )}`}
-                      >
-                        {getStatusText(
-                          selectedServiceDetails.cart?.service_status
-                        )}
+                      <span className="text-sm text-gray-600">Service Status:</span>
+                      <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusColor(selectedServiceDetails.cart?.service_status)}`}>
+                        {getStatusText(selectedServiceDetails.cart?.service_status)}
                       </span>
                     </div>
-
                     <div>
-                      <span className="text-sm text-gray-600">
-                        Service Code:
-                      </span>
-
+                      <span className="text-sm text-gray-600">Service Code:</span>
                       <span className="ml-2 font-mono text-sm font-semibold text-gray-800">
                         {selectedServiceDetails.cart?.service_code}
                       </span>
                     </div>
-
                   </div>
                 </div>
-
               </div>
-
             ) : (
-
               <div className="text-center py-8 text-gray-500">
                 No details available for this service
               </div>
-
             )}
           </div>
 
-          {/* Footer */}
           <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end">
-            <Button
-              onClick={() => setIsDetailsModalOpen(false)}
-            >
-              Close
-            </Button>
+            <Button onClick={() => setIsDetailsModalOpen(false)}>Close</Button>
           </div>
-
         </div>
       </div>
     );
@@ -1164,7 +1121,7 @@ const ProfilePage = () => {
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-            {/* Header Section with Account Details */}
+            {/* Header Section */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-6 border-b">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -1173,7 +1130,6 @@ const ProfilePage = () => {
                     Service Cart Details
                   </h2>
                   
-                  {/* Account Details Card - NEW */}
                   {accountNumber !== 'N/A' && (
                     <div className="mt-4 bg-white rounded-lg p-4 shadow-sm border border-blue-100">
                       <div className="flex items-center gap-2 mb-3">
@@ -1192,10 +1148,10 @@ const ProfilePage = () => {
                           <div className="text-xs text-gray-500 mb-1">Account Type</div>
                           <p className="text-sm font-semibold text-gray-800">{formatAccountType(accountType)}</p>
                         </div>
-                        <div>
+                        {/* <div>
                           <div className="text-xs text-gray-500 mb-1">Account Balance</div>
                           <p className="text-sm font-bold text-green-600">{formatCurrency(accountBalance)}</p>
-                        </div>
+                        </div> */}
                         <div>
                           <div className="text-xs text-gray-500 mb-1">Account Status</div>
                           <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
@@ -1254,10 +1210,14 @@ const ProfilePage = () => {
                   style={{ width: `${progressPercentage}%` }}
                 />
               </div>
-              <div className="grid grid-cols-4 gap-2 text-center text-sm">
+              <div className="grid grid-cols-5 gap-2 text-center text-sm">
                 <div>
                   <div className="text-green-600 font-semibold">{completedServicesCount}</div>
                   <div className="text-gray-600">Completed</div>
+                </div>
+                <div>
+                  <div className="text-blue-600 font-semibold">{initiatedServicesCount}</div>
+                  <div className="text-gray-600">Initiated</div>
                 </div>
                 <div>
                   <div className="text-orange-600 font-semibold">{onHoldServicesCount}</div>
@@ -1287,9 +1247,18 @@ const ProfilePage = () => {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {serviceCart.services.map((service) => {
-                    const currentStatus = service.status?.toUpperCase();
+                    const currentStatus = service.status?.toUpperCase() || '';
                     const isUpdating = updatingServiceId === service.service_id;
-                    const showHistoryButton = currentStatus === 'TO_BE_PROCESSED';
+                    
+                    const isPending = currentStatus === 'PENDING';
+                    const isInProgress = currentStatus === 'IN_PROGRESS';
+                    const isInitiated = currentStatus === 'INITIATED';
+                    const isOnHold = currentStatus === 'ON_HOLD';
+                    const isToBeProcessed = currentStatus === 'TO_BE_PROCESSED';
+                    const isCompleted = currentStatus === 'COMPLETED';
+                    
+                    const showInitiateButton = isPending || isInProgress;
+                    const showActionButtons = isInitiated;
                     
                     return (
                       <tr key={service.service_id} className="hover:bg-gray-50 transition">
@@ -1321,70 +1290,111 @@ const ProfilePage = () => {
                             </div>
                           ) : (
                             <div className="flex gap-2 flex-wrap">
-                              {currentStatus !== STATUS_OPTIONS.COMPLETED && (
+                              {/* INITIATE BUTTON - calls initiateService with INITIATED */}
+                              {showInitiateButton && (
                                 <Button
                                   size="sm"
-                                  variant="outline"
-                                  className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                                  onClick={() => updateServiceStatus(service.service_id, STATUS_OPTIONS.COMPLETED)}
-                                  title="Mark as Completed"
+                                  className="bg-blue-600 text-white hover:bg-blue-700"
+                                  onClick={() => initiateService(service.service_id)}
                                 >
-                                  <ThumbsUp className="h-4 w-4 mr-1" /> Complete
+                                  <PlayCircle className="h-4 w-4 mr-1" /> Initiate
                                 </Button>
                               )}
-                              {currentStatus !== STATUS_OPTIONS.ON_HOLD && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
-                                  onClick={() => updateServiceStatus(service.service_id, STATUS_OPTIONS.ON_HOLD)}
-                                  title="Put on Hold"
-                                >
-                                  <PauseCircle className="h-4 w-4 mr-1" /> Hold
-                                </Button>
+                              
+                              {/* ACTION BUTTONS - for INITIATED status */}
+                              {showActionButtons && (
+                                <>
+                                  {/* COMPLETE button - calls completeService (BOTH APIs) */}
+                                  <Button
+                                    size="sm"
+                                    className="bg-green-600 text-white hover:bg-green-700"
+                                    onClick={() => completeService(service.service_id)}
+                                  >
+                                    <ThumbsUp className="h-4 w-4 mr-1" /> Complete
+                                  </Button>
+                                  
+                                  {/* HOLD button - calls updateServiceStatus with ON_HOLD */}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
+                                    onClick={() => updateServiceStatus(service.service_id, STATUS_OPTIONS.ON_HOLD)}
+                                  >
+                                    <PauseCircle className="h-4 w-4 mr-1" /> Hold
+                                  </Button>
+                                  
+                                  {/* TRANSFER button */}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+                                    onClick={() => handleTransferClick(service)}
+                                  >
+                                    <Send className="h-4 w-4 mr-1" /> Transfer Desk
+                                  </Button>
+                                </>
                               )}
-                              {currentStatus !== STATUS_OPTIONS.TRANSFERRED && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
-                                  onClick={() => handleTransferClick(service)}
-                                  title="Transfer Service"
-                                >
-                                  <Send className="h-4 w-4 mr-1" /> Transfer Desk
-                                </Button>
+                              
+                              {/* ON_HOLD buttons */}
+                              {isOnHold && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    className="bg-blue-600 text-white hover:bg-blue-700"
+                                    onClick={() => updateServiceStatus(service.service_id, STATUS_OPTIONS.INITIATED)}
+                                  >
+                                    <Play className="h-4 w-4 mr-1" /> Resume
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+                                    onClick={() => handleTransferClick(service)}
+                                  >
+                                    <Send className="h-4 w-4 mr-1" /> Transfer Desk
+                                  </Button>
+                                </>
                               )}
-                              {/* History Button - ONLY for TO_BE_PROCESSED status */}
-                              {showHistoryButton && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                                  onClick={() => handleHistoryClick(service)}
-                                  title="View History"
-                                >
-                                  <History className="h-4 w-4 mr-1" /> History
-                                </Button>
+                              
+                              {/* TO_BE_PROCESSED buttons */}
+                              {isToBeProcessed && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    className="bg-green-600 text-white hover:bg-green-700"
+                                    onClick={() => completeService(service.service_id)}
+                                  >
+                                    <ThumbsUp className="h-4 w-4 mr-1" /> Complete
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+                                    onClick={() => handleTransferClick(service)}
+                                  >
+                                    <Send className="h-4 w-4 mr-1" /> Transfer Desk
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                                    onClick={() => handleHistoryClick(service)}
+                                  >
+                                    <History className="h-4 w-4 mr-1" /> History
+                                  </Button>
+                                </>
+                              )}
+                              
+                              {/* COMPLETED - no buttons */}
+                              {isCompleted && (
+                                <div className="text-green-600 text-sm flex items-center gap-1">
+                                  <CheckCircle2 className="h-4 w-4" /> Completed
+                                </div>
                               )}
                             </div>
                           )}
-                          {currentStatus === STATUS_OPTIONS.COMPLETED && (
-                            <div className="text-green-600 text-sm flex items-center gap-1">
-                              <CheckCircle2 className="h-4 w-4" /> Completed
-                            </div>
-                          )}
-                          {currentStatus === STATUS_OPTIONS.ON_HOLD && (
-                            <div className="text-orange-600 text-sm flex items-center gap-1">
-                              <PauseCircle className="h-4 w-4" /> On Hold
-                            </div>
-                          )}
-                          {currentStatus === STATUS_OPTIONS.TO_BE_PROCESSED && (
-                            <div className="text-purple-600 text-sm flex items-center gap-1">
-                              <Send className="h-4 w-4" /> To Be Processed
-                            </div>
-                          )}
-                        </td>
-                      </tr>
+                         </td>
+                       </tr>
                     );
                   })}
                 </tbody>
@@ -1415,13 +1425,8 @@ const ProfilePage = () => {
         </div>
       </main>
 
-      {/* Transfer Modal */}
       <TransferModal />
-
-      {/* Service Details Modal */}
       <ServiceDetailsModal />
-
-      {/* History Modal */}
       <HistoryModal />
     </div>
   );
