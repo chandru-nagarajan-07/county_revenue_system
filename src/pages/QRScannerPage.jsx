@@ -67,7 +67,7 @@ const QRScannerPage = () => {
   const qrCodeRegionRef = useRef(null);
   const html5QrCodeRef = useRef(null);
 
-  const API_BASE_URL = 'http://localhost:8000/api';
+  const API_BASE_URL = 'https://snapsterbe.techykarthikbms.com/api';
 
   const fetchUserByMobile = async (mobileNumber) => {
     if (!mobileNumber) {
@@ -94,7 +94,6 @@ const QRScannerPage = () => {
       }
       
       const data = await response.json();
-      console.log('Fetched user details from local API:', data);
       
       const userInfo = data.serializer;
       const accountInfo = data.acoount_data;
