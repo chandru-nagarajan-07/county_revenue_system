@@ -16,7 +16,6 @@ const LoginPage = () => {
       alert("Enter username & password");
       return;
     }
-    console.log("Attempting login with:", { username, password });
     try {
       const response = await fetch("https://snapsterbe.techykarthikbms.com/api/login/", {
         method: "POST",
