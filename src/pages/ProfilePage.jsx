@@ -336,7 +336,7 @@
     const [historyData, setHistoryData] = useState(null);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     
-    const API_BASE_URL = 'http://localhost:8000/api';
+    const API_BASE_URL = 'https://snapsterbe.techykarthikbms.com/api';
     const STATUS_OPTIONS = {
       INITIATED: 'INITIATED',
       ON_HOLD: 'ON_HOLD',

@@ -56,7 +56,7 @@ const QRScannerPage = () => {
   const html5QrCodeRef = useRef(null);
 
   // API base URL - change this to your actual backend URL
-  const API_BASE_URL = 'http://localhost:8000/api';
+  const API_BASE_URL = 'https://snapsterbe.techykarthikbms.com/api';
 
   // Check if camera is available
   const checkCameraAvailability = async () => {
