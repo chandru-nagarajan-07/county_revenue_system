@@ -69,7 +69,7 @@ export function DashboardHeader({
       setLoadingNotifications(true);
 
       const response = await fetch(
-        `http://localhost:8000/api/notification/${teller_id}/`
+        `https://snapster.techykarthikbms.com/api/notification/${teller_id}/`
       );
 
       if (!response.ok) {
