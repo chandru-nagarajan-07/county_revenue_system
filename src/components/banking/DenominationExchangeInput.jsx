@@ -150,7 +150,7 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
     setLoading(true);
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/api/denomination-exchange/",
+        "https://snapsterbe.techykarthikbms.com/api/denomination-exchange/",
         {
           method: "POST",
           headers: {
@@ -212,7 +212,7 @@ export default function DenominationExchange({ customer, onBack, formFields }) {
       // Update transaction status to completed
       if (transactionId) {
         const response = await fetch(
-          `http://127.0.0.1:8000/api/denomination-exchange/${transactionId}/`,
+          `https://snapsterbe.techykarthikbms.com/api/denomination-exchange/${transactionId}/`,
           {
             method: "PATCH",
             headers: {

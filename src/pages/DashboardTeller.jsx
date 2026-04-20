@@ -67,7 +67,7 @@ const DashboardTeller = () => {
   // --- Data Fetching ---
   const fetchDashboardCounts = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/dashboard-counts/");
+      const response = await fetch("https://snapsterbe.techykarthikbms.com/api/dashboard-counts/");
       if (!response.ok) throw new Error("Failed to fetch dashboard counts");
       
       const data = await response.json();
@@ -81,7 +81,7 @@ const DashboardTeller = () => {
   const fetchServiceApprovals = async () => {
     try {
       setApprovalsLoading(true);
-      const response = await fetch(`http://127.0.0.1:8000/api/all_cards/${branch}/`);
+      const response = await fetch(`https://snapsterbe.techykarthikbms.com/api/all_cards/${branch}/`);
       if (!response.ok) throw new Error("Failed to fetch service approvals");
       
       const data = await response.json();
@@ -97,7 +97,7 @@ const DashboardTeller = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/view_api_service_groups1/");
+        const response = await fetch("https://snapsterbe.techykarthikbms.com/view_api_service_groups1/");
         if (!response.ok) throw new Error("Server error");
 
         const data = await response.json();
@@ -157,7 +157,7 @@ const DashboardTeller = () => {
       setLoading(true);
       setSelectedCategory(catKey);
 
-      const response = await fetch(`http://127.0.0.1:8000/view_api_service_types_by_group/${catKey}/`);
+      const response = await fetch(`https://snapsterbe.techykarthikbms.com/view_api_service_types_by_group/${catKey}/`);
       if (!response.ok) throw new Error("Failed to fetch service types");
 
       const data = await response.json();
@@ -265,7 +265,7 @@ const DashboardTeller = () => {
     if (selectedApproval?.id) {
       try {
         // Call approve API endpoint here
-        const response = await fetch(`http://127.0.0.1:8000/api/approve_cart/${selectedApproval.id}/`, {
+        const response = await fetch(`https://snapsterbe.techykarthikbms.com/api/approve_cart/${selectedApproval.id}/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

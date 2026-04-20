@@ -65,7 +65,7 @@ console.log("Register by from state:", register_by); // Debugging line
       console.log('hjgsdjgdsaj',data1)}
       const data1='done'
       const response = await fetch(
-        "http://127.0.0.1:8000/api/email-verification/",
+        "https://snapsterbe.techykarthikbms.com/api/email-verification/",
         {
           method: "POST",
           headers: {

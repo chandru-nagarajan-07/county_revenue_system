@@ -335,7 +335,7 @@ Details: ${JSON.stringify(details)}
       console.log("Submitting payload:", payload);
 
       const res = await fetch(
-        "http://127.0.0.1:8000/api/account-modification-requests/",
+        "https://snapsterbe.techykarthikbms.com/api/account-modification-requests/",
         {
           method: "POST",
           headers: {
