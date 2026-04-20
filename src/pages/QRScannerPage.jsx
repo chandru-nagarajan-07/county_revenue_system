@@ -66,7 +66,7 @@ const QRScannerPage = () => {
 
   const qrCodeRegionRef = useRef(null);
   const html5QrCodeRef = useRef(null);
-
+  console.log('QRScannerPage rendered with serviceData:', serviceData);
   const API_BASE_URL = 'https://snapsterbe.techykarthikbms.com/api';
 
   const fetchUserByMobile = async (mobileNumber) => {
@@ -116,12 +116,11 @@ const QRScannerPage = () => {
       setIsLoadingUserDetails(false);
     }
   };
-
   const sendOtp = async () => {
     if (!userEmail) {
       setOtpError('User email not found. Please try scanning again.');
       return;
-    }
+    } 
     
     setOtpLoading(true);
     setOtpError('');
