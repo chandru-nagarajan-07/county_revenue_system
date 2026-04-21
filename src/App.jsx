@@ -23,6 +23,8 @@ import ProfilePage from "./pages/ProfilePage";
 import CartPage from "./pages/Cart";
 import Dashboard from "./pages/Dashboardnew";
 import Reorder from "./pages/reorder";
+import KycOnboardingFlow from "./pages/KycNew";
+
 
 
 const queryClient = new QueryClient();
@@ -53,6 +55,7 @@ const App = () => (
           <Route path="/profilepage" element={<ProfilePage />} />
           <Route path="/dashboardnew" element={<Dashboard />} />
           <Route path="/reorder" element={<Reorder />} />
+          <Route path="/kyconboarding" element={<KycOnboardingFlow />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
        
