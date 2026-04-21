@@ -1,19 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  Check,
-  Loader2,
-  CheckCircle,
-  XCircle,
-  Upload,
-  Trash2,
-  AlertCircle,
-  Plus,
-  Fingerprint,
-  Camera
+  ArrowLeft, ChevronLeft, ChevronRight, Check, Loader2,
+  CheckCircle, XCircle, Upload, Trash2, AlertCircle, Plus,
+  Fingerprint, Camera
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -35,26 +25,26 @@ import {
 // ========== STEP DEFINITIONS ==========
 const STEPS = [
   { id: 1, name: "Personal Info" },
-  { id: 2, name: "Account Details" },
-  { id: 3, name: "Address" },
-  { id: 4, name: "Employment" },
-  { id: 5, name: "Next of Kin" },
-  { id: 6, name: "KYC Documents" },
-  { id: 7, name: "Consent" },
-  { id: 8, name: "Preview & Submit" },
+  { id: 2, name: "Identity Docs" },
+  { id: 3, name: "Contact & Address" },
+  { id: 4, name: "Employment & Financial" },
+  { id: 5, name: "Account Details" },
+  { id: 6, name: "Next of Kin" },
+  { id: 7, name: "Tax & Compliance" },
+  { id: 8, name: "Declarations" },
+  { id: 9, name: "Preview & Submit" },
 ];
 
-// ========== MOCK UNIQUENESS CHECKS (plain JS) ==========
-const checkUniqueNationalId = async (nationalId) => {
-  const existingIds = ['12345678', '87654321', '11223344'];
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return !existingIds.includes(nationalId);
+// ========== MOCK UNIQUENESS CHECKS ==========
+const checkUniqueNationalId = async (id) => {
+  const existing = ['12345678', '87654321'];
+  await new Promise(r => setTimeout(r, 500));
+  return !existing.includes(id);
 };
-
-const checkUniqueKraPin = async (kraPin) => {
-  const existingPins = ['A001234567Z', 'B002345678Y', 'C003456789X'];
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return !existingPins.includes(kraPin);
+const checkUniqueKraPin = async (pin) => {
+  const existing = ['A001234567Z', 'B002345678Y'];
+  await new Promise(r => setTimeout(r, 500));
+  return !existing.includes(pin);
 };
 
 // ========== ID GENERATORS ==========
@@ -64,106 +54,134 @@ const generateCifNumber = () => `CIF${Math.floor(Math.random() * 1000000000).toS
 
 // ========== INITIAL FORM DATA ==========
 const INITIAL_DATA = {
-  // Step 1.1
-  title: '', firstName: '', lastName: '', dateOfBirth: '', gender: '',
-  phoneNumber: '', phoneOtpVerified: false, phoneOtpCode: '',
-  email: '', emailOtpVerified: false, emailOtpCode: '',
-  nationalId: '', kraPin: '', maritalStatus: '', nationality: 'Kenyan',
-  placeOfBirth: '', countryOfResidence: 'Kenya', pep: 'No', disability: '',
-  // Step 1.2
-  accountType: '', accountPurpose: '', accountOwnership: 'individual', currency: 'KES',
-  // Step 1.3
-  street: '', city: '', district: '', country: 'Kenya', postalCode: '',
-  nearestLandmark: '', county: '', durationAtAddress: '', proofOfResidence: null,
-  // Step 1.4
-  employerName: '', employmentType: '', monthlyIncome: '', occupation: '',
-  expectedMonthlyTransactions: '', maxDepositWithdrawal: '', sourceOfFunds: '', otherIncomeSources: '',
-  // Step 1.5
-  nextOfKinList: [],
-  // Step 1.6
-  nationalIdFront: null, nationalIdBack: null, passportPhoto: null, signatureImage: null,
-  addressProofDoc: null, kraPinCertificate: null, signedCustomershipForm: null,
-  idIssueDate: '', idPlaceOfIssue: '', biometricCaptured: false, livePhotoCaptured: false,
-  // Step 1.7
-  acceptTerms: false, dataUsageConsent: false, consentDate: '',
-  // System
-  customerId: '', customershipNumber: '', cifNumber: '', status: 'Draft', kycStatus: 'Pending'
+  // Section 1
+  title: '', firstName: '', middleName: '', lastName: '', otherNames: '', formerName: '',
+  dateOfBirth: '', placeOfBirth: '', gender: '', maritalStatus: '', nationality: 'Kenyan',
+  dualNationality: false, secondNationality: '', countryOfBirth: '', countryOfResidence: 'Kenya',
+  religion: '', pep: false, pepRoleDescription: '', disability: false, disabilityType: '',
+  // Section 2
+  idType: '', nationalIdNumber: '', passportNumber: '', passportIssueDate: '', passportExpiryDate: '',
+  passportIssuingCountry: '', alienIdNumber: '', alienIdExpiryDate: '', refugeeIdNumber: '',
+  serviceNumber: '', idIssueDate: '', idPlaceOfIssue: '', idFrontImage: null, idBackImage: null,
+  kraPinNumber: '', kraPinCertCopy: null, nhifNumber: '', nssfNumber: '', workPermitNumber: '',
+  workPermitClass: '', workPermitExpiryDate: '', birthCertificateNumber: '', studentProof: null,
+  biometricCaptured: false, livePhotoCaptured: false, signatureImage: null,
+  // Section 3
+  plotHouseNumber: '', streetRoad: '', nearestLandmark: '', estateVillage: '', subLocation: '',
+  location: '', division: '', subCounty: '', county: '', chiefsArea: '', countryAddress: 'Kenya',
+  gpsLatitude: '', gpsLongitude: '', durationAtAddressYears: '', durationAtAddressMonths: '',
+  proofOfResidence: null, poBox: '', postalCode: '', townCity: '',
+  primaryMobile: '', primaryMobileVerified: false, primaryMobileOtp: '', secondaryMobile: '',
+  homeTelephone: '', workTelephone: '', workExtension: '', whatsappNumber: '', mobileNetworkProvider: '',
+  primaryEmail: '', primaryEmailVerified: false, primaryEmailOtp: '', secondaryEmail: '',
+  preferredCommunicationChannel: '', preferredLanguage: '',
+  // Section 4
+  employmentStatus: '', occupation: '', industry: '', employerName: '', employerAddress: '',
+  employerTelephone: '', yearsWithEmployer: '', natureOfBusiness: '', businessRegNumber: '',
+  kraBusinessPin: '', yearsInBusiness: '', monthlyNetIncome: '', otherIncomeSources: [],
+  expectedMonthlyCreditTurnover: '', expectedMaxSingleDeposit: '', expectedMaxSingleWithdrawal: '',
+  primarySourceOfFunds: '', sourceOfWealth: '', sourceOfWealthDocument: null, annualIncome: '',
+  netWorthEstimate: '', existingLoans: false, existingLoansAmount: '',
+  // Section 5
+  accountOwnershipType: '', accountProductType: '', accountPurpose: '', accountCurrency: 'KES',
+  branchPreference: '', accountOperatingMode: '', mandateHolderFullName: '', mandateHolderIdNumber: '',
+  relationshipToMandateHolder: '', chequeBookRequired: false, chequeBookPickupMethod: '',
+  debitCardRequired: false, cardType: '', cardCollectionMode: '', atmDailyLimit: '',
+  posDailyLimit: '', onlineTransferDailyLimit: '', standingOrderRequired: false,
+  standingOrderDetails: '', directDebitAuthority: false, eStatementPreferred: false,
+  statementFrequency: '', statementDeliveryMode: '', openingDepositAmount: '', openingDepositMethod: '',
+  referralCode: '', referringCustomerAccount: '',
+  fdDepositAmount: '', fdTenor: '', fdInterestRate: '', fdInterestPaymentFrequency: '',
+  fdInterestCreditedTo: '', fdRolloverInstruction: '',
+  // Section 6
+  nextOfKinList: [], secondaryNextOfKinList: [],
+  minorGuardian: { name: '', nationalId: '', kraPin: '', relationship: '', mobile: '', courtOrderDoc: null },
+  // Section 7
+  taxResidentInKenya: true, taxResidencyCountry: '', foreignTaxId: '', vatRegistrationNumber: '',
+  usPersonDeclaration: false, usSsn: '', usAddress: '', w9w8benSubmitted: false, w9w8benDoc: null,
+  crsAdditionalCountries: [], foreignTinPerCountry: [], crsSelfCertificationSigned: false,
+  customerRiskRating: '', enhancedDueDiligenceRequired: false, sanctionsScreeningCleared: false,
+  adverseMediaCheckCompleted: false, iprsVerificationStatus: '', crbCheckStatus: '', crbReferenceNumber: '',
+  // Section 10
+  infoAccuracyDecl: false, amlDeclaration: false, pepSelfDeclaration: false,
+  fatcaCrsSelfCertSigned: false, taxComplianceDecl: false, termsAccepted: false,
+  dataProtectionConsent: false, creditBureauConsent: false, regulatorDataConsent: false,
+  marketingConsent: false, customerSignature: null, signatureDate: '', customerThumbPrint: null,
+  witnessFullName: '', witnessIdNumber: '', witnessSignature: null, powerOfAttorneyDoc: null,
+  openingOfficerName: '', officerStaffId: '', officerBranchCode: '', relationshipManagerName: '',
+  rmEmployeeId: '', documentsVerifiedChecklist: false, applicationReceivedDateTime: '',
+  applicationApprovedDate: '', approvalAuthorityLevel: '', accountNumberAssigned: '',
+  sortCodeBranchCode: '', swiftBicCode: '', iban: '', customerCifNumber: '', welcomeLetterIssued: false,
+  welcomePackDeliveryChannel: '', coreBankingEntryDateTime: '',
+  status: 'Draft', kycStatus: 'Pending'
+};
+
+// Helper component for file upload
+const FileUpload = ({ label, field, data, onChange, required, accept = "image/*,.pdf" }) => {
+  const inputRef = useRef(null);
+  return (
+    <div className="space-y-2">
+      <Label>{label} {required && '*'}</Label>
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={() => inputRef.current?.click()} type="button">
+          <Upload className="h-4 w-4 mr-2" />
+          {data[field] ? (data[field]?.name || 'File selected') : 'Choose'}
+        </Button>
+        {data[field] && (
+          <Button variant="ghost" size="sm" onClick={() => onChange(field, null)}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+      <input type="file" ref={inputRef} onChange={e => onChange(field, e.target.files?.[0] || null)} className="hidden" accept={accept} />
+    </div>
+  );
 };
 
 // ========== STEP COMPONENTS ==========
 const PersonalInfoStep = ({ data, onChange, errors, setErrors }) => {
-  const [sendingPhoneOtp, setSendingPhoneOtp] = useState(false);
   const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
   const [checkingNationalId, setCheckingNationalId] = useState(false);
   const [checkingKraPin, setCheckingKraPin] = useState(false);
   const [nationalIdValid, setNationalIdValid] = useState(null);
   const [kraPinValid, setKraPinValid] = useState(null);
 
-  const sendPhoneOtp = async () => {
-    if (!data.phoneNumber || data.phoneNumber.length < 10) {
-      setErrors({ ...errors, phoneNumber: 'Valid phone number required' });
-      return;
-    }
-    setSendingPhoneOtp(true);
-    await new Promise(r => setTimeout(r, 1000));
-    alert(`OTP sent to ${data.phoneNumber}: 123456`);
-    setSendingPhoneOtp(false);
-  };
-
-  const verifyPhoneOtp = () => {
-    if (data.phoneOtpCode === '123456') {
-      onChange('phoneOtpVerified', true);
-      setErrors({ ...errors, phoneOtp: '' });
-    } else {
-      setErrors({ ...errors, phoneOtp: 'Invalid OTP' });
-    }
-  };
-
   const sendEmailOtp = async () => {
-    if (!data.email || !data.email.includes('@')) {
-      setErrors({ ...errors, email: 'Valid email required' });
+    if (!data.primaryEmail || !data.primaryEmail.includes('@')) {
+      setErrors({ ...errors, primaryEmail: 'Valid email required' });
       return;
     }
     setSendingEmailOtp(true);
     await new Promise(r => setTimeout(r, 1000));
-    alert(`OTP sent to ${data.email}: 123456`);
+    alert(`OTP sent to ${data.primaryEmail}: 123456`);
     setSendingEmailOtp(false);
   };
-
   const verifyEmailOtp = () => {
-    if (data.emailOtpCode === '123456') {
-      onChange('emailOtpVerified', true);
-      setErrors({ ...errors, emailOtp: '' });
-    } else {
-      setErrors({ ...errors, emailOtp: 'Invalid OTP' });
-    }
+    if (data.primaryEmailOtp === '123456') {
+      onChange('primaryEmailVerified', true);
+      setErrors({ ...errors, primaryEmailOtp: '' });
+    } else setErrors({ ...errors, primaryEmailOtp: 'Invalid OTP' });
   };
-
   const validateNationalId = async () => {
-    if (!data.nationalId) return;
+    if (!data.nationalIdNumber) return;
     setCheckingNationalId(true);
-    const isValid = await checkUniqueNationalId(data.nationalId);
+    const isValid = await checkUniqueNationalId(data.nationalIdNumber);
     setNationalIdValid(isValid);
-    if (!isValid) setErrors({ ...errors, nationalId: 'National ID already exists' });
-    else setErrors({ ...errors, nationalId: '' });
+    if (!isValid) setErrors({ ...errors, nationalIdNumber: 'National ID already exists' });
+    else setErrors({ ...errors, nationalIdNumber: '' });
     setCheckingNationalId(false);
   };
-
   const validateKraPin = async () => {
-    if (!data.kraPin) return;
+    if (!data.kraPinNumber) return;
     setCheckingKraPin(true);
-    const isValid = await checkUniqueKraPin(data.kraPin);
+    const isValid = await checkUniqueKraPin(data.kraPinNumber);
     setKraPinValid(isValid);
-    if (!isValid) setErrors({ ...errors, kraPin: 'KRA PIN already exists' });
-    else setErrors({ ...errors, kraPin: '' });
+    if (!isValid) setErrors({ ...errors, kraPinNumber: 'KRA PIN already exists' });
+    else setErrors({ ...errors, kraPinNumber: '' });
     setCheckingKraPin(false);
   };
-
-  const age = data.dateOfBirth
-    ? new Date().getFullYear() - new Date(data.dateOfBirth).getFullYear()
-    : 0;
+  const age = data.dateOfBirth ? new Date().getFullYear() - new Date(data.dateOfBirth).getFullYear() : 0;
   const isAgeValid = age >= 18;
-
   useEffect(() => {
     if (data.dateOfBirth && !isAgeValid) setErrors({ ...errors, dateOfBirth: 'Must be 18 years or older' });
     else setErrors({ ...errors, dateOfBirth: '' });
@@ -172,215 +190,505 @@ const PersonalInfoStep = ({ data, onChange, errors, setErrors }) => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label>Title <span className="text-destructive">*</span></Label>
-          <Select value={data.title} onValueChange={(v) => onChange('title', v)}>
-            <SelectTrigger><SelectValue placeholder="Mr/Ms/Dr" /></SelectTrigger>
-            <SelectContent><SelectItem value="Mr">Mr</SelectItem><SelectItem value="Mrs">Mrs</SelectItem><SelectItem value="Ms">Ms</SelectItem><SelectItem value="Dr">Dr</SelectItem></SelectContent>
+        <div>
+          <Label>Title *</Label>
+          <Select value={data.title} onValueChange={v => onChange('title', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Mr">Mr</SelectItem><SelectItem value="Mrs">Mrs</SelectItem>
+              <SelectItem value="Ms">Ms</SelectItem><SelectItem value="Dr">Dr</SelectItem>
+              <SelectItem value="Prof">Prof</SelectItem><SelectItem value="Rev">Rev</SelectItem>
+              <SelectItem value="Hon">Hon</SelectItem>
+            </SelectContent>
           </Select>
+          {errors.title && <p className="text-xs text-destructive">{errors.title}</p>}
         </div>
-        <div className="space-y-2"><Label>First Name *</Label><Input value={data.firstName} onChange={e => onChange('firstName', e.target.value)} /></div>
-        <div className="space-y-2"><Label>Last Name *</Label><Input value={data.lastName} onChange={e => onChange('lastName', e.target.value)} /></div>
+        <div>
+          <Label>First Name *</Label>
+          <Input value={data.firstName} onChange={e => onChange('firstName', e.target.value)} />
+          {errors.firstName && <p className="text-xs text-destructive">{errors.firstName}</p>}
+        </div>
+        <div>
+          <Label>Middle Name</Label>
+          <Input value={data.middleName} onChange={e => onChange('middleName', e.target.value)} />
+        </div>
+        <div>
+          <Label>Last Name *</Label>
+          <Input value={data.lastName} onChange={e => onChange('lastName', e.target.value)} />
+          {errors.lastName && <p className="text-xs text-destructive">{errors.lastName}</p>}
+        </div>
+        <div>
+          <Label>Other Names / Aliases</Label>
+          <Input value={data.otherNames} onChange={e => onChange('otherNames', e.target.value)} />
+        </div>
+        <div>
+          <Label>Former Name (if changed)</Label>
+          <Input value={data.formerName} onChange={e => onChange('formerName', e.target.value)} />
+        </div>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2"><Label>Date of Birth *</Label><Input type="date" value={data.dateOfBirth} onChange={e => onChange('dateOfBirth', e.target.value)} />
+        <div>
+          <Label>Date of Birth *</Label>
+          <Input type="date" value={data.dateOfBirth} onChange={e => onChange('dateOfBirth', e.target.value)} />
           {errors.dateOfBirth && <p className="text-xs text-destructive">{errors.dateOfBirth}</p>}
-          {data.dateOfBirth && isAgeValid && <p className="text-xs text-success">Age: {age} years</p>}
+          {data.dateOfBirth && isAgeValid && <p className="text-xs text-success">Age: {age}</p>}
         </div>
-        <div className="space-y-2"><Label>Gender *</Label><Select value={data.gender} onValueChange={v => onChange('gender', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select></div>
+        <div>
+          <Label>Place of Birth *</Label>
+          <Input value={data.placeOfBirth} onChange={e => onChange('placeOfBirth', e.target.value)} />
+          {errors.placeOfBirth && <p className="text-xs text-destructive">{errors.placeOfBirth}</p>}
+        </div>
+        <div>
+          <Label>Gender *</Label>
+          <Select value={data.gender} onValueChange={v => onChange('gender', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent>
+          </Select>
+          {errors.gender && <p className="text-xs text-destructive">{errors.gender}</p>}
+        </div>
+        <div>
+          <Label>Marital Status *</Label>
+          <Select value={data.maritalStatus} onValueChange={v => onChange('maritalStatus', v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Single">Single</SelectItem><SelectItem value="Married">Married</SelectItem>
+              <SelectItem value="Divorced">Divorced</SelectItem><SelectItem value="Widowed">Widowed</SelectItem>
+              <SelectItem value="Separated">Separated</SelectItem>
+            </SelectContent>
+          </Select>
+          {errors.maritalStatus && <p className="text-xs text-destructive">{errors.maritalStatus}</p>}
+        </div>
+        <div>
+          <Label>Nationality *</Label>
+          <Input value={data.nationality} onChange={e => onChange('nationality', e.target.value)} />
+          {errors.nationality && <p className="text-xs text-destructive">{errors.nationality}</p>}
+        </div>
+        <div className="flex items-center space-x-2">
+          <Checkbox checked={data.dualNationality} onCheckedChange={c => onChange('dualNationality', c)} />
+          <Label>Dual Nationality?</Label>
+          {data.dualNationality && <Input placeholder="Second nationality" value={data.secondNationality} onChange={e => onChange('secondNationality', e.target.value)} className="ml-2" />}
+        </div>
+        <div>
+          <Label>Country of Birth *</Label>
+          <Input value={data.countryOfBirth} onChange={e => onChange('countryOfBirth', e.target.value)} />
+          {errors.countryOfBirth && <p className="text-xs text-destructive">{errors.countryOfBirth}</p>}
+        </div>
+        <div>
+          <Label>Country of Residence *</Label>
+          <Input value={data.countryOfResidence} onChange={e => onChange('countryOfResidence', e.target.value)} />
+          {errors.countryOfResidence && <p className="text-xs text-destructive">{errors.countryOfResidence}</p>}
+        </div>
+        <div>
+          <Label>Religion</Label>
+          <Input value={data.religion} onChange={e => onChange('religion', e.target.value)} />
+        </div>
+        <div className="flex items-center space-x-2">
+          <Checkbox checked={data.pep} onCheckedChange={c => onChange('pep', c)} />
+          <Label>Politically Exposed Person (PEP) *</Label>
+          {data.pep && <Input placeholder="Role description" value={data.pepRoleDescription} onChange={e => onChange('pepRoleDescription', e.target.value)} className="ml-2" />}
+          {errors.pep && <p className="text-xs text-destructive">{errors.pep}</p>}
+        </div>
+        <div className="flex items-center space-x-2">
+          <Checkbox checked={data.disability} onCheckedChange={c => onChange('disability', c)} />
+          <Label>Disability?</Label>
+          {data.disability && (
+            <Select value={data.disabilityType} onValueChange={v => onChange('disabilityType', v)}>
+              <SelectTrigger className="ml-2"><SelectValue placeholder="Type" /></SelectTrigger>
+              <SelectContent><SelectItem value="Visual">Visual</SelectItem><SelectItem value="Hearing">Hearing</SelectItem><SelectItem value="Physical">Physical</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent>
+            </Select>
+          )}
+        </div>
       </div>
 
-      <div className="space-y-2"><Label>Phone Number *</Label>
-        <div className="flex gap-2"><Input value={data.phoneNumber} onChange={e => onChange('phoneNumber', e.target.value)} disabled={data.phoneOtpVerified} className="flex-1" />
-          {!data.phoneOtpVerified ? <Button variant="outline" onClick={sendPhoneOtp} disabled={sendingPhoneOtp}>{sendingPhoneOtp ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send OTP'}</Button> : <Badge className="bg-success/20"><Check className="h-3 w-3 mr-1" /> Verified</Badge>}
-        </div>
-        {!data.phoneOtpVerified && data.phoneNumber && <div className="flex gap-2 mt-2"><Input placeholder="Enter OTP" value={data.phoneOtpCode} onChange={e => onChange('phoneOtpCode', e.target.value)} /><Button variant="secondary" onClick={verifyPhoneOtp}>Verify</Button></div>}
-        {errors.phoneOtp && <p className="text-xs text-destructive">{errors.phoneOtp}</p>}
-      </div>
-
-      <div className="space-y-2"><Label>Email *</Label>
-        <div className="flex gap-2"><Input value={data.email} onChange={e => onChange('email', e.target.value)} disabled={data.emailOtpVerified} className="flex-1" />
-          {!data.emailOtpVerified ? <Button variant="outline" onClick={sendEmailOtp} disabled={sendingEmailOtp}>{sendingEmailOtp ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send OTP'}</Button> : <Badge className="bg-success/20"><Check className="h-3 w-3 mr-1" /> Verified</Badge>}
-        </div>
-        {!data.emailOtpVerified && data.email && <div className="flex gap-2 mt-2"><Input placeholder="Enter OTP" value={data.emailOtpCode} onChange={e => onChange('emailOtpCode', e.target.value)} /><Button variant="secondary" onClick={verifyEmailOtp}>Verify</Button></div>}
-        {errors.emailOtp && <p className="text-xs text-destructive">{errors.emailOtp}</p>}
-      </div>
-
+      {/* Phone and Email with OTP - FIXED JSX */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2"><Label>National ID *</Label><div className="relative"><Input value={data.nationalId} onChange={e => onChange('nationalId', e.target.value)} onBlur={validateNationalId} />{checkingNationalId && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}{nationalIdValid === true && <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-success" />}{nationalIdValid === false && <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />}</div>{errors.nationalId && <p className="text-xs text-destructive">{errors.nationalId}</p>}</div>
-        <div className="space-y-2"><Label>KRA PIN *</Label><div className="relative"><Input value={data.kraPin} onChange={e => onChange('kraPin', e.target.value.toUpperCase())} onBlur={validateKraPin} className="uppercase" />{checkingKraPin && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}{kraPinValid === true && <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-success" />}{kraPinValid === false && <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />}</div>{errors.kraPin && <p className="text-xs text-destructive">{errors.kraPin}</p>}</div>
+        <div>
+          <Label>Primary Mobile Number *</Label>
+          <Input value={data.primaryMobile} onChange={e => onChange('primaryMobile', e.target.value)} />
+          {errors.primaryMobile && <p className="text-xs text-destructive">{errors.primaryMobile}</p>}
+        </div>
+        <div>
+          <div>
+            <Label>Primary Email Address *</Label>
+            <div className="flex gap-2">
+              <Input value={data.primaryEmail} onChange={e => onChange('primaryEmail', e.target.value)} disabled={data.primaryEmailVerified} className="flex-1" />
+              {!data.primaryEmailVerified ? (
+                <Button variant="outline" onClick={sendEmailOtp} disabled={sendingEmailOtp}>
+                  {sendingEmailOtp ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send OTP'}
+                </Button>
+              ) : <Badge><Check /> Verified</Badge>}
+            </div>
+            {!data.primaryEmailVerified && data.primaryEmail && (
+              <div className="flex gap-2 mt-2">
+                <Input placeholder="OTP" value={data.primaryEmailOtp} onChange={e => onChange('primaryEmailOtp', e.target.value)} />
+                <Button variant="secondary" onClick={verifyEmailOtp}>Verify</Button>
+              </div>
+            )}
+            {errors.primaryEmail && <p className="text-xs text-destructive">{errors.primaryEmail}</p>}
+            {errors.primaryEmailOtp && <p className="text-xs text-destructive">{errors.primaryEmailOtp}</p>}
+          </div>
+        </div>
       </div>
 
+      {/* National ID and KRA PIN */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2"><Label>Marital Status *</Label><Select value={data.maritalStatus} onValueChange={v => onChange('maritalStatus', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Single">Single</SelectItem><SelectItem value="Married">Married</SelectItem><SelectItem value="Divorced">Divorced</SelectItem><SelectItem value="Widowed">Widowed</SelectItem></SelectContent></Select></div>
-        <div className="space-y-2"><Label>Nationality *</Label><Input value={data.nationality} onChange={e => onChange('nationality', e.target.value)} /></div>
-        <div className="space-y-2"><Label>Place of Birth *</Label><Input value={data.placeOfBirth} onChange={e => onChange('placeOfBirth', e.target.value)} /></div>
-        <div className="space-y-2"><Label>Country of Residence *</Label><Input value={data.countryOfResidence} onChange={e => onChange('countryOfResidence', e.target.value)} /></div>
-        <div className="space-y-2"><Label>Politically Exposed Person (PEP) *</Label><Select value={data.pep} onValueChange={v => onChange('pep', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
-        <div className="space-y-2"><Label>Disability (Optional)</Label><Input value={data.disability} onChange={e => onChange('disability', e.target.value)} placeholder="If any" /></div>
+        <div>
+          <Label>National ID Number *</Label>
+          <div className="relative">
+            <Input value={data.nationalIdNumber} onChange={e => onChange('nationalIdNumber', e.target.value)} onBlur={validateNationalId} />
+            {checkingNationalId && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
+            {nationalIdValid === true && <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-success" />}
+            {nationalIdValid === false && <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />}
+          </div>
+          {errors.nationalIdNumber && <p className="text-xs text-destructive">{errors.nationalIdNumber}</p>}
+        </div>
+        <div>
+          <Label>KRA PIN *</Label>
+          <div className="relative">
+            <Input value={data.kraPinNumber} onChange={e => onChange('kraPinNumber', e.target.value.toUpperCase())} onBlur={validateKraPin} className="uppercase" />
+            {checkingKraPin && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
+            {kraPinValid === true && <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-success" />}
+            {kraPinValid === false && <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />}
+          </div>
+          {errors.kraPinNumber && <p className="text-xs text-destructive">{errors.kraPinNumber}</p>}
+        </div>
       </div>
     </div>
   );
 };
 
-const AccountDetailsStep = ({ data, onChange }) => {
-  const getInitialDeposit = () => {
-    switch (data.accountType) {
-      case 'Savings': return 'KES 1,000';
-      case 'Current': return 'KES 5,000';
-      case 'Salary': return 'KES 0 (Employer arrangement)';
-      case 'Fixed': return 'KES 10,000 minimum';
-      default: return '—';
-    }
-  };
-  const getAccountRules = () => {
-    switch (data.accountType) {
-      case 'Savings': return 'Min balance KES 500, 3 free withdrawals/month';
-      case 'Current': return 'No interest, unlimited transactions, monthly fee KES 300';
-      case 'Salary': return 'No monthly fee, salary must be credited monthly';
-      case 'Fixed': return 'Lock-in 6–12 months, penalty for early withdrawal';
-      default: return '—';
-    }
-  };
+// ========== REMAINING STEP COMPONENTS (unchanged from original) ==========
+const IdentityDocsStep = ({ data, onChange, errors }) => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2"><Label>Account Type *</Label><Select value={data.accountType} onValueChange={v => onChange('accountType', v)}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent><SelectItem value="Savings">Savings</SelectItem><SelectItem value="Current">Current</SelectItem><SelectItem value="Salary">Salary</SelectItem><SelectItem value="Fixed">Fixed Deposit</SelectItem></SelectContent></Select></div>
-        <div className="space-y-2"><Label>Account Purpose *</Label><Select value={data.accountPurpose} onValueChange={v => onChange('accountPurpose', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="salary">Salary Receipt</SelectItem><SelectItem value="business">Business Transactions</SelectItem><SelectItem value="savings">Personal Savings</SelectItem><SelectItem value="investment">Investment</SelectItem><SelectItem value="remittances">Remittances</SelectItem></SelectContent></Select></div>
-        <div className="space-y-2"><Label>Account Ownership *</Label><Select value={data.accountOwnership} onValueChange={v => onChange('accountOwnership', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="individual">Individual</SelectItem><SelectItem value="joint">Joint</SelectItem></SelectContent></Select></div>
-        <div className="space-y-2"><Label>Currency</Label><Select value={data.currency} onValueChange={v => onChange('currency', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="KES">KES</SelectItem><SelectItem value="USD">USD</SelectItem><SelectItem value="EUR">EUR</SelectItem></SelectContent></Select></div>
+        <div><Label>ID Type *</Label><Select value={data.idType} onValueChange={v => onChange('idType', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="National ID">National ID</SelectItem><SelectItem value="Kenyan Passport">Kenyan Passport</SelectItem><SelectItem value="Alien ID">Alien ID</SelectItem><SelectItem value="Refugee ID">Refugee ID</SelectItem><SelectItem value="Service ID">Service ID (Military/Police)</SelectItem></SelectContent></Select></div>
+        {data.idType === 'National ID' && <div><Label>National ID Number *</Label><div className="relative"><Input value={data.nationalIdNumber} onChange={e => onChange('nationalIdNumber', e.target.value)} onBlur={async () => { if (data.nationalIdNumber) { const valid = await checkUniqueNationalId(data.nationalIdNumber); if (!valid) errors.nationalIdNumber = 'ID exists'; else delete errors.nationalIdNumber; } }} />{errors.nationalIdNumber && <p className="text-xs text-destructive">{errors.nationalIdNumber}</p>}</div></div>}
+        {data.idType === 'Kenyan Passport' && <><div><Label>Passport Number *</Label><Input value={data.passportNumber} onChange={e => onChange('passportNumber', e.target.value)} /></div><div><Label>Passport Issue Date</Label><Input type="date" value={data.passportIssueDate} onChange={e => onChange('passportIssueDate', e.target.value)} /></div><div><Label>Passport Expiry Date *</Label><Input type="date" value={data.passportExpiryDate} onChange={e => onChange('passportExpiryDate', e.target.value)} /></div><div><Label>Passport Issuing Country</Label><Input value={data.passportIssuingCountry} onChange={e => onChange('passportIssuingCountry', e.target.value)} /></div></>}
+        {data.idType === 'Alien ID' && <><div><Label>Alien ID Number</Label><Input value={data.alienIdNumber} onChange={e => onChange('alienIdNumber', e.target.value)} /></div><div><Label>Alien ID Expiry Date</Label><Input type="date" value={data.alienIdExpiryDate} onChange={e => onChange('alienIdExpiryDate', e.target.value)} /></div></>}
+        {data.idType === 'Refugee ID' && <div><Label>Refugee ID Number</Label><Input value={data.refugeeIdNumber} onChange={e => onChange('refugeeIdNumber', e.target.value)} /></div>}
+        {data.idType === 'Service ID' && <div><Label>Service Number</Label><Input value={data.serviceNumber} onChange={e => onChange('serviceNumber', e.target.value)} /></div>}
+        <div><Label>ID Issue Date *</Label><Input type="date" value={data.idIssueDate} onChange={e => onChange('idIssueDate', e.target.value)} /></div>
+        <div><Label>ID Place of Issue *</Label><Input value={data.idPlaceOfIssue} onChange={e => onChange('idPlaceOfIssue', e.target.value)} /></div>
       </div>
-      {data.accountType && (
-        <Card className="bg-muted/30"><CardContent className="pt-4 space-y-2"><div className="flex justify-between"><span className="text-sm font-medium">Initial deposit:</span><span>{getInitialDeposit()}</span></div><div className="flex justify-between"><span className="text-sm font-medium">Account rules:</span><span>{getAccountRules()}</span></div></CardContent></Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FileUpload label="Copy of ID – Front" field="idFrontImage" data={data} onChange={onChange} required accept="image/*" />
+        <FileUpload label="Copy of ID – Back" field="idBackImage" data={data} onChange={onChange} required={data.idType !== 'Kenyan Passport'} accept="image/*" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><Label>KRA PIN *</Label><div className="relative"><Input value={data.kraPinNumber} onChange={e => onChange('kraPinNumber', e.target.value.toUpperCase())} onBlur={async () => { if (data.kraPinNumber) { const valid = await checkUniqueKraPin(data.kraPinNumber); if (!valid) errors.kraPinNumber = 'KRA PIN exists'; else delete errors.kraPinNumber; } }} className="uppercase" />{errors.kraPinNumber && <p className="text-xs text-destructive">{errors.kraPinNumber}</p>}</div></div>
+        <FileUpload label="KRA PIN Certificate" field="kraPinCertCopy" data={data} onChange={onChange} required accept=".pdf,.jpg" />
+        <div><Label>NHIF Number</Label><Input value={data.nhifNumber} onChange={e => onChange('nhifNumber', e.target.value)} /></div>
+        <div><Label>NSSF Number</Label><Input value={data.nssfNumber} onChange={e => onChange('nssfNumber', e.target.value)} /></div>
+        <div><Label>Work Permit Number</Label><Input value={data.workPermitNumber} onChange={e => onChange('workPermitNumber', e.target.value)} /></div>
+        <div><Label>Work Permit Class</Label><Select value={data.workPermitClass} onValueChange={v => onChange('workPermitClass', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Class G">Class G</SelectItem><SelectItem value="Class I">Class I</SelectItem><SelectItem value="Class M">Class M</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select></div>
+        <div><Label>Work Permit Expiry Date</Label><Input type="date" value={data.workPermitExpiryDate} onChange={e => onChange('workPermitExpiryDate', e.target.value)} /></div>
+        <div><Label>Birth Certificate Number</Label><Input value={data.birthCertificateNumber} onChange={e => onChange('birthCertificateNumber', e.target.value)} /></div>
+        <FileUpload label="Student Enrollment Proof" field="studentProof" data={data} onChange={onChange} required={false} accept=".pdf,.jpg" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex items-center space-x-2"><Checkbox checked={data.biometricCaptured} onCheckedChange={c => onChange('biometricCaptured', c)} /><Label>Biometric Data Captured *</Label></div>
+        <div className="flex items-center space-x-2"><Checkbox checked={data.livePhotoCaptured} onCheckedChange={c => onChange('livePhotoCaptured', c)} /><Label>Live Photo Taken *</Label></div>
+        <FileUpload label="Signature Specimen" field="signatureImage" data={data} onChange={onChange} required accept="image/*" />
+      </div>
+    </div>
+  );
+};
+
+const ContactAddressStep = ({ data, onChange, errors, setErrors }) => {
+  const [sendingMobileOtp, setSendingMobileOtp] = useState(false);
+  const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
+  const sendMobileOtp = async () => {
+    if (!data.primaryMobile || data.primaryMobile.length < 10) { setErrors({ ...errors, primaryMobile: 'Valid phone required' }); return; }
+    setSendingMobileOtp(true); await new Promise(r => setTimeout(r, 1000)); alert(`OTP to ${data.primaryMobile}: 123456`); setSendingMobileOtp(false);
+  };
+  const verifyMobileOtp = () => { if (data.primaryMobileOtp === '123456') { onChange('primaryMobileVerified', true); setErrors({ ...errors, primaryMobileOtp: '' }); } else setErrors({ ...errors, primaryMobileOtp: 'Invalid OTP' }); };
+  const sendEmailOtpLocal = async () => {
+    if (!data.primaryEmail || !data.primaryEmail.includes('@')) { setErrors({ ...errors, primaryEmail: 'Valid email required' }); return; }
+    setSendingEmailOtp(true); await new Promise(r => setTimeout(r, 1000)); alert(`OTP to ${data.primaryEmail}: 123456`); setSendingEmailOtp(false);
+  };
+  const verifyEmailOtpLocal = () => { if (data.primaryEmailOtp === '123456') { onChange('primaryEmailVerified', true); setErrors({ ...errors, primaryEmailOtp: '' }); } else setErrors({ ...errors, primaryEmailOtp: 'Invalid OTP' }); };
+  return (
+    <div className="space-y-6">
+      <h3 className="font-semibold">Physical / Residential Address</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><Label>Plot / House Number *</Label><Input value={data.plotHouseNumber} onChange={e => onChange('plotHouseNumber', e.target.value)} /></div>
+        <div><Label>Street / Road Name *</Label><Input value={data.streetRoad} onChange={e => onChange('streetRoad', e.target.value)} /></div>
+        <div><Label>Nearest Landmark *</Label><Input value={data.nearestLandmark} onChange={e => onChange('nearestLandmark', e.target.value)} /></div>
+        <div><Label>Estate / Village Name</Label><Input value={data.estateVillage} onChange={e => onChange('estateVillage', e.target.value)} /></div>
+        <div><Label>Sub-location *</Label><Input value={data.subLocation} onChange={e => onChange('subLocation', e.target.value)} /></div>
+        <div><Label>Location *</Label><Input value={data.location} onChange={e => onChange('location', e.target.value)} /></div>
+        <div><Label>Division</Label><Input value={data.division} onChange={e => onChange('division', e.target.value)} /></div>
+        <div><Label>Sub-County *</Label><Input value={data.subCounty} onChange={e => onChange('subCounty', e.target.value)} /></div>
+        <div><Label>County *</Label><Select value={data.county} onValueChange={v => onChange('county', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['Nairobi','Mombasa','Kiambu','Nakuru','Kisumu','Machakos','Uasin Gishu','Kajiado','Other'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+        <div><Label>Chief's Area / Location</Label><Input value={data.chiefsArea} onChange={e => onChange('chiefsArea', e.target.value)} /></div>
+        <div><Label>Country *</Label><Input value={data.countryAddress} onChange={e => onChange('countryAddress', e.target.value)} /></div>
+        <div><Label>GPS Coordinates (Lat/Long)</Label><Input placeholder="Latitude" value={data.gpsLatitude} onChange={e => onChange('gpsLatitude', e.target.value)} /><Input placeholder="Longitude" className="mt-1" value={data.gpsLongitude} onChange={e => onChange('gpsLongitude', e.target.value)} /></div>
+        <div><Label>Duration at Current Address *</Label><div className="flex gap-2"><Input type="number" placeholder="Years" value={data.durationAtAddressYears} onChange={e => onChange('durationAtAddressYears', e.target.value)} /><Input type="number" placeholder="Months" value={data.durationAtAddressMonths} onChange={e => onChange('durationAtAddressMonths', e.target.value)} /></div></div>
+        <FileUpload label="Proof of Residence (less than 3 months)" field="proofOfResidence" data={data} onChange={onChange} required accept=".pdf,.jpg,.png" />
+      </div>
+      <h3 className="font-semibold">Postal Address</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><Label>P.O. Box Number</Label><Input value={data.poBox} onChange={e => onChange('poBox', e.target.value)} /></div>
+        <div><Label>Postal Code</Label><Input value={data.postalCode} onChange={e => onChange('postalCode', e.target.value)} /></div>
+        <div><Label>Town / City</Label><Input value={data.townCity} onChange={e => onChange('townCity', e.target.value)} /></div>
+      </div>
+      <h3 className="font-semibold">Contact Numbers</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><Label>Primary Mobile Number *</Label><div className="flex gap-2"><Input value={data.primaryMobile} onChange={e => onChange('primaryMobile', e.target.value)} disabled={data.primaryMobileVerified} className="flex-1" />{!data.primaryMobileVerified ? <Button variant="outline" onClick={sendMobileOtp} disabled={sendingMobileOtp}>{sendingMobileOtp ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send OTP'}</Button> : <Badge><Check className="h-3 w-3" /> Verified</Badge>}</div>{!data.primaryMobileVerified && <div className="flex gap-2 mt-2"><Input placeholder="OTP" value={data.primaryMobileOtp} onChange={e => onChange('primaryMobileOtp', e.target.value)} /><Button variant="secondary" onClick={verifyMobileOtp}>Verify</Button></div>}{errors.primaryMobileOtp && <p className="text-xs text-destructive">{errors.primaryMobileOtp}</p>}</div>
+        <div><Label>Secondary Mobile Number</Label><Input value={data.secondaryMobile} onChange={e => onChange('secondaryMobile', e.target.value)} /></div>
+        <div><Label>Home Telephone</Label><Input value={data.homeTelephone} onChange={e => onChange('homeTelephone', e.target.value)} /></div>
+        <div><Label>Work Telephone + Extension</Label><Input value={data.workTelephone} onChange={e => onChange('workTelephone', e.target.value)} /><Input placeholder="Ext" className="mt-1" value={data.workExtension} onChange={e => onChange('workExtension', e.target.value)} /></div>
+        <div><Label>WhatsApp Number</Label><Input value={data.whatsappNumber} onChange={e => onChange('whatsappNumber', e.target.value)} /></div>
+        <div><Label>Mobile Network Provider *</Label><Select value={data.mobileNetworkProvider} onValueChange={v => onChange('mobileNetworkProvider', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Safaricom">Safaricom</SelectItem><SelectItem value="Airtel">Airtel</SelectItem><SelectItem value="Telkom">Telkom</SelectItem><SelectItem value="Faiba">Faiba</SelectItem></SelectContent></Select></div>
+      </div>
+      <h3 className="font-semibold">Email & Digital Contact</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><Label>Primary Email Address *</Label><div className="flex gap-2"><Input value={data.primaryEmail} onChange={e => onChange('primaryEmail', e.target.value)} disabled={data.primaryEmailVerified} className="flex-1" />{!data.primaryEmailVerified ? <Button variant="outline" onClick={sendEmailOtpLocal} disabled={sendingEmailOtp}>{sendingEmailOtp ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send OTP'}</Button> : <Badge><Check /> Verified</Badge>}</div>{!data.primaryEmailVerified && <div className="flex gap-2 mt-2"><Input placeholder="OTP" value={data.primaryEmailOtp} onChange={e => onChange('primaryEmailOtp', e.target.value)} /><Button variant="secondary" onClick={verifyEmailOtpLocal}>Verify</Button></div>}{errors.primaryEmailOtp && <p className="text-xs text-destructive">{errors.primaryEmailOtp}</p>}</div>
+        <div><Label>Secondary Email Address</Label><Input value={data.secondaryEmail} onChange={e => onChange('secondaryEmail', e.target.value)} /></div>
+        <div><Label>Preferred Communication Channel *</Label><Select value={data.preferredCommunicationChannel} onValueChange={v => onChange('preferredCommunicationChannel', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="SMS">SMS</SelectItem><SelectItem value="Email">Email</SelectItem><SelectItem value="WhatsApp">WhatsApp</SelectItem><SelectItem value="Push Notification">Push Notification</SelectItem><SelectItem value="All">All</SelectItem></SelectContent></Select></div>
+        <div><Label>Preferred Language *</Label><Select value={data.preferredLanguage} onValueChange={v => onChange('preferredLanguage', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="English">English</SelectItem><SelectItem value="Kiswahili">Kiswahili</SelectItem></SelectContent></Select></div>
+      </div>
+    </div>
+  );
+};
+
+const EmploymentFinancialStep = ({ data, onChange }) => (
+  <div className="space-y-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div><Label>Employment Status *</Label><Select value={data.employmentStatus} onValueChange={v => onChange('employmentStatus', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Employed (Formal)">Employed (Formal)</SelectItem><SelectItem value="Self-Employed">Self-Employed</SelectItem><SelectItem value="Business Owner">Business Owner</SelectItem><SelectItem value="Unemployed">Unemployed</SelectItem><SelectItem value="Student">Student</SelectItem><SelectItem value="Retired">Retired</SelectItem><SelectItem value="Casual Worker">Casual Worker</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select></div>
+      <div><Label>Occupation / Job Title *</Label><Input value={data.occupation} onChange={e => onChange('occupation', e.target.value)} /></div>
+      <div><Label>Profession / Industry *</Label><Select value={data.industry} onValueChange={v => onChange('industry', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Agriculture">Agriculture</SelectItem><SelectItem value="Finance">Finance</SelectItem><SelectItem value="Education">Education</SelectItem><SelectItem value="Healthcare">Healthcare</SelectItem><SelectItem value="Government">Government</SelectItem><SelectItem value="NGO">NGO</SelectItem><SelectItem value="ICT">ICT</SelectItem><SelectItem value="Real Estate">Real Estate</SelectItem><SelectItem value="Transport">Transport</SelectItem><SelectItem value="Retail">Retail</SelectItem><SelectItem value="Legal">Legal</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select></div>
+      {(data.employmentStatus === 'Employed (Formal)' || data.employmentStatus === 'Business Owner') && <><div><Label>Employer Name / Business Name</Label><Input value={data.employerName} onChange={e => onChange('employerName', e.target.value)} /></div><div><Label>Employer / Business Address</Label><Input value={data.employerAddress} onChange={e => onChange('employerAddress', e.target.value)} /></div><div><Label>Employer Telephone</Label><Input value={data.employerTelephone} onChange={e => onChange('employerTelephone', e.target.value)} /></div><div><Label>Years with Current Employer</Label><Input type="number" value={data.yearsWithEmployer} onChange={e => onChange('yearsWithEmployer', e.target.value)} /></div></>}
+      {data.employmentStatus === 'Business Owner' && <><div><Label>Nature of Business</Label><Input value={data.natureOfBusiness} onChange={e => onChange('natureOfBusiness', e.target.value)} /></div><div><Label>Business Registration Number</Label><Input value={data.businessRegNumber} onChange={e => onChange('businessRegNumber', e.target.value)} /></div><div><Label>KRA Business PIN</Label><Input value={data.kraBusinessPin} onChange={e => onChange('kraBusinessPin', e.target.value)} /></div><div><Label>Years in Business Operation</Label><Input type="number" value={data.yearsInBusiness} onChange={e => onChange('yearsInBusiness', e.target.value)} /></div></>}
+    </div>
+    <h3 className="font-semibold">Financial Profile</h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div><Label>Monthly Net Income (KES) *</Label><Select value={data.monthlyNetIncome} onValueChange={v => onChange('monthlyNetIncome', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Below 10K">Below 10K</SelectItem><SelectItem value="10K-30K">10K-30K</SelectItem><SelectItem value="30K-100K">30K-100K</SelectItem><SelectItem value="100K-500K">100K-500K</SelectItem><SelectItem value="500K-1M">500K-1M</SelectItem><SelectItem value="Above 1M">Above 1M</SelectItem></SelectContent></Select></div>
+      <div><Label>Other Income Sources</Label><Select onValueChange={v => onChange('otherIncomeSources', [...data.otherIncomeSources, v])}><SelectTrigger><SelectValue placeholder="Add source" /></SelectTrigger><SelectContent><SelectItem value="Rental">Rental</SelectItem><SelectItem value="Remittances">Remittances</SelectItem><SelectItem value="Dividends">Dividends</SelectItem><SelectItem value="Pension">Pension</SelectItem><SelectItem value="Freelance">Freelance</SelectItem><SelectItem value="Farm Income">Farm Income</SelectItem></SelectContent></Select><div className="flex flex-wrap gap-1 mt-1">{data.otherIncomeSources.map(s => <Badge key={s} variant="secondary" className="cursor-pointer" onClick={() => onChange('otherIncomeSources', data.otherIncomeSources.filter(x => x !== s))}>{s} ✕</Badge>)}</div></div>
+      <div><Label>Expected Monthly Credit Turnover (KES) *</Label><Input type="number" value={data.expectedMonthlyCreditTurnover} onChange={e => onChange('expectedMonthlyCreditTurnover', e.target.value)} /></div>
+      <div><Label>Expected Max Single Deposit (KES) *</Label><Input type="number" value={data.expectedMaxSingleDeposit} onChange={e => onChange('expectedMaxSingleDeposit', e.target.value)} /></div>
+      <div><Label>Expected Max Single Withdrawal (KES) *</Label><Input type="number" value={data.expectedMaxSingleWithdrawal} onChange={e => onChange('expectedMaxSingleWithdrawal', e.target.value)} /></div>
+      <div><Label>Primary Source of Funds *</Label><Select value={data.primarySourceOfFunds} onValueChange={v => onChange('primarySourceOfFunds', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Salary">Salary</SelectItem><SelectItem value="Business Income">Business Income</SelectItem><SelectItem value="Inheritance">Inheritance</SelectItem><SelectItem value="Sale of Assets">Sale of Assets</SelectItem><SelectItem value="Investment Returns">Investment Returns</SelectItem><SelectItem value="Gifts">Gifts</SelectItem><SelectItem value="Remittances">Remittances</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select></div>
+      <div><Label>Source of Wealth (if high-value)</Label><Input value={data.sourceOfWealth} onChange={e => onChange('sourceOfWealth', e.target.value)} /><FileUpload label="Supporting Document" field="sourceOfWealthDocument" data={data} onChange={onChange} required={false} /></div>
+      <div><Label>Annual Income (KES)</Label><Input type="number" value={data.annualIncome} onChange={e => onChange('annualIncome', e.target.value)} /></div>
+      <div><Label>Net Worth Estimate (KES)</Label><Select value={data.netWorthEstimate} onValueChange={v => onChange('netWorthEstimate', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Below 100K">Below 100K</SelectItem><SelectItem value="100K-500K">100K-500K</SelectItem><SelectItem value="500K-1M">500K-1M</SelectItem><SelectItem value="1M-5M">1M-5M</SelectItem><SelectItem value="Above 5M">Above 5M</SelectItem></SelectContent></Select></div>
+      <div className="flex items-center space-x-2"><Checkbox checked={data.existingLoans} onCheckedChange={c => onChange('existingLoans', c)} /><Label>Existing Loans / Liabilities?</Label>{data.existingLoans && <Input placeholder="Amount (KES)" value={data.existingLoansAmount} onChange={e => onChange('existingLoansAmount', e.target.value)} />}</div>
+    </div>
+  </div>
+);
+
+const AccountDetailsStep = ({ data, onChange }) => {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><Label>Account Ownership Type *</Label><Select value={data.accountOwnershipType} onValueChange={v => onChange('accountOwnershipType', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Individual">Individual</SelectItem><SelectItem value="Joint (Either to Sign)">Joint (Either to Sign)</SelectItem><SelectItem value="Joint (Both to Sign)">Joint (Both to Sign)</SelectItem><SelectItem value="Minor">Minor</SelectItem><SelectItem value="Corporate">Corporate</SelectItem><SelectItem value="Partnership">Partnership</SelectItem><SelectItem value="NGO">NGO</SelectItem><SelectItem value="Club">Club</SelectItem><SelectItem value="Chama">Chama</SelectItem><SelectItem value="Trust">Trust</SelectItem></SelectContent></Select></div>
+        <div><Label>Account Product Type *</Label><Select value={data.accountProductType} onValueChange={v => onChange('accountProductType', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Current">Current</SelectItem><SelectItem value="Savings">Savings</SelectItem><SelectItem value="Fixed Deposit">Fixed Deposit</SelectItem><SelectItem value="Call Deposit">Call Deposit</SelectItem><SelectItem value="Junior">Junior</SelectItem><SelectItem value="Youth">Youth</SelectItem><SelectItem value="Senior Citizen">Senior Citizen</SelectItem><SelectItem value="Diaspora">Diaspora</SelectItem><SelectItem value="Business">Business</SelectItem><SelectItem value="Salary Account">Salary Account</SelectItem></SelectContent></Select></div>
+        <div><Label>Account Purpose *</Label><Select value={data.accountPurpose} onValueChange={v => onChange('accountPurpose', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Personal">Personal</SelectItem><SelectItem value="Business">Business</SelectItem><SelectItem value="Savings">Savings</SelectItem><SelectItem value="Salary">Salary</SelectItem><SelectItem value="Investment">Investment</SelectItem><SelectItem value="School Fees">School Fees</SelectItem><SelectItem value="Farming">Farming</SelectItem><SelectItem value="NGO">NGO</SelectItem><SelectItem value="Rental Collection">Rental Collection</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select></div>
+        <div><Label>Account Currency *</Label><Select value={data.accountCurrency} onValueChange={v => onChange('accountCurrency', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="KES">KES</SelectItem><SelectItem value="USD">USD</SelectItem><SelectItem value="EUR">EUR</SelectItem><SelectItem value="GBP">GBP</SelectItem><SelectItem value="UGX">UGX</SelectItem><SelectItem value="TZS">TZS</SelectItem><SelectItem value="ZAR">ZAR</SelectItem></SelectContent></Select></div>
+        <div><Label>Branch Preference *</Label><Input value={data.branchPreference} onChange={e => onChange('branchPreference', e.target.value)} /></div>
+        <div><Label>Account Operating Mode *</Label><Select value={data.accountOperatingMode} onValueChange={v => onChange('accountOperatingMode', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Self">Self</SelectItem><SelectItem value="Third Party Mandate">Third Party Mandate</SelectItem><SelectItem value="Power of Attorney">Power of Attorney</SelectItem></SelectContent></Select></div>
+        {(data.accountOperatingMode === 'Third Party Mandate' || data.accountOperatingMode === 'Power of Attorney') && <><div><Label>Mandate Holder Full Name</Label><Input value={data.mandateHolderFullName} onChange={e => onChange('mandateHolderFullName', e.target.value)} /></div><div><Label>Mandate Holder ID Number</Label><Input value={data.mandateHolderIdNumber} onChange={e => onChange('mandateHolderIdNumber', e.target.value)} /></div><div><Label>Relationship to Mandate Holder</Label><Input value={data.relationshipToMandateHolder} onChange={e => onChange('relationshipToMandateHolder', e.target.value)} /></div></>}
+      </div>
+      <h3 className="font-semibold">Account Features & Limits</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex items-center space-x-2"><Checkbox checked={data.chequeBookRequired} onCheckedChange={c => onChange('chequeBookRequired', c)} /><Label>Cheque Book Required *</Label></div>
+        {data.chequeBookRequired && <div><Label>Cheque Book Pickup Method</Label><Select value={data.chequeBookPickupMethod} onValueChange={v => onChange('chequeBookPickupMethod', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Branch Pickup">Branch Pickup</SelectItem><SelectItem value="Courier">Courier</SelectItem></SelectContent></Select></div>}
+        <div className="flex items-center space-x-2"><Checkbox checked={data.debitCardRequired} onCheckedChange={c => onChange('debitCardRequired', c)} /><Label>Debit Card Required *</Label></div>
+        {data.debitCardRequired && <><div><Label>Card Type</Label><Select value={data.cardType} onValueChange={v => onChange('cardType', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Visa Classic">Visa Classic</SelectItem><SelectItem value="Visa Gold">Visa Gold</SelectItem><SelectItem value="Visa Platinum">Visa Platinum</SelectItem><SelectItem value="Mastercard">Mastercard</SelectItem><SelectItem value="American Express">American Express</SelectItem></SelectContent></Select></div><div><Label>Card Collection Mode</Label><Select value={data.cardCollectionMode} onValueChange={v => onChange('cardCollectionMode', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Branch Pickup">Branch Pickup</SelectItem><SelectItem value="Courier">Courier</SelectItem></SelectContent></Select></div></>}
+        <div><Label>ATM Daily Withdrawal Limit (KES)</Label><Input type="number" value={data.atmDailyLimit} onChange={e => onChange('atmDailyLimit', e.target.value)} /></div>
+        <div><Label>POS Daily Limit (KES)</Label><Input type="number" value={data.posDailyLimit} onChange={e => onChange('posDailyLimit', e.target.value)} /></div>
+        <div><Label>Online Transfer Daily Limit (KES)</Label><Input type="number" value={data.onlineTransferDailyLimit} onChange={e => onChange('onlineTransferDailyLimit', e.target.value)} /></div>
+        <div className="flex items-center space-x-2"><Checkbox checked={data.standingOrderRequired} onCheckedChange={c => onChange('standingOrderRequired', c)} /><Label>Standing Order Required</Label>{data.standingOrderRequired && <Input placeholder="Details" value={data.standingOrderDetails} onChange={e => onChange('standingOrderDetails', e.target.value)} />}</div>
+        <div className="flex items-center space-x-2"><Checkbox checked={data.directDebitAuthority} onCheckedChange={c => onChange('directDebitAuthority', c)} /><Label>Direct Debit Authority</Label></div>
+        <div className="flex items-center space-x-2"><Checkbox checked={data.eStatementPreferred} onCheckedChange={c => onChange('eStatementPreferred', c)} /><Label>E-Statement Preferred *</Label></div>
+        <div><Label>Statement Frequency *</Label><Select value={data.statementFrequency} onValueChange={v => onChange('statementFrequency', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Monthly">Monthly</SelectItem><SelectItem value="Quarterly">Quarterly</SelectItem><SelectItem value="Half-Yearly">Half-Yearly</SelectItem><SelectItem value="Annually">Annually</SelectItem><SelectItem value="On Request">On Request</SelectItem></SelectContent></Select></div>
+        <div><Label>Statement Delivery Mode *</Label><Select value={data.statementDeliveryMode} onValueChange={v => onChange('statementDeliveryMode', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Email">Email</SelectItem><SelectItem value="Branch">Branch</SelectItem><SelectItem value="Postal">Postal</SelectItem><SelectItem value="Online Portal">Online Portal</SelectItem></SelectContent></Select></div>
+        <div><Label>Opening Deposit Amount (KES) *</Label><Input type="number" value={data.openingDepositAmount} onChange={e => onChange('openingDepositAmount', e.target.value)} /></div>
+        <div><Label>Opening Deposit Method *</Label><Select value={data.openingDepositMethod} onValueChange={v => onChange('openingDepositMethod', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Cash">Cash</SelectItem><SelectItem value="Cheque">Cheque</SelectItem><SelectItem value="M-Pesa">M-Pesa</SelectItem><SelectItem value="EFT">EFT</SelectItem><SelectItem value="RTGS">RTGS</SelectItem><SelectItem value="Internal Transfer">Internal Transfer</SelectItem></SelectContent></Select></div>
+        <div><Label>Referral / Promo Code</Label><Input value={data.referralCode} onChange={e => onChange('referralCode', e.target.value)} /></div>
+        <div><Label>Referring Customer Account No.</Label><Input value={data.referringCustomerAccount} onChange={e => onChange('referringCustomerAccount', e.target.value)} /></div>
+      </div>
+      {data.accountProductType === 'Fixed Deposit' && (
+        <>
+          <h3 className="font-semibold">Fixed Deposit Specific Fields</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div><Label>Deposit Amount (KES)</Label><Input type="number" value={data.fdDepositAmount} onChange={e => onChange('fdDepositAmount', e.target.value)} /></div>
+            <div><Label>Tenor / Duration</Label><Select value={data.fdTenor} onValueChange={v => onChange('fdTenor', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="1">1 month</SelectItem><SelectItem value="3">3 months</SelectItem><SelectItem value="6">6 months</SelectItem><SelectItem value="12">12 months</SelectItem><SelectItem value="24">24 months</SelectItem><SelectItem value="36">36 months</SelectItem><SelectItem value="Custom">Custom</SelectItem></SelectContent></Select></div>
+            <div><Label>Interest Rate (% p.a.)</Label><Input type="number" step="0.01" value={data.fdInterestRate} onChange={e => onChange('fdInterestRate', e.target.value)} /></div>
+            <div><Label>Interest Payment Frequency</Label><Select value={data.fdInterestPaymentFrequency} onValueChange={v => onChange('fdInterestPaymentFrequency', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Monthly">Monthly</SelectItem><SelectItem value="Quarterly">Quarterly</SelectItem><SelectItem value="At Maturity">At Maturity</SelectItem></SelectContent></Select></div>
+            <div><Label>Interest Credited To</Label><Select value={data.fdInterestCreditedTo} onValueChange={v => onChange('fdInterestCreditedTo', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Same Account">Same Account</SelectItem><SelectItem value="Linked Savings">Linked Savings</SelectItem><SelectItem value="Linked Cheque">Linked Cheque</SelectItem></SelectContent></Select></div>
+            <div><Label>Rollover Instruction at Maturity</Label><Select value={data.fdRolloverInstruction} onValueChange={v => onChange('fdRolloverInstruction', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Auto-Renew P+I">Auto-Renew P+I</SelectItem><SelectItem value="Renew Principal Only">Renew Principal Only</SelectItem><SelectItem value="Encash at Maturity">Encash at Maturity</SelectItem></SelectContent></Select></div>
+          </div>
+        </>
       )}
     </div>
   );
 };
 
-const AddressStep = ({ data, onChange }) => {
-  const fileRef = useRef(null);
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2"><Label>Street *</Label><Input value={data.street} onChange={e => onChange('street', e.target.value)} /></div>
-        <div className="space-y-2"><Label>City *</Label><Input value={data.city} onChange={e => onChange('city', e.target.value)} /></div>
-        <div className="space-y-2"><Label>District *</Label><Input value={data.district} onChange={e => onChange('district', e.target.value)} /></div>
-        <div className="space-y-2"><Label>Country *</Label><Input value={data.country} onChange={e => onChange('country', e.target.value)} /></div>
-        <div className="space-y-2"><Label>Postal Code</Label><Input value={data.postalCode} onChange={e => onChange('postalCode', e.target.value)} /></div>
-        <div className="space-y-2"><Label>Nearest Landmark *</Label><Input value={data.nearestLandmark} onChange={e => onChange('nearestLandmark', e.target.value)} placeholder="e.g., Near Kencom Bus Stop" /></div>
-        <div className="space-y-2"><Label>County (Kenya) *</Label><Select value={data.county} onValueChange={v => onChange('county', v)}><SelectTrigger><SelectValue placeholder="Select county" /></SelectTrigger><SelectContent>{['Nairobi','Mombasa','Kisumu','Nakuru','Kiambu','Uasin Gishu','Kajiado','Machakos'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-        <div className="space-y-2"><Label>Duration at address (years) *</Label><Input type="number" value={data.durationAtAddress} onChange={e => onChange('durationAtAddress', e.target.value)} placeholder="e.g., 3" /></div>
-      </div>
-      <div className="space-y-2"><Label>Proof of residence * (less than 3 months old)</Label><div className="flex gap-2"><Button variant="outline" onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4 mr-2" />{data.proofOfResidence ? 'Change File' : 'Upload'}</Button>{data.proofOfResidence && <span className="text-sm">{data.proofOfResidence.name}</span>}</div><input type="file" ref={fileRef} onChange={e => onChange('proofOfResidence', e.target.files?.[0] || null)} className="hidden" accept=".pdf,.jpg,.png" /></div>
-    </div>
-  );
-};
-
-const EmploymentStep = ({ data, onChange }) => {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2"><Label>Employer Name *</Label><Input value={data.employerName} onChange={e => onChange('employerName', e.target.value)} /></div>
-        <div className="space-y-2"><Label>Employment Type *</Label><Select value={data.employmentType} onValueChange={v => onChange('employmentType', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Employed">Employed (Full-time)</SelectItem><SelectItem value="Self-employed">Self-employed</SelectItem><SelectItem value="Business Owner">Business Owner</SelectItem><SelectItem value="Unemployed">Unemployed</SelectItem><SelectItem value="Retired">Retired</SelectItem><SelectItem value="Student">Student</SelectItem></SelectContent></Select></div>
-        <div className="space-y-2"><Label>Monthly Income (KES) *</Label><Input type="number" value={data.monthlyIncome} onChange={e => onChange('monthlyIncome', e.target.value)} /></div>
-        <div className="space-y-2"><Label>Occupation / Industry *</Label><Input value={data.occupation} onChange={e => onChange('occupation', e.target.value)} placeholder="e.g., IT, Finance" /></div>
-        <div className="space-y-2"><Label>Expected monthly transactions *</Label><Select value={data.expectedMonthlyTransactions} onValueChange={v => onChange('expectedMonthlyTransactions', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="0-10">0-10</SelectItem><SelectItem value="11-30">11-30</SelectItem><SelectItem value="31-50">31-50</SelectItem><SelectItem value="50+">50+</SelectItem></SelectContent></Select></div>
-        <div className="space-y-2"><Label>Max deposit / withdrawal (KES) *</Label><Select value={data.maxDepositWithdrawal} onValueChange={v => onChange('maxDepositWithdrawal', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="<100k">&lt;100,000</SelectItem><SelectItem value="100k-500k">100k–500k</SelectItem><SelectItem value="500k-1M">500k–1M</SelectItem><SelectItem value=">1M">&gt;1M</SelectItem></SelectContent></Select></div>
-        <div className="space-y-2"><Label>Source of funds *</Label><Select value={data.sourceOfFunds} onValueChange={v => onChange('sourceOfFunds', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Salary">Salary / Wages</SelectItem><SelectItem value="Business">Business Income</SelectItem><SelectItem value="Investments">Investments</SelectItem><SelectItem value="Inheritance">Inheritance</SelectItem><SelectItem value="Remittances">Remittances</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select></div>
-        <div className="space-y-2"><Label>Other income sources</Label><Input value={data.otherIncomeSources} onChange={e => onChange('otherIncomeSources', e.target.value)} placeholder="e.g., Rental income" /></div>
-      </div>
-    </div>
-  );
-};
-
 const NextOfKinStep = ({ data, onChange, errors, setErrors }) => {
-  const [newNok, setNewNok] = useState({ name: '', relationship: '', phone: '', email: '' });
-  const add = () => {
-    if (!newNok.name || !newNok.relationship) {
-      setErrors({ ...errors, nokIncomplete: 'Name and relationship are required' });
-      return;
-    }
+  const [newNok, setNewNok] = useState({ name: '', dob: '', gender: '', relationship: '', idNumber: '', mobile: '', email: '', address: '', percentage: '' });
+  const addNok = () => {
+    if (!newNok.name || !newNok.relationship) { setErrors({ ...errors, nokMissing: 'Name and relationship required' }); return; }
     onChange('nextOfKinList', [...data.nextOfKinList, { ...newNok, id: Date.now().toString() }]);
-    setNewNok({ name: '', relationship: '', phone: '', email: '' });
-    setErrors({ ...errors, nokIncomplete: '' });
+    setNewNok({ name: '', dob: '', gender: '', relationship: '', idNumber: '', mobile: '', email: '', address: '', percentage: '' });
+    setErrors({ ...errors, nokMissing: '' });
   };
-  const remove = (id) => onChange('nextOfKinList', data.nextOfKinList.filter(n => n.id !== id));
+  const removeNok = (id) => onChange('nextOfKinList', data.nextOfKinList.filter(n => n.id !== id));
+  const [newSecNok, setNewSecNok] = useState({ name: '', dob: '', relationship: '', idNumber: '', mobile: '', address: '', percentage: '' });
+  const addSecNok = () => {
+    if (!newSecNok.name || !newSecNok.relationship) { setErrors({ ...errors, secNokMissing: 'Name and relationship required' }); return; }
+    onChange('secondaryNextOfKinList', [...data.secondaryNextOfKinList, { ...newSecNok, id: Date.now().toString() }]);
+    setNewSecNok({ name: '', dob: '', relationship: '', idNumber: '', mobile: '', address: '', percentage: '' });
+    setErrors({ ...errors, secNokMissing: '' });
+  };
+  const removeSecNok = (id) => onChange('secondaryNextOfKinList', data.secondaryNextOfKinList.filter(n => n.id !== id));
   return (
     <div className="space-y-6">
+      <h3 className="font-semibold">Primary Next of Kin (at least one)</h3>
       <div className="rounded-lg border p-4 space-y-4">
-        <h4 className="font-medium">Add Next of Kin</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Input placeholder="Full Name *" value={newNok.name} onChange={e => setNewNok({ ...newNok, name: e.target.value })} />
+          <Input type="date" placeholder="Date of Birth" value={newNok.dob} onChange={e => setNewNok({ ...newNok, dob: e.target.value })} />
+          <Select value={newNok.gender} onValueChange={v => setNewNok({ ...newNok, gender: v })}><SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger><SelectContent><SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem></SelectContent></Select>
           <Input placeholder="Relationship *" value={newNok.relationship} onChange={e => setNewNok({ ...newNok, relationship: e.target.value })} />
-          <Input placeholder="Phone" value={newNok.phone} onChange={e => setNewNok({ ...newNok, phone: e.target.value })} />
+          <Input placeholder="National ID / Passport Number" value={newNok.idNumber} onChange={e => setNewNok({ ...newNok, idNumber: e.target.value })} />
+          <Input placeholder="Mobile Number" value={newNok.mobile} onChange={e => setNewNok({ ...newNok, mobile: e.target.value })} />
           <Input placeholder="Email" value={newNok.email} onChange={e => setNewNok({ ...newNok, email: e.target.value })} />
+          <Input placeholder="Physical Address + County" value={newNok.address} onChange={e => setNewNok({ ...newNok, address: e.target.value })} />
+          <Input type="number" placeholder="Percentage Share (%)" value={newNok.percentage} onChange={e => setNewNok({ ...newNok, percentage: e.target.value })} />
         </div>
-        {errors.nokIncomplete && <p className="text-xs text-destructive">{errors.nokIncomplete}</p>}
-        <Button variant="outline" onClick={add} className="w-full"><Plus className="h-4 w-4 mr-2" /> Add</Button>
+        {errors.nokMissing && <p className="text-xs text-destructive">{errors.nokMissing}</p>}
+        <Button variant="outline" onClick={addNok} className="w-full"><Plus className="h-4 w-4 mr-2" /> Add Primary Next of Kin</Button>
       </div>
-      {data.nextOfKinList.length === 0 && <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-center text-sm text-destructive"><AlertCircle className="h-4 w-4 inline mr-2" /> At least one Next of Kin required</div>}
-      {data.nextOfKinList.map(n => <div key={n.id} className="flex justify-between items-center rounded-lg border p-3"><div><p className="font-medium">{n.name}</p><p className="text-xs text-muted-foreground">{n.relationship} • {n.phone} • {n.email}</p></div><Button variant="ghost" size="sm" onClick={() => remove(n.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>)}
+      {data.nextOfKinList.map(n => <div key={n.id} className="flex justify-between items-center border p-3 rounded"><div><p className="font-medium">{n.name} ({n.relationship})</p><p className="text-xs">{n.mobile} • {n.email} • Share: {n.percentage}%</p></div><Button variant="ghost" size="sm" onClick={() => removeNok(n.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>)}
+      {data.nextOfKinList.length === 0 && <div className="text-center text-destructive text-sm border border-destructive/30 p-2 rounded"><AlertCircle className="inline h-4 w-4 mr-1" /> At least one primary next of kin required</div>}
+
+      <h3 className="font-semibold">Secondary Next of Kin (Optional)</h3>
+      <div className="rounded-lg border p-4 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Input placeholder="Full Name" value={newSecNok.name} onChange={e => setNewSecNok({ ...newSecNok, name: e.target.value })} />
+          <Input type="date" placeholder="Date of Birth" value={newSecNok.dob} onChange={e => setNewSecNok({ ...newSecNok, dob: e.target.value })} />
+          <Input placeholder="Relationship" value={newSecNok.relationship} onChange={e => setNewSecNok({ ...newSecNok, relationship: e.target.value })} />
+          <Input placeholder="National ID / Passport" value={newSecNok.idNumber} onChange={e => setNewSecNok({ ...newSecNok, idNumber: e.target.value })} />
+          <Input placeholder="Mobile Number" value={newSecNok.mobile} onChange={e => setNewSecNok({ ...newSecNok, mobile: e.target.value })} />
+          <Input placeholder="Physical Address + County" value={newSecNok.address} onChange={e => setNewSecNok({ ...newSecNok, address: e.target.value })} />
+          <Input type="number" placeholder="Percentage Share (%)" value={newSecNok.percentage} onChange={e => setNewSecNok({ ...newSecNok, percentage: e.target.value })} />
+        </div>
+        <Button variant="outline" onClick={addSecNok} className="w-full"><Plus className="h-4 w-4 mr-2" /> Add Secondary Next of Kin</Button>
+      </div>
+      {data.secondaryNextOfKinList.map(n => <div key={n.id} className="flex justify-between items-center border p-3 rounded"><div><p className="font-medium">{n.name} ({n.relationship})</p><p className="text-xs">{n.mobile} • Share: {n.percentage}%</p></div><Button variant="ghost" size="sm" onClick={() => removeSecNok(n.id)}><Trash2 className="h-4 w-4" /></Button></div>)}
+
+      {data.accountOwnershipType === 'Minor' && (
+        <>
+          <h3 className="font-semibold">Minor Account – Guardian Details</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded">
+            <Input placeholder="Guardian Full Name" value={data.minorGuardian.name} onChange={e => onChange('minorGuardian', { ...data.minorGuardian, name: e.target.value })} />
+            <Input placeholder="Guardian National ID / Passport" value={data.minorGuardian.nationalId} onChange={e => onChange('minorGuardian', { ...data.minorGuardian, nationalId: e.target.value })} />
+            <Input placeholder="Guardian KRA PIN" value={data.minorGuardian.kraPin} onChange={e => onChange('minorGuardian', { ...data.minorGuardian, kraPin: e.target.value })} />
+            <Input placeholder="Relationship to Minor" value={data.minorGuardian.relationship} onChange={e => onChange('minorGuardian', { ...data.minorGuardian, relationship: e.target.value })} />
+            <Input placeholder="Guardian Mobile Number" value={data.minorGuardian.mobile} onChange={e => onChange('minorGuardian', { ...data.minorGuardian, mobile: e.target.value })} />
+            <FileUpload label="Court Order / Guardianship Document" field="courtOrderDoc" data={data.minorGuardian} onChange={(f, v) => onChange('minorGuardian', { ...data.minorGuardian, courtOrderDoc: v })} required={false} />
+          </div>
+        </>
+      )}
     </div>
   );
 };
 
-const KycDocumentsStep = ({ data, onChange }) => {
-  const fileRefs = {
-    nationalIdFront: useRef(null), nationalIdBack: useRef(null),
-    passportPhoto: useRef(null), signatureImage: useRef(null),
-    addressProofDoc: useRef(null), kraPinCertificate: useRef(null),
-    signedCustomershipForm: useRef(null),
-  };
-  const uploadButton = (label, field, required) => (
-    <div className="space-y-2"><Label>{label} {required && '*'}</Label><div className="flex gap-2"><Button variant="outline" onClick={() => fileRefs[field]?.current?.click()}><Upload className="h-4 w-4 mr-2" />{data[field] ? data[field].name : 'Choose'}</Button>{data[field] && <Button variant="ghost" size="sm" onClick={() => onChange(field, null)}><Trash2 className="h-4 w-4" /></Button>}</div><input type="file" ref={fileRefs[field]} onChange={e => onChange(field, e.target.files?.[0] || null)} className="hidden" accept="image/*,.pdf" /></div>
-  );
+const TaxComplianceStep = ({ data, onChange }) => {
+  const addCrsCountry = (c) => { if (c && !data.crsAdditionalCountries.includes(c)) onChange('crsAdditionalCountries', [...data.crsAdditionalCountries, c]); };
+  const removeCrsCountry = (c) => onChange('crsAdditionalCountries', data.crsAdditionalCountries.filter(x => x !== c));
   return (
     <div className="space-y-6">
+      <h3 className="font-semibold">KRA Tax Information</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2"><Label>ID Issue Date *</Label><Input type="date" value={data.idIssueDate} onChange={e => onChange('idIssueDate', e.target.value)} /></div>
-        <div className="space-y-2"><Label>ID Place of Issue *</Label><Input value={data.idPlaceOfIssue} onChange={e => onChange('idPlaceOfIssue', e.target.value)} /></div>
+        <div><Label>KRA Personal Identification Number (PIN) *</Label><Input value={data.kraPinNumber} onChange={e => onChange('kraPinNumber', e.target.value)} className="uppercase" /></div>
+        <FileUpload label="KRA PIN Certificate Copy" field="kraPinCertCopy" data={data} onChange={onChange} required />
+        <div className="flex items-center space-x-2"><Checkbox checked={data.taxResidentInKenya} onCheckedChange={c => onChange('taxResidentInKenya', c)} /><Label>Tax Resident in Kenya *</Label></div>
+        {!data.taxResidentInKenya && <div><Label>Tax Residency Country</Label><Input value={data.taxResidencyCountry} onChange={e => onChange('taxResidencyCountry', e.target.value)} /></div>}
+        <div><Label>Foreign Tax Identification Number (FTIN)</Label><Input value={data.foreignTaxId} onChange={e => onChange('foreignTaxId', e.target.value)} /></div>
+        <div><Label>VAT Registration Number</Label><Input value={data.vatRegistrationNumber} onChange={e => onChange('vatRegistrationNumber', e.target.value)} /></div>
       </div>
+      <h3 className="font-semibold">FATCA / CRS Compliance</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {uploadButton('National ID Front', 'nationalIdFront', true)}
-        {uploadButton('National ID Back', 'nationalIdBack', true)}
-        {uploadButton('Passport Photo', 'passportPhoto', true)}
-        {uploadButton('Signature Image', 'signatureImage', true)}
-        {uploadButton('Proof of Residence (Optional)', 'addressProofDoc', false)}
-        {uploadButton('KRA PIN Certificate (Optional)', 'kraPinCertificate', false)}
-        {uploadButton('Signed Customership Form (Optional)', 'signedCustomershipForm', false)}
+        <div className="flex items-center space-x-2"><Checkbox checked={data.usPersonDeclaration} onCheckedChange={c => onChange('usPersonDeclaration', c)} /><Label>US Person Declaration *</Label></div>
+        {data.usPersonDeclaration && <><div><Label>US Social Security Number (SSN)</Label><Input value={data.usSsn} onChange={e => onChange('usSsn', e.target.value)} /></div><div><Label>US Address</Label><Input value={data.usAddress} onChange={e => onChange('usAddress', e.target.value)} /></div><div className="flex items-center space-x-2"><Checkbox checked={data.w9w8benSubmitted} onCheckedChange={c => onChange('w9w8benSubmitted', c)} /><Label>W-9 / W-8BEN Form Submitted</Label></div><FileUpload label="Form Document" field="w9w8benDoc" data={data} onChange={onChange} required={false} /></>}
+        <div><Label>CRS – Additional Tax Residency Countries</Label><Select onValueChange={addCrsCountry}><SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger><SelectContent><SelectItem value="USA">USA</SelectItem><SelectItem value="UK">UK</SelectItem><SelectItem value="Germany">Germany</SelectItem><SelectItem value="China">China</SelectItem></SelectContent></Select><div className="flex flex-wrap gap-1 mt-1">{data.crsAdditionalCountries.map(c => <Badge key={c} variant="secondary" className="cursor-pointer" onClick={() => removeCrsCountry(c)}>{c} ✕</Badge>)}</div></div>
+        <div><Label>Foreign TIN per Additional Country</Label><Input placeholder="Country: TIN" value={data.foreignTinPerCountry.join(', ')} onChange={e => onChange('foreignTinPerCountry', e.target.value.split(',').map(s => s.trim()))} /></div>
+        <div className="flex items-center space-x-2"><Checkbox checked={data.crsSelfCertificationSigned} onCheckedChange={c => onChange('crsSelfCertificationSigned', c)} /><Label>CRS Self-Certification Form Signed *</Label></div>
       </div>
+      <h3 className="font-semibold">CBK / AML Regulatory Checks</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="flex items-center space-x-3 rounded-lg border p-3"><Checkbox checked={data.biometricCaptured} onCheckedChange={c => onChange('biometricCaptured', !!c)} id="bio" /><Label htmlFor="bio" className="cursor-pointer flex items-center gap-2"><Fingerprint className="h-4 w-4" /> Biometric captured</Label></div>
-        <div className="flex items-center space-x-3 rounded-lg border p-3"><Checkbox checked={data.livePhotoCaptured} onCheckedChange={c => onChange('livePhotoCaptured', !!c)} id="live" /><Label htmlFor="live" className="cursor-pointer flex items-center gap-2"><Camera className="h-4 w-4" /> Live photo captured</Label></div>
+        <div><Label>Customer Risk Rating *</Label><Select value={data.customerRiskRating} onValueChange={v => onChange('customerRiskRating', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem></SelectContent></Select></div>
+        <div className="flex items-center space-x-2"><Checkbox checked={data.enhancedDueDiligenceRequired} onCheckedChange={c => onChange('enhancedDueDiligenceRequired', c)} /><Label>Enhanced Due Diligence (EDD) Required *</Label></div>
+        <div className="flex items-center space-x-2"><Checkbox checked={data.sanctionsScreeningCleared} onCheckedChange={c => onChange('sanctionsScreeningCleared', c)} /><Label>Sanctions Screening Cleared *</Label></div>
+        <div className="flex items-center space-x-2"><Checkbox checked={data.adverseMediaCheckCompleted} onCheckedChange={c => onChange('adverseMediaCheckCompleted', c)} /><Label>Adverse Media Check Completed *</Label></div>
+        <div><Label>IPRS Verification Status *</Label><Select value={data.iprsVerificationStatus} onValueChange={v => onChange('iprsVerificationStatus', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Verified">Verified</SelectItem><SelectItem value="Unverified">Unverified</SelectItem><SelectItem value="Mismatch">Mismatch</SelectItem></SelectContent></Select></div>
+        <div><Label>CRB Credit Bureau Check</Label><Select value={data.crbCheckStatus} onValueChange={v => onChange('crbCheckStatus', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Cleared">Cleared</SelectItem><SelectItem value="Negatively Listed">Negatively Listed</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent></Select></div>
+        <div><Label>CRB Reference Number</Label><Input value={data.crbReferenceNumber} onChange={e => onChange('crbReferenceNumber', e.target.value)} /></div>
       </div>
     </div>
   );
 };
 
-const ConsentStep = ({ data, onChange }) => {
-  useEffect(() => {
-    if (data.acceptTerms && data.dataUsageConsent && !data.consentDate) {
-      onChange('consentDate', new Date().toISOString());
-    }
-  }, [data.acceptTerms, data.dataUsageConsent]);
+const DeclarationsStep = ({ data, onChange }) => {
+  const signatureDate = data.signatureDate || new Date().toISOString().split('T')[0];
+  useEffect(() => { if (!data.signatureDate) onChange('signatureDate', signatureDate); }, []);
   return (
     <div className="space-y-6">
-      <Card className="border-muted"><CardContent className="pt-6 space-y-4">
-        <div className="flex items-start space-x-3"><Checkbox id="terms" checked={data.acceptTerms} onCheckedChange={c => onChange('acceptTerms', !!c)} /><Label htmlFor="terms" className="cursor-pointer text-sm">I accept the Terms & Conditions of the SACCO.</Label></div>
-        <div className="flex items-start space-x-3"><Checkbox id="dataConsent" checked={data.dataUsageConsent} onCheckedChange={c => onChange('dataUsageConsent', !!c)} /><Label htmlFor="dataConsent" className="cursor-pointer text-sm">I consent to the collection, processing, and storage of my personal data for KYC, account management, and regulatory reporting.</Label></div>
-        {data.consentDate && <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">Consent recorded on: {new Date(data.consentDate).toLocaleString()}</div>}
-      </CardContent></Card>
+      <div className="grid grid-cols-1 gap-3">
+        <div className="flex items-start space-x-2"><Checkbox checked={data.infoAccuracyDecl} onCheckedChange={c => onChange('infoAccuracyDecl', c)} /><Label>I confirm all information provided is accurate and true to the best of my knowledge. *</Label></div>
+        <div className="flex items-start space-x-2"><Checkbox checked={data.amlDeclaration} onCheckedChange={c => onChange('amlDeclaration', c)} /><Label>Funds deposited are from legitimate sources. *</Label></div>
+        <div className="flex items-start space-x-2"><Checkbox checked={data.pepSelfDeclaration} onCheckedChange={c => onChange('pepSelfDeclaration', c)} /><Label>PEP Self-Declaration *</Label></div>
+        <div className="flex items-start space-x-2"><Checkbox checked={data.fatcaCrsSelfCertSigned} onCheckedChange={c => onChange('fatcaCrsSelfCertSigned', c)} /><Label>FATCA / CRS Self-Certification Signed *</Label></div>
+        <div className="flex items-start space-x-2"><Checkbox checked={data.taxComplianceDecl} onCheckedChange={c => onChange('taxComplianceDecl', c)} /><Label>Tax Compliance Declaration *</Label></div>
+        <div className="flex items-start space-x-2"><Checkbox checked={data.termsAccepted} onCheckedChange={c => onChange('termsAccepted', c)} /><Label>Terms & Conditions Accepted *</Label></div>
+        <div className="flex items-start space-x-2"><Checkbox checked={data.dataProtectionConsent} onCheckedChange={c => onChange('dataProtectionConsent', c)} /><Label>Data Protection Act 2019 Consent *</Label></div>
+        <div className="flex items-start space-x-2"><Checkbox checked={data.creditBureauConsent} onCheckedChange={c => onChange('creditBureauConsent', c)} /><Label>Consent to Credit Bureau Checks *</Label></div>
+        <div className="flex items-start space-x-2"><Checkbox checked={data.regulatorDataConsent} onCheckedChange={c => onChange('regulatorDataConsent', c)} /><Label>Consent to Share Data with Regulators (CBK / KRA / FRC) *</Label></div>
+        <div className="flex items-start space-x-2"><Checkbox checked={data.marketingConsent} onCheckedChange={c => onChange('marketingConsent', c)} /><Label>Marketing Consent (Optional)</Label></div>
+      </div>
+      <h3 className="font-semibold">Customer Mandate / Signature</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FileUpload label="Customer Signature (Wet or eSignature)" field="customerSignature" data={data} onChange={onChange} required accept="image/*" />
+        <div><Label>Date of Signature *</Label><Input type="date" value={data.signatureDate} onChange={e => onChange('signatureDate', e.target.value)} /></div>
+        <FileUpload label="Customer Thumb Print (Ink / Biometric)" field="customerThumbPrint" data={data} onChange={onChange} required={false} />
+        <div><Label>Witness Full Name</Label><Input value={data.witnessFullName} onChange={e => onChange('witnessFullName', e.target.value)} /></div>
+        <div><Label>Witness ID Number</Label><Input value={data.witnessIdNumber} onChange={e => onChange('witnessIdNumber', e.target.value)} /></div>
+        <FileUpload label="Witness Signature" field="witnessSignature" data={data} onChange={onChange} required={false} />
+        <FileUpload label="Power of Attorney Form (if applicable)" field="powerOfAttorneyDoc" data={data} onChange={onChange} required={false} />
+      </div>
+      <h3 className="font-semibold">Bank Officer / Verification Details</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><Label>Account Opening Officer Name *</Label><Input value={data.openingOfficerName} onChange={e => onChange('openingOfficerName', e.target.value)} /></div>
+        <div><Label>Officer Staff ID / Employee No. *</Label><Input value={data.officerStaffId} onChange={e => onChange('officerStaffId', e.target.value)} /></div>
+        <div><Label>Officer Branch Code *</Label><Input value={data.officerBranchCode} onChange={e => onChange('officerBranchCode', e.target.value)} /></div>
+        <div><Label>Relationship Manager (RM) Name</Label><Input value={data.relationshipManagerName} onChange={e => onChange('relationshipManagerName', e.target.value)} /></div>
+        <div><Label>RM Employee ID</Label><Input value={data.rmEmployeeId} onChange={e => onChange('rmEmployeeId', e.target.value)} /></div>
+        <div className="flex items-center space-x-2"><Checkbox checked={data.documentsVerifiedChecklist} onCheckedChange={c => onChange('documentsVerifiedChecklist', c)} /><Label>Documents Verified Checklist Completed *</Label></div>
+        <div><Label>Application Received Date + Time *</Label><Input type="datetime-local" value={data.applicationReceivedDateTime} onChange={e => onChange('applicationReceivedDateTime', e.target.value)} /></div>
+        <div><Label>Application Approved Date *</Label><Input type="date" value={data.applicationApprovedDate} onChange={e => onChange('applicationApprovedDate', e.target.value)} /></div>
+        <div><Label>Approval Authority Level *</Label><Select value={data.approvalAuthorityLevel} onValueChange={v => onChange('approvalAuthorityLevel', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Operations Officer">Operations Officer</SelectItem><SelectItem value="Branch Manager">Branch Manager</SelectItem><SelectItem value="Head Office">Head Office</SelectItem></SelectContent></Select></div>
+        <div><Label>Account Number Assigned (system generated)</Label><Input value={data.accountNumberAssigned} onChange={e => onChange('accountNumberAssigned', e.target.value)} /></div>
+        <div><Label>Sort Code / Branch Code</Label><Input value={data.sortCodeBranchCode} onChange={e => onChange('sortCodeBranchCode', e.target.value)} /></div>
+        <div><Label>SWIFT BIC Code</Label><Input value={data.swiftBicCode} onChange={e => onChange('swiftBicCode', e.target.value)} /></div>
+        <div><Label>IBAN (if applicable)</Label><Input value={data.iban} onChange={e => onChange('iban', e.target.value)} /></div>
+        <div><Label>Customer CIF Number *</Label><Input value={data.customerCifNumber} onChange={e => onChange('customerCifNumber', e.target.value)} /></div>
+        <div className="flex items-center space-x-2"><Checkbox checked={data.welcomeLetterIssued} onCheckedChange={c => onChange('welcomeLetterIssued', c)} /><Label>Welcome Letter Issued *</Label></div>
+        <div><Label>Welcome Pack Delivery Channel *</Label><Select value={data.welcomePackDeliveryChannel} onValueChange={v => onChange('welcomePackDeliveryChannel', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Physical Handover">Physical Handover</SelectItem><SelectItem value="Email">Email</SelectItem><SelectItem value="SMS">SMS</SelectItem><SelectItem value="Courier">Courier</SelectItem></SelectContent></Select></div>
+        <div><Label>Core Banking System Entry Date + Time *</Label><Input type="datetime-local" value={data.coreBankingEntryDateTime} onChange={e => onChange('coreBankingEntryDateTime', e.target.value)} /></div>
+      </div>
     </div>
   );
 };
 
 const PreviewStep = ({ data }) => (
   <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
-    <Card><CardHeader><CardTitle className="text-base">Personal Info</CardTitle></CardHeader><CardContent className="text-sm space-y-1"><div className="grid grid-cols-2"><span className="text-muted-foreground">Name:</span><span>{data.title} {data.firstName} {data.lastName}</span></div><div className="grid grid-cols-2"><span>DOB:</span><span>{data.dateOfBirth}</span></div><div className="grid grid-cols-2"><span>Gender:</span><span>{data.gender}</span></div><div className="grid grid-cols-2"><span>Phone:</span><span>{data.phoneNumber} {data.phoneOtpVerified && '✓'}</span></div><div className="grid grid-cols-2"><span>Email:</span><span>{data.email} {data.emailOtpVerified && '✓'}</span></div><div className="grid grid-cols-2"><span>National ID:</span><span>{data.nationalId}</span></div><div className="grid grid-cols-2"><span>KRA PIN:</span><span>{data.kraPin}</span></div><div className="grid grid-cols-2"><span>Marital Status:</span><span>{data.maritalStatus}</span></div><div className="grid grid-cols-2"><span>PEP:</span><span>{data.pep}</span></div></CardContent></Card>
-    <Card><CardHeader><CardTitle className="text-base">Account & Address</CardTitle></CardHeader><CardContent className="text-sm"><div className="grid grid-cols-2"><span>Account Type:</span><span>{data.accountType}</span></div><div className="grid grid-cols-2"><span>Address:</span><span>{data.street}, {data.city}, {data.county}</span></div><div className="grid grid-cols-2"><span>Landmark:</span><span>{data.nearestLandmark}</span></div></CardContent></Card>
-    <Card><CardHeader><CardTitle className="text-base">Employment & Next of Kin</CardTitle></CardHeader><CardContent className="text-sm"><div className="grid grid-cols-2"><span>Employer:</span><span>{data.employerName}</span></div><div className="grid grid-cols-2"><span>Monthly Income:</span><span>KES {data.monthlyIncome}</span></div><div className="grid grid-cols-2"><span>Next of Kin:</span><span>{data.nextOfKinList.length} person(s)</span></div></CardContent></Card>
-    <Card><CardHeader><CardTitle className="text-base">Documents & Consent</CardTitle></CardHeader><CardContent className="text-sm"><div className="grid grid-cols-2"><span>ID Uploaded:</span><span>{data.nationalIdFront ? 'Yes' : 'No'}</span></div><div className="grid grid-cols-2"><span>Biometric:</span><span>{data.biometricCaptured ? 'Captured' : 'Not captured'}</span></div><div className="grid grid-cols-2"><span>Live Photo:</span><span>{data.livePhotoCaptured ? 'Captured' : 'Not captured'}</span></div><div className="grid grid-cols-2"><span>Consent:</span><span>{data.acceptTerms ? 'Accepted' : 'Pending'}</span></div></CardContent></Card>
+    <Card><CardHeader><CardTitle>Personal Information</CardTitle></CardHeader><CardContent className="text-sm"><div>Name: {data.title} {data.firstName} {data.lastName}</div><div>DOB: {data.dateOfBirth}</div><div>National ID: {data.nationalIdNumber}</div><div>KRA PIN: {data.kraPinNumber}</div><div>PEP: {data.pep ? 'Yes' : 'No'}</div></CardContent></Card>
+    <Card><CardHeader><CardTitle>Account & Address</CardTitle></CardHeader><CardContent><div>Account Type: {data.accountProductType}</div><div>Address: {data.plotHouseNumber}, {data.streetRoad}, {data.county}</div><div>Phone: {data.primaryMobile} | Email: {data.primaryEmail}</div></CardContent></Card>
+    <Card><CardHeader><CardTitle>Employment & Next of Kin</CardTitle></CardHeader><CardContent><div>Employer: {data.employerName}</div><div>Monthly Income: {data.monthlyNetIncome}</div><div>Next of Kin: {data.nextOfKinList.length} persons</div></CardContent></Card>
+    <Card><CardHeader><CardTitle>Declarations & Signatures</CardTitle></CardHeader><CardContent><div>Terms Accepted: {data.termsAccepted ? 'Yes' : 'No'}</div><div>Data Protection Consent: {data.dataProtectionConsent ? 'Yes' : 'No'}</div><div>Signature Date: {data.signatureDate}</div></CardContent></Card>
   </div>
 );
 
@@ -395,10 +703,7 @@ export function KycOnboardingFlow({ onBack = () => window.history.back() }) {
   const [generatedIds, setGeneratedIds] = useState(null);
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
-  const updateField = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
-  };
+  const updateField = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
 
   const validateStep = (step) => {
     const newErrors = {};
@@ -409,50 +714,52 @@ export function KycOnboardingFlow({ onBack = () => window.history.back() }) {
       if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Required';
       else if (new Date().getFullYear() - new Date(formData.dateOfBirth).getFullYear() < 18) newErrors.dateOfBirth = 'Age ≥18 required';
       if (!formData.gender) newErrors.gender = 'Required';
-      if (!formData.phoneNumber) newErrors.phoneNumber = 'Required';
-      if (!formData.phoneOtpVerified) newErrors.phoneOtp = 'Verify phone OTP';
-      if (!formData.email) newErrors.email = 'Required';
-      if (!formData.emailOtpVerified) newErrors.emailOtp = 'Verify email OTP';
-      if (!formData.nationalId) newErrors.nationalId = 'Required';
-      if (!formData.kraPin) newErrors.kraPin = 'Required';
       if (!formData.maritalStatus) newErrors.maritalStatus = 'Required';
       if (!formData.nationality) newErrors.nationality = 'Required';
       if (!formData.placeOfBirth) newErrors.placeOfBirth = 'Required';
+      if (!formData.countryOfBirth) newErrors.countryOfBirth = 'Required';
       if (!formData.countryOfResidence) newErrors.countryOfResidence = 'Required';
-      if (!formData.pep) newErrors.pep = 'Required';
+      if (formData.pep === undefined) newErrors.pep = 'Required';
+      if (!formData.primaryMobile) newErrors.primaryMobile = 'Required';
+      if (!formData.primaryEmail) newErrors.primaryEmail = 'Required';
+      if (!formData.primaryEmailVerified) newErrors.primaryEmailOtp = 'Verify email OTP';
+      if (!formData.nationalIdNumber) newErrors.nationalIdNumber = 'Required';
+      if (!formData.kraPinNumber) newErrors.kraPinNumber = 'Required';
     } else if (step === 2) {
-      if (!formData.accountType) newErrors.accountType = 'Required';
-      if (!formData.accountPurpose) newErrors.accountPurpose = 'Required';
-      if (!formData.accountOwnership) newErrors.accountOwnership = 'Required';
+      if (!formData.idType) newErrors.idType = 'Required';
+      if (!formData.idFrontImage) newErrors.idFrontImage = 'Required';
+      if (!formData.kraPinCertCopy) newErrors.kraPinCertCopy = 'Required';
     } else if (step === 3) {
-      if (!formData.street) newErrors.street = 'Required';
-      if (!formData.city) newErrors.city = 'Required';
-      if (!formData.district) newErrors.district = 'Required';
-      if (!formData.country) newErrors.country = 'Required';
-      if (!formData.county) newErrors.county = 'Required';
+      if (!formData.plotHouseNumber) newErrors.plotHouseNumber = 'Required';
       if (!formData.nearestLandmark) newErrors.nearestLandmark = 'Required';
-      if (!formData.durationAtAddress) newErrors.durationAtAddress = 'Required';
-      if (!formData.proofOfResidence) newErrors.proofOfResidence = 'Proof of residence required';
+      if (!formData.subLocation) newErrors.subLocation = 'Required';
+      if (!formData.county) newErrors.county = 'Required';
+      if (!formData.proofOfResidence) newErrors.proofOfResidence = 'Required';
+      if (!formData.primaryEmailVerified) newErrors.primaryEmailOtp = 'Verify email OTP';
     } else if (step === 4) {
-      if (!formData.employerName) newErrors.employerName = 'Required';
-      if (!formData.employmentType) newErrors.employmentType = 'Required';
-      if (!formData.monthlyIncome) newErrors.monthlyIncome = 'Required';
+      if (!formData.employmentStatus) newErrors.employmentStatus = 'Required';
       if (!formData.occupation) newErrors.occupation = 'Required';
-      if (!formData.expectedMonthlyTransactions) newErrors.expectedMonthlyTransactions = 'Required';
-      if (!formData.maxDepositWithdrawal) newErrors.maxDepositWithdrawal = 'Required';
-      if (!formData.sourceOfFunds) newErrors.sourceOfFunds = 'Required';
+      if (!formData.monthlyNetIncome) newErrors.monthlyNetIncome = 'Required';
+      if (!formData.expectedMonthlyCreditTurnover) newErrors.expectedMonthlyCreditTurnover = 'Required';
+      if (!formData.primarySourceOfFunds) newErrors.primarySourceOfFunds = 'Required';
     } else if (step === 5) {
-      if (formData.nextOfKinList.length === 0) newErrors.nextOfKin = 'At least one Next of Kin required';
+      if (!formData.accountOwnershipType) newErrors.accountOwnershipType = 'Required';
+      if (!formData.accountProductType) newErrors.accountProductType = 'Required';
+      if (!formData.accountPurpose) newErrors.accountPurpose = 'Required';
+      if (!formData.branchPreference) newErrors.branchPreference = 'Required';
+      if (!formData.openingDepositAmount) newErrors.openingDepositAmount = 'Required';
     } else if (step === 6) {
-      if (!formData.nationalIdFront) newErrors.nationalIdFront = 'Required';
-      if (!formData.nationalIdBack) newErrors.nationalIdBack = 'Required';
-      if (!formData.passportPhoto) newErrors.passportPhoto = 'Required';
-      if (!formData.signatureImage) newErrors.signatureImage = 'Required';
-      if (!formData.idIssueDate) newErrors.idIssueDate = 'Required';
-      if (!formData.idPlaceOfIssue) newErrors.idPlaceOfIssue = 'Required';
+      if (formData.nextOfKinList.length === 0) newErrors.nextOfKin = 'At least one primary next of kin required';
     } else if (step === 7) {
-      if (!formData.acceptTerms) newErrors.acceptTerms = 'Must accept Terms';
-      if (!formData.dataUsageConsent) newErrors.dataUsageConsent = 'Must consent to data usage';
+      if (!formData.kraPinNumber) newErrors.kraPinNumber = 'Required';
+      if (!formData.customerRiskRating) newErrors.customerRiskRating = 'Required';
+    } else if (step === 8) {
+      if (!formData.infoAccuracyDecl) newErrors.infoAccuracyDecl = 'Required';
+      if (!formData.amlDeclaration) newErrors.amlDeclaration = 'Required';
+      if (!formData.termsAccepted) newErrors.termsAccepted = 'Required';
+      if (!formData.dataProtectionConsent) newErrors.dataProtectionConsent = 'Required';
+      if (!formData.customerSignature) newErrors.customerSignature = 'Required';
+      if (!formData.openingOfficerName) newErrors.openingOfficerName = 'Required';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -462,24 +769,25 @@ export function KycOnboardingFlow({ onBack = () => window.history.back() }) {
     if (validateStep(currentStep)) {
       if (currentStep < STEPS.length) setCurrentStep(currentStep + 1);
       window.scrollTo(0, 0);
+    } else {
+      alert("Please fill all required fields correctly before proceeding.");
     }
   };
+
   const prevStep = () => {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
     window.scrollTo(0, 0);
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(7)) return;
+    if (!validateStep(8)) {
+      alert("Please complete all required fields in the Declarations step.");
+      return;
+    }
     setSubmitting(true);
     await new Promise(r => setTimeout(r, 1500));
-    const ids = {
-      customerId: generateCustomerId(),
-      customershipNumber: generateCustomershipNumber(),
-      cifNumber: generateCifNumber(),
-    };
+    const ids = { customerId: generateCustomerId(), customershipNumber: generateCustomershipNumber(), cifNumber: generateCifNumber() };
     setGeneratedIds(ids);
-    // Here you would POST to backend: { ...formData, status: 'Draft', kycStatus: 'Pending', ...ids }
     console.log('Submitted:', { ...formData, ...ids, status: 'Draft', kycStatus: 'Pending' });
     setSubmitting(false);
     setSubmitSuccess(true);
@@ -489,13 +797,14 @@ export function KycOnboardingFlow({ onBack = () => window.history.back() }) {
     const props = { data: formData, onChange: updateField, errors, setErrors };
     switch (currentStep) {
       case 1: return <PersonalInfoStep {...props} />;
-      case 2: return <AccountDetailsStep {...props} />;
-      case 3: return <AddressStep {...props} />;
-      case 4: return <EmploymentStep {...props} />;
-      case 5: return <NextOfKinStep {...props} />;
-      case 6: return <KycDocumentsStep {...props} />;
-      case 7: return <ConsentStep {...props} />;
-      case 8: return <PreviewStep data={formData} />;
+      case 2: return <IdentityDocsStep {...props} />;
+      case 3: return <ContactAddressStep {...props} />;
+      case 4: return <EmploymentFinancialStep {...props} />;
+      case 5: return <AccountDetailsStep {...props} />;
+      case 6: return <NextOfKinStep {...props} />;
+      case 7: return <TaxComplianceStep {...props} />;
+      case 8: return <DeclarationsStep {...props} />;
+      case 9: return <PreviewStep data={formData} />;
       default: return null;
     }
   };
@@ -560,4 +869,5 @@ export function KycOnboardingFlow({ onBack = () => window.history.back() }) {
     </div>
   );
 }
+
 export default KycOnboardingFlow;
