@@ -417,25 +417,57 @@ const CartPage = () => {
     return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data)}`;
   };
 
-  const downloadQrCode = async (item) => {
-    try {
-      const qrUrl = getQrCodeUrl(item);
-      const response = await fetch(qrUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `qr_${item.cart_id || 'cart'}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading QR code:', error);
-      alert('Failed to download QR code. Please try again.');
-    }
-  };
-
+  // Replace your existing downloadQrCode function with this
+const downloadQrCode = async (item) => {
+  // Show loading indicator (optional)
+  const loadingToast = setTimeout(() => {
+    console.log('Downloading QR code...');
+  }, 100);
+  
+  try {
+    const qrUrl = getQrCodeUrl(item);
+    
+    // Create image element
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    
+    // Create promise for image loading
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = qrUrl;
+    });
+    
+    // Create canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    
+    // Download
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `qr_${item.cart_id || 'cart'}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        clearTimeout(loadingToast);
+      } else {
+        throw new Error('Failed to create blob');
+      }
+    }, 'image/png', 1.0); // 1.0 = quality
+    
+  } catch (error) {
+    clearTimeout(loadingToast);
+    console.error('Error downloading QR code:', error);
+    alert('Failed to download QR code. Please try again.');
+  }
+};
   const openQrModal = (item) => {
     setSelectedCompletedItem(item);
     setIsModalOpen(true);

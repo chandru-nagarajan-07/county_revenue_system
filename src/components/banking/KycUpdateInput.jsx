@@ -1537,22 +1537,22 @@ export function KycUpdateInput({
           if (data.signatureCardFile) payload.append("signature_card", data.signatureCardFile);
         }
 
-        const response = await fetch("https://snapsterbe.techykarthikbms.com/api/kyc-update-requests/", {
+        const response = await fetch("http://127.0.0.1:8000/api/kyc-update-requests/", {
           method: "POST",
           body: payload,
         });
 
         if (!response.ok) {
-          let errorText = '';
+          const errorText = await response.text();
+
+          let parsed;
           try {
-            const errorData = await response.json();
-            errorText = JSON.stringify(errorData);
+            parsed = JSON.parse(errorText);
           } catch {
-            errorText = await response.text();
+            parsed = errorText;
           }
-          
-          console.error(`Server error response for ${artefactId}:`, errorText);
-          throw new Error(`Server returned ${response.status}: ${errorText.substring(0, 200)}`);
+
+          throw new Error(`Server returned ${response.status}: ${JSON.stringify(parsed)}`);
         }
 
         const res = await response.json();
