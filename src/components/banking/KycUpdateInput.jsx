@@ -1537,7 +1537,7 @@ export function KycUpdateInput({
           if (data.signatureCardFile) payload.append("signature_card", data.signatureCardFile);
         }
 
-        const response = await fetch("http://127.0.0.1:8000/api/kyc-update-requests/", {
+        const response = await fetch("https://snapsterbe.techykarthikbms.com/api/kyc-update-requests/", {
           method: "POST",
           body: payload,
         });

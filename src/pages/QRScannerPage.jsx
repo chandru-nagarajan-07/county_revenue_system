@@ -126,7 +126,7 @@ const QRScannerPage = () => {
     setOtpError('');
     
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/send-otp/`, {
+      const response = await fetch(`https://snapsterbe.techykarthikbms.com/api/send-otp/`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -208,7 +208,7 @@ const QRScannerPage = () => {
     setOtpError('');
     
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/otp-verification/`, {
+      const response = await fetch(`https://snapsterbe.techykarthikbms.com/api/otp-verification/`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
