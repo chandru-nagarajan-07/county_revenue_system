@@ -893,7 +893,7 @@ export function KycOnboardingFlow({ onBack = () => window.history.back() }) {
                   <span className="font-mono font-bold">{submittedData.customer_id}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Customership Number:</span>
+                  <span className="text-muted-foreground">Customer Number:</span>
                   <span className="font-mono font-bold">{submittedData.customership_number}</span>
                 </div>
                 <div className="flex justify-between">

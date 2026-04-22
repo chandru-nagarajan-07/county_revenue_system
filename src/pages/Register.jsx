@@ -134,7 +134,7 @@ const Register = () => {
         return;
       }
       // Navigate to verification flow (loader + actual async steps)
-      navigate('/verify-flow', { state: { email: formData.email, phone: formData.phone } });
+      navigate('/verify-otp', { state: { email: formData.email, phone: formData.phone } });
     } catch (error) {
       console.error('Registration error:', error);
       alert('Something went wrong during registration.');
