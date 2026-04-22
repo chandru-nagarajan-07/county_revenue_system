@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Mail, Lock, UserPlus, Phone, Landmark, MapPin, Briefcase, IdCard, Check, AtSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DashboardHeader } from '@/components/banking/DashboardHeader';
+// import { DashboardHeader } from '@/components/banking/DashboardHeader';
 
 const ThemeInput = React.memo(({ label, name, type = 'text', icon: Icon, placeholder, value, onChange, error, required = true }) => (
   <div className="space-y-2">
@@ -217,7 +217,7 @@ const AccountOpeningForm = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <DashboardHeader />
+      {/* <DashboardHeader /> */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-8 py-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

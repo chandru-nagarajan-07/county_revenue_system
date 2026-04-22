@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { DashboardHeader } from '@/components/banking/DashboardHeader';
+// import { DashboardHeader } from '@/components/banking/DashboardHeader';
 import {
   Select,
   SelectContent,
@@ -98,7 +98,7 @@ const Register = () => {
     // Optional: check if email exists
     try {
       const checkResponse = await fetch(
-        `https://saccobe.zecosdk.com/account_fetch/${formData.email}`,
+        `http://127.0.0.1:8001/customer/account_fetch/${formData.email}/`,
         { method: 'GET' }
       );
       if (!checkResponse.ok) {
@@ -128,6 +128,7 @@ const Register = () => {
         }),
       });
       const data = await response.json();
+      console.log('Registration response:', data);
       if (!response.ok) {
         alert(`Registration failed: ${data.message || 'Unknown error'}`);
         return;
@@ -142,7 +143,7 @@ const Register = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <DashboardHeader />
+      {/* <DashboardHeader /> */}
       <main className="flex-1 flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -208,6 +209,10 @@ const Register = () => {
               Create Account
             </Button>
           </form>
+           <div className="text-center text-sm text-muted-foreground">
+            Already have an account?{' '}
+            <a href="/" className="text-primary font-medium hover:underline">Log in</a>
+          </div>
         </motion.div>
       </main>
     </div>
