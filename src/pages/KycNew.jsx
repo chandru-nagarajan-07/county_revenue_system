@@ -902,7 +902,7 @@ export function KycOnboardingFlow({ onBack = () => window.history.back() }) {
                 </div>
               </CardContent>
             </Card>
-            <Button onClick={() => navigate('/dashboard')} className="w-full">Go to Dashboard</Button>
+            <Button onClick={() => navigate('/register')} className="w-full">Go to Register</Button>
           </motion.div>
         </div>
       </div>

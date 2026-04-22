@@ -91,7 +91,7 @@ const Register = () => {
     // Email validation
     if (!formData.email || !formData.email.includes('@')) {
       alert('A valid email address is required to register.');
-      navigate('/create-account');
+      navigate('/kyconboarding');
       return;
     }
 
@@ -103,13 +103,13 @@ const Register = () => {
       );
       if (!checkResponse.ok) {
         alert('No account found with this email. Please create an account.');
-        navigate('/create-account');
+        navigate('/kyconboarding');
         return;
       }
     } catch (err) {
       console.error('Email check failed:', err);
       alert('Unable to verify email. Please try again.');
-      navigate('/create-account');
+      navigate('/kyconboarding');
       return;
     }
 
