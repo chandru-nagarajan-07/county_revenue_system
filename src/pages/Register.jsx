@@ -98,7 +98,7 @@ const Register = () => {
     // Optional: check if email exists
     try {
       const checkResponse = await fetch(
-        `http://127.0.0.1:8001/customer/account_fetch/${formData.email}/`,
+        `https://corebanking.pythonanywhere.com/customer/account_fetch/${formData.email}/`,
         { method: 'GET' }
       );
       if (!checkResponse.ok) {
