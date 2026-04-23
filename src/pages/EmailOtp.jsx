@@ -12,9 +12,11 @@ const EmailOtp = () => {
 
   const email = location.state?.email;
   const register_by = location.state?.register_by;
-console.log("Email from state:", email); // Debugging line
-console.log("Register by from state:", register_by); // Debugging line
-  // If page refreshed and email missing → go back to login
+
+  console.log("Email from state:", email);
+  console.log("Register by from state:", register_by);
+
+  // If page refreshed and email missing
   if (!email) {
     navigate("/");
   }
@@ -32,7 +34,7 @@ console.log("Register by from state:", register_by); // Debugging line
   };
 
   const handleKeyDown = (e, index) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1].focus();
     }
   };
@@ -40,30 +42,37 @@ console.log("Register by from state:", register_by); // Debugging line
   const handleVerify = async (e) => {
     e.preventDefault();
 
-    const otpValue = otp.join('');
+    const otpValue = otp.join("");
 
     if (otpValue.length !== 6) {
       alert("Please enter a valid 6-digit OTP");
       return;
     }
-    
+
     try {
-      if (register_by !== 'By using App') {
-      const response1 = await fetch(
-        `https://saccobe.zecosdk.com/account_fetch/${email}`,
-        {
-          method: "GET",
+      let data1 = "done";
+
+      // Fetch account data
+      if (register_by !== "By using App") {
+        const response1 = await fetch(
+          `https://corebanking.pythonanywhere.com/customer/account_fetch/${email}/`,
+          {
+            method: "GET",
+          }
+        );
+
+        if (response1.ok) {
+          const result = await response1.json();
+
+          if (result && Object.keys(result).length > 0) {
+            data1 = result; // data irundha assign
+          }
         }
-      );
 
-      const data1 = await response1.json();
-
-      if (!response1.ok) {
-        alert(data1.message || "OTP verification failed");
-        return;
+        console.log("Account Fetch Response:", data1);
       }
-      console.log('hjgsdjgdsaj',data1)}
-      const data1='done'
+
+      // OTP verify
       const response = await fetch(
         "https://snapsterbe.techykarthikbms.com/api/email-verification/",
         {
@@ -74,26 +83,33 @@ console.log("Register by from state:", register_by); // Debugging line
           body: JSON.stringify({
             email: email,
             otp: otpValue,
-            userData1: data1
+            userData1: data1,
           }),
         }
       );
 
       const data = await response.json();
-      console.log("OTP response:", data);
+
+      console.log("OTP Response:", data);
 
       if (!response.ok) {
         alert(data.message || "OTP verification failed");
         return;
       }
-      // ✅ Store full response safely
+
+      // Store data
       localStorage.setItem("verifiedUser", JSON.stringify(data));
       sessionStorage.setItem("userData1", JSON.stringify(data1));
-      navigate("/verify", { state: {userData: data } });
+
+      navigate("/verify", {
+        state: { userData: data },
+      });
 
     } catch (error) {
-      console.error("OTP error:", error);
-      alert("The entered email ID is not linked with the bank. Please enter a correct and registered email ID.");
+      console.error("OTP Error:", error);
+      alert(
+        "The entered email ID is not linked with the bank. Please enter a correct and registered email ID."
+      );
     }
   };
 
@@ -110,7 +126,9 @@ console.log("Register by from state:", register_by); // Debugging line
             <div className="mx-auto w-fit p-4 bg-primary/10 rounded-full mb-4">
               <ShieldCheck className="h-10 w-10 text-primary" />
             </div>
+
             <h2 className="text-2xl font-bold">Email Verify OTP</h2>
+
             <p className="text-sm text-muted-foreground mt-2">
               Enter the 6-digit code sent to {email}
             </p>
@@ -134,14 +152,20 @@ console.log("Register by from state:", register_by); // Debugging line
               ))}
             </div>
 
-            <Button type="submit" className="w-full h-12 text-base font-semibold">
+            <Button
+              type="submit"
+              className="w-full h-12 text-base font-semibold"
+            >
               Verify & Continue
             </Button>
           </form>
 
           <div className="text-center text-sm">
             Didn't receive code?{" "}
-            <button type="button" className="text-blue-600 hover:underline">
+            <button
+              type="button"
+              className="text-blue-600 hover:underline"
+            >
               Resend OTP
             </button>
           </div>
