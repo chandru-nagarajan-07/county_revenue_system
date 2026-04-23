@@ -94,7 +94,7 @@ const Register = () => {
       navigate('/kyconboarding');
       return;
     }
-
+    console.log('Form data ready for submission:', formData);
     // Optional: check if email exists
     try {
       const checkResponse = await fetch(
@@ -218,5 +218,6 @@ const Register = () => {
     </div>
   );
 };
+
 
 export default Register;
