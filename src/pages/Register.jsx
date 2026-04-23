@@ -12,6 +12,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+
+
 const Register = () => {
   const navigate = useNavigate();
 
