@@ -423,7 +423,7 @@ const ProfilePage = () => {
   const API_BASE_URL = 'https://snapsterbe.techykarthikbms.com/api';
   const STATUS_OPTIONS = {
     INITIATED: 'INITIATED',
-    ON_HOLD: 'ON_HOLD',
+    ON_HOLD: 'ON_HOLD', 
     COMPLETED: 'COMPLETED',
     TO_BE_PROCESSED: 'TO_BE_PROCESSED',
     PROCESSING: 'PROCESSING',
@@ -528,7 +528,7 @@ const ProfilePage = () => {
     }
   };
   
-  // Modified function to handle cash transaction initiation with amount
+  // Modified function to handle cash transaction initiation with amount and email
   const initiateCashTransaction = async (serviceId, serviceName) => {
     setUpdatingServiceId(serviceId);
     try {
@@ -557,21 +557,43 @@ const ProfilePage = () => {
       
       console.log('Service Amount:', amount);
       
-      // API call to external service with amount
-      const response = await fetch('http://127.0.0.1:8001/customer/initiate/', {
+      // Get user email from session - IMPORTANT: Get customer email, not teller email
+      // The sessionUser contains the customer data including email
+      const customerEmail = sessionUser?.email || sessionUser?.user?.email || null;
+      
+      if (!customerEmail) {
+        console.warn('Customer email not found in session, attempting to get from customer object');
+        // Fallback: try to get from the customer object in location state
+        const customerEmailFromState = customer?.email || customer?.user?.email || null;
+        if (!customerEmailFromState) {
+          throw new Error('Customer email not found in session. Please ensure customer data is loaded properly.');
+        }
+        customerEmail = customerEmailFromState;
+      }
+      
+      console.log('Customer Email being sent:', customerEmail);
+      
+      // API call to external service with amount and email
+      const response = await fetch('http://127.0.0.1:8001/api/deposit/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           service_id: serviceId,
           service_name: serviceName,
-          amount: amount
+          amount: amount,
+          email: customerEmail  // Send customer's email
         })
       });
       
-      if (!response.ok) throw new Error(`External API failed: ${response.status}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`External API failed: ${response.status} - ${errorText}`);
+      }
       
       const data = await response.json();
       const transactionId = data.id;
+      
+      console.log('External API Response:', data);
       
       // Store pending data including amount
       setPendingTransactionData({
@@ -602,6 +624,7 @@ const ProfilePage = () => {
     try {
       // Optional: Verify the transaction ID with external system
       try {
+        const customerEmail = sessionUser?.email || sessionUser?.user?.email || customer?.email;
         const verifyResponse = await fetch('http://127.0.0.1:8001/customer/verify/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -609,14 +632,16 @@ const ProfilePage = () => {
             transaction_id: enteredTransactionId,
             expected_id: pendingTransactionData?.expectedTransactionId,
             service_id: pendingTransactionData?.serviceId,
-            amount: pendingTransactionData?.amount
+            amount: pendingTransactionData?.amount,
+            email: customerEmail  // Also send email for verification
           })
         });
         
         if (!verifyResponse.ok) {
           console.warn('Verification failed, but proceeding with initiation');
         } else {
-          console.log('Transaction verified successfully');
+          const verifyData = await verifyResponse.json();
+          console.log('Transaction verified successfully:', verifyData);
         }
       } catch (verifyErr) {
         console.warn('Verification error, but proceeding with initiation:', verifyErr);
@@ -630,6 +655,8 @@ const ProfilePage = () => {
       // Close popup and clear state
       setIsTransactionPopupOpen(false);
       setPendingTransactionData(null);
+      
+      alert('Cash transaction completed successfully!');
       
     } catch (err) {
       console.error('Error in transaction confirmation:', err);
