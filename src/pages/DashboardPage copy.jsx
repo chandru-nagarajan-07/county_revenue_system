@@ -47,7 +47,7 @@ const DashboardPage = () => {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const response = await fetch("https://snapsterbe.techykarthikbms.com/view_api_service_groups1/");
+        const response = await fetch("http://127.0.0.1:8000/view_api_service_groups1/");
         if (!response.ok) throw new Error("Server error");
 
         const data = await response.json();
@@ -93,7 +93,7 @@ const openCategory = async (cat) => {
 
     // Call Django API with group_code
     const response = await fetch(
-      `https://snapsterbe.techykarthikbms.com/view_api_service_types_by_group/${cat}/`
+      `http://127.0.0.1:8000/view_api_service_types_by_group/${cat}/`
     );
 
     if (!response.ok) throw new Error("Failed to fetch service types");

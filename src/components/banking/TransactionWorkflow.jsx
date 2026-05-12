@@ -85,7 +85,7 @@ export const TransactionWorkflow = ({
   const [cartItems, setCartItems] = useState([]);
 
   useEffect(() => {
-    fetch("https://snapsterbe.techykarthikbms.com/api/account-types/")
+    fetch("http://127.0.0.1:8000/api/account-types/")
       .then((res) => res.json())
       .then((data) => setAccountTypes(data))
       .catch((err) => console.error(err));
@@ -109,7 +109,7 @@ export const TransactionWorkflow = ({
       return;
     }
     try {
-      const res = await fetch(`https://snapsterbe.techykarthikbms.com/account-addons/${account.code}/`);
+      const res = await fetch(`http://127.0.0.1:8000/account-addons/${account.code}/`);
       const data = await res.json();
       setAddonsMap((prev) => ({ ...prev, [account.id]: data }));
       setSelectedAccounts((prev) => [...prev, { account, addons: [] }]);
@@ -227,7 +227,7 @@ export const TransactionWorkflow = ({
 
       for (const payload of allTransactions) {
         try {
-          const response = await fetch("https://snapsterbe.techykarthikbms.com/api/service-transaction/", {
+          const response = await fetch("http://127.0.0.1:8000/api/service-transaction/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),

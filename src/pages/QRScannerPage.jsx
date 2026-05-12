@@ -67,7 +67,7 @@ const QRScannerPage = () => {
   const qrCodeRegionRef = useRef(null);
   const html5QrCodeRef = useRef(null);
   console.log('QRScannerPage rendered with serviceData:', serviceData);
-  const API_BASE_URL = 'https://snapsterbe.techykarthikbms.com/api';
+  const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
   const fetchUserByMobile = async (mobileNumber) => {
     if (!mobileNumber) {
@@ -126,7 +126,7 @@ const QRScannerPage = () => {
     setOtpError('');
     
     try {
-      const response = await fetch(`https://snapsterbe.techykarthikbms.com/api/send-otp/`, {
+      const response = await fetch(`http://127.0.0.1:8000/api/send-otp/`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -208,7 +208,7 @@ const QRScannerPage = () => {
     setOtpError('');
     
     try {
-      const response = await fetch(`https://snapsterbe.techykarthikbms.com/api/otp-verification/`, {
+      const response = await fetch(`http://127.0.0.1:8000/api/otp-verification/`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -847,10 +847,10 @@ const QRScannerPage = () => {
                       {approvalData.cartStatus || 'Active'}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center mt-2">
+                  {/* <div className="flex justify-between items-center mt-2">
                     <span className="font-medium">Total Charge:</span>
                     <span className="text-xl font-bold text-blue-600">KSh {approvalData.charge}</span>
-                  </div>
+                  </div> */}
                   <div className="flex justify-between items-center mt-2">
                     <span className="font-medium">Date:</span>
                     <span className="text-gray-600">{approvalData.date}</span>

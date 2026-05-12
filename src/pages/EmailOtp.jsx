@@ -55,7 +55,7 @@ const EmailOtp = () => {
       // Fetch account data
       if (register_by !== "By using App") {
         const response1 = await fetch(
-          `https://corebanking.pythonanywhere.com/customer/account_fetch/${email}/`,
+          `http://127.0.0.1:8001/customer/account_fetch/${email}/`,
           {
             method: "GET",
           }
@@ -74,7 +74,7 @@ const EmailOtp = () => {
 
       // OTP verify
       const response = await fetch(
-        "https://snapsterbe.techykarthikbms.com/api/email-verification/",
+        "http://127.0.0.1:8000/api/email-verification/",
         {
           method: "POST",
           headers: {

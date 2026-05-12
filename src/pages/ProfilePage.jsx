@@ -420,7 +420,7 @@ const ProfilePage = () => {
   const [pendingTransactionData, setPendingTransactionData] = useState(null);
   const [isVerifyingTransaction, setIsVerifyingTransaction] = useState(false);
   
-  const API_BASE_URL = 'https://snapsterbe.techykarthikbms.com/api';
+  const API_BASE_URL = 'http://127.0.0.1:8000/api';
   const STATUS_OPTIONS = {
     INITIATED: 'INITIATED',
     ON_HOLD: 'ON_HOLD', 
@@ -472,7 +472,7 @@ const ProfilePage = () => {
     }
   };
   
-  // Fetch service cart
+  // Fetch service cart - MODIFIED to calculate actual amounts from backend
   const fetchServiceCart = async (cartId) => {
     setIsLoading(true);
     setError(null);
@@ -484,18 +484,52 @@ const ProfilePage = () => {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
       if (data) {
-        const totalCharge = data.total_services * 10;
+        // Calculate total charge by fetching actual amounts from each service
+        let totalCharge = 0;
+        let servicesWithAmounts = [...(data.services || [])];
+        
+        if (data.services && data.services.length > 0) {
+          // Fetch details for each service to get the actual amount (like when clicking Service ID)
+          const servicePromises = data.services.map(async (service) => {
+            try {
+              const detailsResponse = await fetch(`${API_BASE_URL}/ServiceCartItemsDetail/${service.service_id}/`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+              });
+              if (detailsResponse.ok) {
+                const detailsData = await detailsResponse.json();
+                // Extract amount from cart or service_data (same as what shows in the modal)
+                let amount = parseFloat(detailsData.cart?.service_amount) || 0;
+
+                totalCharge += amount;
+                return { 
+                  ...service, 
+                  actualAmount: amount,
+                  serviceData: detailsData.service_data,
+                  cartData: detailsData.cart
+                };
+              }
+            } catch (err) {
+              console.error(`Error fetching amount for service ${service.service_id}:`, err);
+            }
+            return service;
+          });
+          
+          servicesWithAmounts = await Promise.all(servicePromises);
+        }
+        
         setServiceCart({
           cartId: data.cart_id,
           customerName: data.customer_name,
           mobileNumber: data.mobile_number,
           totalServices: data.total_services,
           cartStatus: data.cart_status,
-          services: data.services,
+          services: servicesWithAmounts,
           charge: totalCharge.toFixed(2),
           date: new Date().toISOString().split('T')[0],
         });
-        const processing = data.services.filter(s => s.status === 'PENDING' || s.status === 'PROCESSING' || s.status === 'ON_HOLD');
+        
+        const processing = servicesWithAmounts.filter(s => s.status === 'PENDING' || s.status === 'PROCESSING' || s.status === 'ON_HOLD');
         setProcessingServices(processing);
       }
     } catch (err) {
@@ -519,7 +553,6 @@ const ProfilePage = () => {
       const data = await response.json();
       console.log('Initiate response:', data);
       if (serviceCart?.cartId) await fetchServiceCart(serviceCart.cartId);
-      alert('Service initiated successfully!');
     } catch (err) {
       console.error('Error initiating service:', err);
       alert(`Failed to initiate service: ${err.message}`);
@@ -558,12 +591,10 @@ const ProfilePage = () => {
       console.log('Service Amount:', amount);
       
       // Get user email from session - IMPORTANT: Get customer email, not teller email
-      // The sessionUser contains the customer data including email
-      const customerEmail = sessionUser?.email || sessionUser?.user?.email || null;
+      let customerEmail = sessionUser?.email || sessionUser?.user?.email || null;
       
       if (!customerEmail) {
         console.warn('Customer email not found in session, attempting to get from customer object');
-        // Fallback: try to get from the customer object in location state
         const customerEmailFromState = customer?.email || customer?.user?.email || null;
         if (!customerEmailFromState) {
           throw new Error('Customer email not found in session. Please ensure customer data is loaded properly.');
@@ -581,7 +612,7 @@ const ProfilePage = () => {
           service_id: serviceId,
           service_name: serviceName,
           amount: amount,
-          email: customerEmail  // Send customer's email
+          email: customerEmail
         })
       });
       
@@ -633,7 +664,7 @@ const ProfilePage = () => {
             expected_id: pendingTransactionData?.expectedTransactionId,
             service_id: pendingTransactionData?.serviceId,
             amount: pendingTransactionData?.amount,
-            email: customerEmail  // Also send email for verification
+            email: customerEmail
           })
         });
         
@@ -893,9 +924,7 @@ const ProfilePage = () => {
   // Load data on mount
   useEffect(() => {
     if (cartData && cartData.cartId) {
-      setServiceCart(cartData);
-      const processing = cartData.services.filter(s => s.status === 'PENDING' || s.status === 'PROCESSING' || s.status === 'ON_HOLD');
-      setProcessingServices(processing);
+      fetchServiceCart(cartData.cartId);
     } else {
       setError('No service cart data found. Please scan a QR code first.');
     }
@@ -984,7 +1013,10 @@ const ProfilePage = () => {
                     <div className="flex items-center gap-2"><Calendar className="h-4 w-4 text-gray-500" /><span className="text-sm text-gray-600">Date:</span><span className="text-sm font-semibold">{serviceCart.date}</span></div>
                   </div>
                 </div>
-                <div className="text-right"><div className="text-3xl font-bold text-blue-600">KSh{serviceCart.charge}</div><div className="text-sm text-gray-500">Total Charge</div></div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-blue-600">{formatCurrency(serviceCart.charge)}</div>
+                  <div className="text-sm text-gray-500">Total Charge</div>
+                </div>
               </div>
             </div>
             {/* Progress */}
@@ -1006,6 +1038,7 @@ const ProfilePage = () => {
                   <tr>
                     <th className="px-6 py-3 text-left font-medium text-gray-600">Service ID</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-600">Service Name</th>
+                    <th className="px-6 py-3 text-left font-medium text-gray-600">Amount</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-600">Status</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-600">Actions</th>
                   </tr>
@@ -1020,12 +1053,32 @@ const ProfilePage = () => {
                     const isToBeProcessed = currentStatus === 'TO_BE_PROCESSED';
                     const isCompleted = currentStatus === 'COMPLETED';
                     const isCashTransaction = service.service_name?.toLowerCase() === 'cash withdrawal' || service.service_name?.toLowerCase() === 'cash deposit';
+                    console.log(`Rendering service `, service);
+                    const serviceAmount = service.service_amount || 0;  
                     
                     return (
                       <tr key={service.service_id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4"><button onClick={() => handleServiceIdClick(service.service_id)} className="font-mono text-xs text-blue-600 hover:underline">{service.service_id}</button></td>
-                        <td className="px-6 py-4"><div className="flex items-center gap-2">{getServiceStatusIcon(currentStatus)}<span className="font-medium">{service.service_name}</span></div></td>
-                        <td className="px-6 py-4"><span className={`px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusColor(currentStatus)}`}>{getStatusText(currentStatus)}</span></td>
+                        <td className="px-6 py-4">
+                          <button onClick={() => handleServiceIdClick(service.service_id)} className="font-mono text-xs text-blue-600 hover:underline">
+                            {service.service_id}
+                          </button>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            {getServiceStatusIcon(currentStatus)}
+                            <span className="font-medium">{service.service_name}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="font-semibold text-green-600">
+                            {serviceAmount > 0 ? formatCurrency(serviceAmount) : 'N/A'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusColor(currentStatus)}`}>
+                            {getStatusText(currentStatus)}
+                          </span>
+                        </td>
                         <td className="px-6 py-4">
                           {isUpdating ? <Loader2 className="h-4 w-4 animate-spin text-blue-500" /> : (
                             <div className="flex gap-2 flex-wrap">
