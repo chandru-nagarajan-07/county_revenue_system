@@ -71,7 +71,7 @@ const QRScannerPage = () => {
   const html5QrCodeRef = useRef(null);
 
   // API base URL
-  const API_BASE_URL = 'https://snapsterbe.techykarthikbms.com/api';
+  const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
   // New function to fetch user details by mobile number
   const fetchUserDetails = async (mobileNumber) => {

@@ -49,7 +49,7 @@ const DashboardPage = () => {
     const fetchServiceGroups = async () => {
       try {
         const response = await fetch(
-          "https://snapsterbe.techykarthikbms.com/view_api_service_groups1/"
+          "http://127.0.0.1:8000/view_api_service_groups1/"
         );
         const data = await response.json();
 
@@ -79,7 +79,7 @@ const DashboardPage = () => {
       setLoading(true);
 
       const response = await fetch(
-        `https://snapsterbe.techykarthikbms.com/view_api_service_types_by_group/${groupCode}/`
+        `http://127.0.0.1:8000/view_api_service_types_by_group/${groupCode}/`
       );
 
       const data = await response.json();
@@ -108,7 +108,7 @@ const DashboardPage = () => {
       setFormFieldsLoading(true);
 
       const response = await fetch(
-        `https://snapsterbe.techykarthikbms.com/view_api_formfields_by_service/${serviceCode}/`
+        `http://127.0.0.1:8000/view_api_formfields_by_service/${serviceCode}/`
       );
 
       const data = await response.json();
