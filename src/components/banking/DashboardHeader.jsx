@@ -36,14 +36,13 @@ export function DashboardHeader({
 
   /* ---------------- States ---------------- */
   const [time, setTime] = useState(new Date());
-
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-
   const [notifications, setNotifications] = useState([]);
-
   const [unreadCount, setUnreadCount] = useState(0);
-
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  
+  /* ---------------- Completed Requests Count State ---------------- */
+  const [completedRequestsCount, setCompletedRequestsCount] = useState(0);
 
   /* ---------------- Refs for click-outside detection ---------------- */
   const notificationButtonRef = useRef(null);
@@ -59,6 +58,29 @@ export function DashboardHeader({
 
     return () => clearInterval(interval);
   }, []);
+
+  /* ---------------- Fetch Completed Requests Count ---------------- */
+  const fetchCompletedRequestsCount = async () => {
+    if (!currentUserId) return;
+
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:8000/customer_service_cart_list_queue/${currentUserId}/`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch completed requests count");
+      }
+
+      const data = await response.json();
+      // Get the count from the array
+      const count = data?.length || 0;
+      setCompletedRequestsCount(count);
+    } catch (error) {
+      console.error("Completed Requests Count Error:", error);
+      setCompletedRequestsCount(0);
+    }
+  };
 
   /* ---------------- Notification API function ---------------- */
   const fetchNotifications = async () => {
@@ -96,17 +118,27 @@ export function DashboardHeader({
     }
   };
 
-  /* ---------------- Load notifications on mount (for initial badge) ---------------- */
+  /* ---------------- Load notifications and completed requests count on mount ---------------- */
   useEffect(() => {
     fetchNotifications();
-  }, [currentUserId]);  // Re-fetch if user ID changes
+    fetchCompletedRequestsCount();
+  }, [currentUserId]);
 
-  /* ---------------- Refresh notifications when dropdown opens (optional, but keeps list fresh) ---------------- */
+  /* ---------------- Refresh notifications when dropdown opens ---------------- */
   useEffect(() => {
     if (isNotificationOpen) {
       fetchNotifications();
     }
   }, [isNotificationOpen]);
+
+  /* ---------------- Auto-refresh completed requests count every 30 seconds ---------------- */
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchCompletedRequestsCount();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [currentUserId]);
 
   /* ---------------- Click-outside handler ---------------- */
   useEffect(() => {
@@ -174,15 +206,20 @@ export function DashboardHeader({
           </span>
         </div>
 
-        {/* Cart */}
+        {/* Cart with Completed Requests Count Badge */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => navigate("/cart")}
-          className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+          className="relative text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
         >
           <FileText className="h-4 w-4 mr-2" />
           Cart
+          {completedRequestsCount > 0 && (
+            <span className="ml-1 inline-flex items-center justify-center bg-green-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5">
+              {completedRequestsCount}
+            </span>
+          )}
         </Button>
 
         {/* Admin */}
