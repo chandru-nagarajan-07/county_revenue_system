@@ -65,7 +65,7 @@ export function DashboardHeader({
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/customer_service_cart_list_queue/${currentUserId}/`
+        `https://snapsterbe.techykarthikbms.com/customer_service_cart_list_queue/${currentUserId}/`
       );
 
       if (!response.ok) {
@@ -89,7 +89,7 @@ export function DashboardHeader({
     try {
       setLoadingNotifications(true);
       const response = await fetch(
-        `http://127.0.0.1:8000/api/customer_notification/${currentUserId}/`
+        `https://snapsterbe.techykarthikbms.com/api/customer_notification/${currentUserId}/`
       );
 
       if (!response.ok) {

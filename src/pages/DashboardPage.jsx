@@ -260,7 +260,7 @@ const DashboardPage = () => {
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/customer_service_cart_list_queue/${customer.user_id}/`
+        `https://snapsterbe.techykarthikbms.com/customer_service_cart_list_queue/${customer.user_id}/`
       );
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       
@@ -313,7 +313,7 @@ const DashboardPage = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/view_api_service_groups1/");
+        const response = await fetch("https://snapsterbe.techykarthikbms.com/view_api_service_groups1/");
         if (!response.ok) throw new Error("Server error");
 
         const data = await response.json();
@@ -361,7 +361,7 @@ const DashboardPage = () => {
       setSelectedCategory(catKey);
 
       const response = await fetch(
-        `http://127.0.0.1:8000/view_api_service_types_by_group/${catKey}/`
+        `https://snapsterbe.techykarthikbms.com/view_api_service_types_by_group/${catKey}/`
       );
 
       if (!response.ok) throw new Error("Failed to fetch service types");
@@ -432,7 +432,7 @@ const DashboardPage = () => {
 
   // --- Feedback Handlers ---
   const submitFeedback = async (feedbackData) => {
-    const response = await fetch('http://127.0.0.1:8000/api/service_feedback/', {
+    const response = await fetch('https://snapsterbe.techykarthikbms.com/api/service_feedback/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(feedbackData),

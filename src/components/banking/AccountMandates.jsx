@@ -124,7 +124,7 @@ export function AccountMandates({ onComplete }) {
       formDataToSend.append('applicable_accounts', JSON.stringify(formData.applicableAccounts));
       formDataToSend.append('signature_card', formData.signatureCard);
 
-      const res = await fetch('http://127.0.0.1:8000/kyc-update-requests/', {
+      const res = await fetch('https://snapsterbe.techykarthikbms.com/kyc-update-requests/', {
         method: 'POST',
         body: formDataToSend,
       });

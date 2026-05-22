@@ -142,7 +142,7 @@ export const BillPaymentInput = ({ customer: propCustomer, onBack, onComplete, f
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/api/bill-payments/",
+        "https://snapsterbe.techykarthikbms.com/api/bill-payments/",
         {
           method: "POST",
           headers: {

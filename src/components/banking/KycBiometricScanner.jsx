@@ -63,7 +63,7 @@ export function KycBiometricScanner({ onComplete }) {
       formData.append("fingerprint_data", fingerprintData);
       formData.append("photo_data", photo);
 
-      const res = await fetch("http://127.0.0.1:8000/kyc-update-requests/", {
+      const res = await fetch("https://snapsterbe.techykarthikbms.com/kyc-update-requests/", {
         method: "POST",
         body: formData, // ❗ no headers needed
       });

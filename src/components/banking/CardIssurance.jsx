@@ -162,7 +162,7 @@ export default function CardIssuance({ customer: propCustomer, onBack, formField
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/api/cards/",
+        "https://snapsterbe.techykarthikbms.com/api/cards/",
         {
           method: "POST",
           headers: {
