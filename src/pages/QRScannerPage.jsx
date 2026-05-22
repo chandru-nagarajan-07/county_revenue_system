@@ -67,7 +67,7 @@ const QRScannerPage = () => {
   const qrCodeRegionRef = useRef(null);
   const html5QrCodeRef = useRef(null);
   console.log('QRScannerPage rendered with serviceData:', serviceData);
-  const API_BASE_URL = 'http://127.0.0.1:8000/api';
+  const API_BASE_URL = 'https://snapsterbe.techykarthikbms.com/api';
 
   const fetchUserByMobile = async (mobileNumber) => {
     if (!mobileNumber) {
@@ -126,7 +126,7 @@ const QRScannerPage = () => {
     setOtpError('');
     
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/send-otp/`, {
+      const response = await fetch(`https://snapsterbe.techykarthikbms.com/api/send-otp/`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -208,7 +208,7 @@ const QRScannerPage = () => {
     setOtpError('');
     
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/otp-verification/`, {
+      const response = await fetch(`https://snapsterbe.techykarthikbms.com/api/otp-verification/`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

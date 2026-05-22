@@ -321,7 +321,7 @@ const ProfilePage = () => {
   const [historyData, setHistoryData] = useState(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   
-  const API_BASE_URL = 'http://127.0.0.1:8000/api';
+  const API_BASE_URL = 'https://snapsterbe.techykarthikbms.com/api';
   const STATUS_OPTIONS = {
     ON_HOLD: 'ON_HOLD',
     COMPLETED: 'COMPLETED',

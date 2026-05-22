@@ -151,7 +151,7 @@ const AccountOpeningForm = () => {
     console.log("📤 FINAL PAYLOAD:", JSON.stringify(payload, null, 2));
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/sign-up/", {
+      const response = await fetch("https://snapsterbe.techykarthikbms.com/api/sign-up/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -207,7 +207,7 @@ const AccountOpeningForm = () => {
 
     } catch (error) {
       console.error("Network error:", error);
-      const networkError = "Cannot connect to server. Please make sure your backend is running at http://127.0.0.1:8000";
+      const networkError = "Cannot connect to server. Please make sure your backend is running at https://snapsterbe.techykarthikbms.com";
       setServerError(networkError);
       alert(networkError);
     } finally {

@@ -301,7 +301,7 @@ const CartPage = () => {
   const fetchPendingItems = async () => {
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/customer_service_queue_items/${sessionUser.user_id}/`
+        `https://snapsterbe.techykarthikbms.com/customer_service_queue_items/${sessionUser.user_id}/`
       );
       const data = await response.json();
       const formattedData = data.serializer.map((service) => ({
@@ -322,7 +322,7 @@ const CartPage = () => {
   const fetchCompletedItems = async () => {
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/customer_service_cart_list_queue/${sessionUser.user_id}/`
+        `https://snapsterbe.techykarthikbms.com/customer_service_cart_list_queue/${sessionUser.user_id}/`
       );
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
@@ -373,7 +373,7 @@ const CartPage = () => {
     setLoading(true);
     setShowConfirmModal(false);
     try {
-      const response = await fetch('http://127.0.0.1:8000/service_items/', {
+      const response = await fetch('https://snapsterbe.techykarthikbms.com/service_items/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -395,7 +395,7 @@ const CartPage = () => {
 
   const removeItem = async (id) => {
     try {
-      await fetch(`http://127.0.0.1:8000/service_queue_items/${id}/`, { method: 'DELETE' });
+      await fetch(`https://snapsterbe.techykarthikbms.com/service_queue_items/${id}/`, { method: 'DELETE' });
       setPendingItems((prev) => prev.filter((item) => item.id !== id));
       setSelectedIds((prev) => prev.filter((selectedId) => selectedId !== id));
     } catch (error) {
@@ -405,7 +405,7 @@ const CartPage = () => {
   };
 
   const getQrCodeUrl = (item) => {
-    if (item.qr_img) return `http://127.0.0.1:8000${item.qr_img}`;
+    if (item.qr_img) return `https://snapsterbe.techykarthikbms.com${item.qr_img}`;
     const qrData = {
       cart_id: item.cart_id,
       service_amount: item.service_amount,
@@ -469,7 +469,7 @@ const CartPage = () => {
     setIsLoadingHistory(true);
     setTransferHistory([]);
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/service_history/${serviceId}/`);
+      const response = await fetch(`https://snapsterbe.techykarthikbms.com/api/service_history/${serviceId}/`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
       if (Array.isArray(data) && data.length > 0) {
@@ -510,7 +510,7 @@ const CartPage = () => {
   };
 
   const submitFeedback = async (feedbackData) => {
-    const response = await fetch('http://127.0.0.1:8000/api/service_feedback/', {
+    const response = await fetch('https://snapsterbe.techykarthikbms.com/api/service_feedback/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(feedbackData),

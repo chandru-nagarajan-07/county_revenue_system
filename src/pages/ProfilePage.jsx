@@ -428,7 +428,7 @@ const ProfilePage = () => {
   const [isVerifyingTransaction, setIsVerifyingTransaction] = useState(false);
   const [autoFilledTransactionId, setAutoFilledTransactionId] = useState(null);
   
-  const API_BASE_URL = 'http://127.0.0.1:8000/api';
+  const API_BASE_URL = 'https://snapsterbe.techykarthikbms.com/api';
   const STATUS_OPTIONS = {
     INITIATED: 'INITIATED',
     ON_HOLD: 'ON_HOLD', 
@@ -613,7 +613,7 @@ const ProfilePage = () => {
       console.log('Customer Email being sent:', customerEmail);
       
       // API call to external service with amount and email
-      const response = await fetch('http://127.0.0.1:8001/api/deposit/', {
+      const response = await fetch('https://corebanking.pythonanywhere.com/api/deposit/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -668,7 +668,7 @@ const ProfilePage = () => {
       // Optional: Verify the transaction ID with external system
       try {
         const customerEmail = sessionUser?.email || sessionUser?.user?.email || customer?.email;
-        const verifyResponse = await fetch('http://127.0.0.1:8001/customer/verify/', {
+        const verifyResponse = await fetch('https://corebanking.pythonanywhere.com/customer/verify/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
