@@ -289,15 +289,18 @@ const HistoryModal = memo(({ isOpen, onClose, history, isLoading, formatDate }) 
   );
 });
 
-// Transaction ID Popup Component - Updated to show amount
-const TransactionIdPopup = memo(({ isOpen, onClose, onConfirm, transactionId, amount, isLoading }) => {
+// Auto-fill Transaction ID Popup Component
+const TransactionIdPopup = memo(({ isOpen, onClose, onConfirm, transactionId, amount, isLoading, autoFilledId }) => {
   const [enteredId, setEnteredId] = useState('');
 
   useEffect(() => {
     if (!isOpen) {
       setEnteredId('');
+    } else if (autoFilledId && !enteredId) {
+      // Auto-fill the transaction ID when popup opens
+      setEnteredId(autoFilledId);
     }
-  }, [isOpen]);
+  }, [isOpen, autoFilledId]);
 
   if (!isOpen) return null;
 
@@ -311,16 +314,17 @@ const TransactionIdPopup = memo(({ isOpen, onClose, onConfirm, transactionId, am
         <div className="border-b px-6 py-4 flex justify-between items-center">
           <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-blue-600" />
-            Enter Transaction ID
+            Transaction ID
           </h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <XCircle className="h-6 w-6" />
           </button>
         </div>
         <div className="p-6">
-          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-800">
-              External system has generated a transaction ID. Please confirm by entering it below.
+          <div className="mb-4 p-3 bg-green-50 rounded-lg">
+            <p className="text-sm text-green-800 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              Transaction ID has been automatically retrieved from the external system!
             </p>
             {amount && (
               <div className="mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
@@ -332,19 +336,22 @@ const TransactionIdPopup = memo(({ isOpen, onClose, onConfirm, transactionId, am
             )}
           </div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Transaction ID <span className="text-red-500">*</span>
+            Transaction ID
           </label>
           <input
             type="text"
             value={enteredId}
             onChange={(e) => setEnteredId(e.target.value)}
-            placeholder={`Expected: ${transactionId || 'XXXX-XXXX-XXXX'}`}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            autoFocus
+            placeholder="Transaction ID"
+            className="w-full px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-green-50"
+            readOnly={!!autoFilledId} // Make readonly if auto-filled
           />
-          <p className="mt-2 text-xs text-gray-500">
-            Enter the transaction ID exactly as shown above
-          </p>
+          {autoFilledId && (
+            <p className="mt-2 text-xs text-green-600 flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              Transaction ID automatically filled from external system
+            </p>
+          )}
         </div>
         <div className="bg-gray-50 border-t px-6 py-4 flex justify-end gap-3">
           <Button variant="outline" onClick={onClose}>
@@ -353,7 +360,7 @@ const TransactionIdPopup = memo(({ isOpen, onClose, onConfirm, transactionId, am
           <Button 
             onClick={() => onConfirm(enteredId)} 
             disabled={!enteredId.trim() || isLoading}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-green-600 hover:bg-green-700"
           >
             {isLoading ? (
               <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Verifying...</>
@@ -419,6 +426,7 @@ const ProfilePage = () => {
   const [isTransactionPopupOpen, setIsTransactionPopupOpen] = useState(false);
   const [pendingTransactionData, setPendingTransactionData] = useState(null);
   const [isVerifyingTransaction, setIsVerifyingTransaction] = useState(false);
+  const [autoFilledTransactionId, setAutoFilledTransactionId] = useState(null);
   
   const API_BASE_URL = 'http://127.0.0.1:8000/api';
   const STATUS_OPTIONS = {
@@ -622,18 +630,22 @@ const ProfilePage = () => {
       }
       
       const data = await response.json();
-      const transactionId = data.id;
+      const transactionId = data.transaction_id || data.id || data.reference_id;
       
       console.log('External API Response:', data);
+      console.log('Extracted Transaction ID:', transactionId);
       
-      // Store pending data including amount
+      // Store pending data including amount and auto-filled transaction ID
       setPendingTransactionData({
         serviceId: serviceId,
         expectedTransactionId: transactionId,
         amount: amount
       });
       
-      // Show popup to enter transaction ID
+      // Set auto-filled transaction ID
+      setAutoFilledTransactionId(transactionId);
+      
+      // Show popup with auto-filled transaction ID
       setIsTransactionPopupOpen(true);
       
     } catch (err) {
@@ -686,6 +698,7 @@ const ProfilePage = () => {
       // Close popup and clear state
       setIsTransactionPopupOpen(false);
       setPendingTransactionData(null);
+      setAutoFilledTransactionId(null);
       
       alert('Cash transaction completed successfully!');
       
@@ -695,6 +708,7 @@ const ProfilePage = () => {
       
       setIsTransactionPopupOpen(false);
       setPendingTransactionData(null);
+      setAutoFilledTransactionId(null);
       
     } finally {
       setIsVerifyingTransaction(false);
@@ -1201,18 +1215,20 @@ const ProfilePage = () => {
         formatDate={formatDate}
       />
       
-      {/* Transaction ID Popup */}
+      {/* Transaction ID Popup with Auto-fill */}
       <TransactionIdPopup
         isOpen={isTransactionPopupOpen}
         onClose={() => {
           setIsTransactionPopupOpen(false);
           setPendingTransactionData(null);
+          setAutoFilledTransactionId(null);
           setUpdatingServiceId(null);
         }}
         onConfirm={handleTransactionConfirm}
         transactionId={pendingTransactionData?.expectedTransactionId}
         amount={pendingTransactionData?.amount}
         isLoading={isVerifyingTransaction}
+        autoFilledId={autoFilledTransactionId}
       />
     </div>
   );

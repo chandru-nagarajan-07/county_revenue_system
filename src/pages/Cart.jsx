@@ -287,6 +287,10 @@ const CartPage = () => {
     }));
   }, [branches]);
 
+  // Calculate counts
+  const pendingCount = pendingItems.length;
+  const completedCount = completedItems.length;
+
   // Fetch pending items on mount
   useEffect(() => {
     fetchPendingItems();
@@ -417,57 +421,51 @@ const CartPage = () => {
     return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data)}`;
   };
 
-  // Replace your existing downloadQrCode function with this
-const downloadQrCode = async (item) => {
-  // Show loading indicator (optional)
-  const loadingToast = setTimeout(() => {
-    console.log('Downloading QR code...');
-  }, 100);
+  const downloadQrCode = async (item) => {
+    const loadingToast = setTimeout(() => {
+      console.log('Downloading QR code...');
+    }, 100);
+    
+    try {
+      const qrUrl = getQrCodeUrl(item);
+      const img = new Image();
+      img.crossOrigin = "Anonymous";
+      
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = qrUrl;
+      });
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `qr_${item.cart_id || 'cart'}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          clearTimeout(loadingToast);
+        } else {
+          throw new Error('Failed to create blob');
+        }
+      }, 'image/png', 1.0);
+      
+    } catch (error) {
+      clearTimeout(loadingToast);
+      console.error('Error downloading QR code:', error);
+      alert('Failed to download QR code. Please try again.');
+    }
+  };
   
-  try {
-    const qrUrl = getQrCodeUrl(item);
-    
-    // Create image element
-    const img = new Image();
-    img.crossOrigin = "Anonymous";
-    
-    // Create promise for image loading
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.src = qrUrl;
-    });
-    
-    // Create canvas
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-    
-    // Download
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `qr_${item.cart_id || 'cart'}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        clearTimeout(loadingToast);
-      } else {
-        throw new Error('Failed to create blob');
-      }
-    }, 'image/png', 1.0); // 1.0 = quality
-    
-  } catch (error) {
-    clearTimeout(loadingToast);
-    console.error('Error downloading QR code:', error);
-    alert('Failed to download QR code. Please try again.');
-  }
-};
   const openQrModal = (item) => {
     setSelectedCompletedItem(item);
     setIsModalOpen(true);
@@ -574,8 +572,22 @@ const downloadQrCode = async (item) => {
         <div className="max-w-6xl mx-auto">
           <Tabs defaultValue="pending" onValueChange={setActiveTab}>
             <TabsList className="grid grid-cols-2 mb-4">
-              <TabsTrigger value="pending">Cart Items </TabsTrigger>
-              <TabsTrigger value="completed">Requests</TabsTrigger>
+              <TabsTrigger value="pending" className="flex items-center gap-2">
+                Cart Items
+                {pendingCount > 0 && (
+                  <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                    {pendingCount}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="completed" className="flex items-center gap-2">
+                Requests
+                {completedCount > 0 && (
+                  <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                    {completedCount}
+                  </span>
+                )}
+              </TabsTrigger>
             </TabsList>
 
             {/* Pending Tab */}
