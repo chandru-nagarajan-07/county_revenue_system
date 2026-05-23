@@ -625,6 +625,7 @@ const ProfilePage = () => {
       });
       
       if (!response.ok) {
+        console.error('External API error response:', response);
         const errorText = await response.text();
         throw new Error(`External API failed: ${response.status} - ${errorText}`);
       }
