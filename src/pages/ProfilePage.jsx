@@ -613,7 +613,7 @@ const ProfilePage = () => {
       console.log('Customer Email being sent:', customerEmail);
       
       // API call to external service with amount and email
-      const response = await fetch('https://corebanking.pythonanywhere.com/api/api/deposit/', {
+      const response = await fetch('https://corebanking.pythonanywhere.com/api/api/deposit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
