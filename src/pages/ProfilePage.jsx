@@ -613,7 +613,7 @@ const ProfilePage = () => {
       console.log('Customer Email being sent:', customerEmail);
       
       // API call to external service with amount and email
-      const response = await fetch('http://127.0.0.1:8000/api/deposit/', {
+      const response = await fetch('https://corebanking.pythonanywhere.com/api/deposit/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -625,7 +625,6 @@ const ProfilePage = () => {
       });
       
       if (!response.ok) {
-        console.error('External API error response:', response);
         const errorText = await response.text();
         throw new Error(`External API failed: ${response.status} - ${errorText}`);
       }
