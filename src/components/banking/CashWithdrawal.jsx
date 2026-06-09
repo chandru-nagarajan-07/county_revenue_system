@@ -483,7 +483,7 @@ export const CashWithdrawalWorkflow = ({
                   </div>
                   <div className="flex justify-between pt-2 border-t mt-2">
                     <span className="font-semibold">Total Debit</span>
-                    <span className="font-bold text-primary">KES {(withdrawalAmount + charges.totalCharges).toLocaleString()}</span>
+                    <span className="font-bold text-primary">KES {(withdrawalAmount + charges.totalCharges-10).toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -540,7 +540,7 @@ export const CashWithdrawalWorkflow = ({
                   </div>
                   <div className="bg-red-50 p-3 rounded-lg">
                     <p className="text-[10px] text-red-600 uppercase font-semibold">Total Debit</p>
-                    <p className="font-bold text-red-700">KES {(withdrawalAmount + charges.totalCharges).toLocaleString()}</p>
+                    <p className="font-bold text-red-700">KES {(withdrawalAmount + charges.totalCharges-10).toLocaleString()}</p>
                   </div>
                 </div>
 
