@@ -289,6 +289,7 @@ const HistoryModal = memo(({ isOpen, onClose, history, isLoading, formatDate }) 
   );
 });
 
+
 // Auto-fill Transaction ID Popup Component
 const TransactionIdPopup = memo(({ isOpen, onClose, onConfirm, transactionId, amount, isLoading, autoFilledId }) => {
   const [enteredId, setEnteredId] = useState('');
@@ -303,7 +304,7 @@ const TransactionIdPopup = memo(({ isOpen, onClose, onConfirm, transactionId, am
   }, [isOpen, autoFilledId]);
 
   if (!isOpen) return null;
-
+// Add this useEffect near line 320 (with your other useEffects)
   const formatCurrency = (amt) => {
     return `KSh ${parseFloat(amt).toLocaleString()}`;
   };
@@ -382,6 +383,7 @@ const ProfilePage = () => {
   const customer = location.state?.customer;
   const branch = customer?.teller_info;
   const sessionUser = JSON.parse(sessionStorage.getItem("customerData") || "{}");
+  console.log('-----------Session User Data-------:', sessionUser);
   const tellerUser = JSON.parse(sessionStorage.getItem("userData1") || "{}");
   const accounts = sessionUser?.account || [];
   
@@ -404,7 +406,10 @@ const ProfilePage = () => {
   const [selectedServiceDetails, setSelectedServiceDetails] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-  
+  const [apiBalance, setApiBalance] = useState(null);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [balanceError, setBalanceError] = useState(null);
+
   // Transfer modal
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [selectedTransferService, setSelectedTransferService] = useState(null);
@@ -570,7 +575,7 @@ const ProfilePage = () => {
   };
   
   // Modified function to handle cash transaction initiation with amount and email
-  const initiateCashTransaction = async (serviceId, serviceName) => {
+  const initiateCashTransaction = async (serviceId, serviceName, serviceAmount1) => {
     setUpdatingServiceId(serviceId);
     try {
       // First, fetch service details to get the amount
@@ -597,7 +602,69 @@ const ProfilePage = () => {
       }
       
       console.log('Service Amount:', amount);
-      
+      // Fetch customer balance from API using account number
+      const fetchCustomerBalance = async () => {
+        // Get account number from session
+        const sessionData = JSON.parse(sessionStorage.getItem("customerData") || "{}");
+        const accountNum = sessionData.account_number;
+        
+        if (!accountNum || accountNum === 'N/A') {
+          console.log('No account number available, using session balance');
+          setApiBalance(accountBalance);
+          return;
+        }
+        
+        setIsLoadingBalance(true);
+        setBalanceError(null);
+        
+        try {
+          // Use the same API_BASE_URL as other endpoints
+          const response = await fetch(`${API_BASE_URL}/api/get_customer_balance_api/${accountNum}/`, {
+            method: 'GET',
+            headers: { 
+              'Content-Type': 'application/json',
+              // Add authorization header if needed
+              // 'Authorization': `Bearer ${token}`,
+            },
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          console.log('Balance API Response:', data);
+          
+          // Extract balance from response (adjust based on your API response structure)
+          let fetchedBalance = null;
+          if (data.balance !== undefined) {
+            fetchedBalance = data.balance;
+          } else if (data.account_balance !== undefined) {
+            fetchedBalance = data.account_balance;
+          } else if (data.amount !== undefined) {
+            fetchedBalance = data.amount;
+          } else if (data.data && data.data.balance) {
+            fetchedBalance = data.data.balance;
+          }
+          
+          if (fetchedBalance !== null) {
+            setApiBalance(fetchedBalance);
+            // Optionally update session storage
+            sessionData.account_balance = fetchedBalance;
+            sessionStorage.setItem("customerData", JSON.stringify(sessionData));
+          } else {
+            console.warn('Balance not found in API response, using session balance');
+            setApiBalance(accountBalance);
+          }
+        } catch (err) {
+          console.error('Error fetching customer balance:', err);
+          setBalanceError(err.message);
+          // Fallback to session balance on error
+          setApiBalance(accountBalance);
+        } finally {
+          setIsLoadingBalance(false);
+        }
+      };
       // Get user email from session - IMPORTANT: Get customer email, not teller email
       let customerEmail = sessionUser?.email || sessionUser?.user?.email || null;
       
@@ -611,7 +678,8 @@ const ProfilePage = () => {
       }
       
       console.log('Customer Email being sent:', customerEmail);
-      
+      // Fetch balance from API when component mounts
+
       // API call to external service with amount and email
       const response = await fetch('https://corebanking.pythonanywhere.com/api/deposit/', {
         method: 'POST',
@@ -619,7 +687,7 @@ const ProfilePage = () => {
         body: JSON.stringify({ 
           service_id: serviceId,
           service_name: serviceName,
-          amount: amount,
+          amount: serviceAmount1,
           email: customerEmail
         })
       });
@@ -639,7 +707,7 @@ const ProfilePage = () => {
       setPendingTransactionData({
         serviceId: serviceId,
         expectedTransactionId: transactionId,
-        amount: amount
+        amount: serviceAmount1
       });
       
       // Set auto-filled transaction ID
@@ -1015,8 +1083,21 @@ const ProfilePage = () => {
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div><div className="text-xs text-gray-500">Account Number</div><p className="text-sm font-mono font-semibold">{accountNumber}</p></div>
                         <div><div className="text-xs text-gray-500">Account Type</div><p className="text-sm font-semibold">{formatAccountType(accountType)}</p></div>
-                        <div><div className="text-xs text-gray-500">Balance</div><p className="text-sm font-bold text-green-600">{formatCurrency(accountBalance)}</p></div>
-                        <div><div className="text-xs text-gray-500">Status</div><span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${accountStatus === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{accountStatus}</span></div>
+<div>
+  <div className="text-xs text-gray-500">Balance</div>
+  <p className="text-sm font-bold text-green-600">
+    {isLoadingBalance ? (
+      <Loader2 className="h-4 w-4 animate-spin inline-block" />
+    ) : balanceError ? (
+      <span className="text-red-600" title={balanceError}>
+        {formatCurrency(accountBalance)}
+        <Info className="h-3 w-3 inline-block ml-1" />
+      </span>
+    ) : (
+      formatCurrency(apiBalance !== null ? apiBalance : accountBalance)
+    )}
+  </p>
+</div>                        <div><div className="text-xs text-gray-500">Status</div><span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${accountStatus === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{accountStatus}</span></div>
                       </div>
                     </div>
                   )}
@@ -1053,6 +1134,7 @@ const ProfilePage = () => {
                     <th className="px-6 py-3 text-left font-medium text-gray-600">Service ID</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-600">Service Name</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-600">Amount</th>
+                    <th className="px-6 py-3 text-left font-medium text-gray-600">Final Amount</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-600">Status</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-600">Actions</th>
                   </tr>
@@ -1068,8 +1150,20 @@ const ProfilePage = () => {
                     const isCompleted = currentStatus === 'COMPLETED';
                     const isCashTransaction = service.service_name?.toLowerCase() === 'cash withdrawal' || service.service_name?.toLowerCase() === 'cash deposit';
                     console.log(`Rendering service `, service);
-                    const serviceAmount = service.service_amount || 0;  
-                    
+                    // const serviceAmount = service.service_amount || 0;  
+                    const serviceAmount =
+                    service?.serviceData?.amount ||
+                    service?.cartData?.service_amount ||
+                    service?.actualAmount ||
+                    0;
+                    const actualServiceAmount = Number(service?.serviceData?.amount || 0);
+                    const serviceCharge = Number(
+                      service?.cartData?.service_amount ||
+                      service?.actualAmount ||
+                      0
+                    );
+
+                    const serviceAmount1 = actualServiceAmount - serviceCharge;
                     return (
                       <tr key={service.service_id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
@@ -1088,6 +1182,11 @@ const ProfilePage = () => {
                             {serviceAmount > 0 ? formatCurrency(serviceAmount) : 'N/A'}
                           </div>
                         </td>
+                     <td className="px-6 py-4">
+  <div className="font-semibold text-green-600">
+    {serviceAmount1 > 0 ? formatCurrency(serviceAmount1) : 'N/A'}
+  </div>
+</td>
                         <td className="px-6 py-4">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getServiceStatusColor(currentStatus)}`}>
                             {getStatusText(currentStatus)}
@@ -1102,7 +1201,7 @@ const ProfilePage = () => {
                                   <Button 
                                     size="sm" 
                                     className="bg-blue-600 text-white hover:bg-blue-700" 
-                                    onClick={() => initiateCashTransaction(service.service_id, service.service_name)}
+                                    onClick={() => initiateCashTransaction(service.service_id, service.service_name,serviceAmount1)}
                                   >
                                     <PlayCircle className="h-4 w-4 mr-1" /> Initiate Cash Transaction
                                   </Button>
