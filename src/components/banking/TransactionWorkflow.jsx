@@ -173,7 +173,7 @@ export const TransactionWorkflow = ({
 
         try {
           const response = await fetch("https://snapsterbe.techykarthikbms.com/api/service-transaction/", {
-            method: "POST",
+            method: "POST ",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
